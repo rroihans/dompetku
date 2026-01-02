@@ -5,6 +5,136 @@ import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
 
 // ============================================
+// ACCOUNT TEMPLATE (PERBANKAN)
+// ============================================
+
+export interface AccountTemplateData {
+    id?: string
+    nama: string
+    tipeAkun: string
+    biayaAdmin?: number | null
+    bungaTier?: string | null
+    polaTagihan: string
+    tanggalTagihan?: number | null
+    deskripsi?: string
+    isActive?: boolean
+}
+
+export async function createAccountTemplate(data: AccountTemplateData) {
+    try {
+        const template = await prisma.accountTemplate.create({
+            data: {
+                nama: data.nama,
+                tipeAkun: data.tipeAkun,
+                biayaAdmin: data.biayaAdmin,
+                bungaTier: data.bungaTier,
+                polaTagihan: data.polaTagihan,
+                tanggalTagihan: data.tanggalTagihan,
+                deskripsi: data.deskripsi,
+                isActive: data.isActive ?? true,
+            }
+        })
+
+        await logSistem("INFO", "TEMPLATE", `Account Template dibuat: ${data.nama}`)
+        revalidatePath("/template-akun")
+        return { success: true, data: template }
+    } catch (error) {
+        await logSistem("ERROR", "TEMPLATE", "Gagal membuat account template", (error as Error).stack)
+        return { success: false, error: "Gagal membuat account template" }
+    }
+}
+
+export async function updateAccountTemplate(id: string, data: Partial<AccountTemplateData>) {
+    try {
+        const template = await prisma.accountTemplate.update({
+            where: { id },
+            data: {
+                nama: data.nama,
+                tipeAkun: data.tipeAkun,
+                biayaAdmin: data.biayaAdmin,
+                bungaTier: data.bungaTier,
+                polaTagihan: data.polaTagihan,
+                tanggalTagihan: data.tanggalTagihan,
+                deskripsi: data.deskripsi,
+                isActive: data.isActive,
+            }
+        })
+
+        await logSistem("INFO", "TEMPLATE", `Account Template diupdate: ${template.nama}`)
+        revalidatePath("/template-akun")
+        revalidatePath("/akun")
+        return { success: true, data: template }
+    } catch (error) {
+        await logSistem("ERROR", "TEMPLATE", "Gagal update account template", (error as Error).stack)
+        return { success: false, error: "Gagal update account template" }
+    }
+}
+
+export async function getAccountTemplates() {
+    try {
+        const templates = await prisma.accountTemplate.findMany({
+            orderBy: { nama: "asc" }
+        })
+        return { success: true, data: templates }
+    } catch (error) {
+        return { success: false, data: [] }
+    }
+}
+
+export async function getActiveAccountTemplates() {
+    try {
+        const templates = await prisma.accountTemplate.findMany({
+            where: { isActive: true },
+            orderBy: { nama: "asc" }
+        })
+        return { success: true, data: templates }
+    } catch (error) {
+        return { success: false, data: [] }
+    }
+}
+
+export async function deleteAccountTemplate(id: string) {
+    try {
+        // Soft delete: set isActive to false if there are accounts using it
+        const accountsCount = await prisma.akun.count({ where: { templateId: id } })
+        
+        if (accountsCount > 0) {
+            await prisma.accountTemplate.update({
+                where: { id },
+                data: { isActive: false }
+            })
+            await logSistem("INFO", "TEMPLATE", `Account Template dinonaktifkan (digunakan oleh ${accountsCount} akun)`)
+        } else {
+            await prisma.accountTemplate.delete({ where: { id } })
+            await logSistem("INFO", "TEMPLATE", "Account Template dihapus permanen")
+        }
+
+        revalidatePath("/template-akun")
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: "Gagal menghapus account template" }
+    }
+}
+
+export async function toggleAccountTemplateStatus(id: string) {
+    try {
+        const template = await prisma.accountTemplate.findUnique({ where: { id } })
+        if (!template) return { success: false, error: "Template tidak ditemukan" }
+
+        const updated = await prisma.accountTemplate.update({
+            where: { id },
+            data: { isActive: !template.isActive }
+        })
+
+        await logSistem("INFO", "TEMPLATE", `Status template ${updated.nama} diubah menjadi ${updated.isActive ? 'Aktif' : 'Non-Aktif'}`)
+        revalidatePath("/template-akun")
+        return { success: true, data: updated }
+    } catch (error) {
+        return { success: false, error: "Gagal mengubah status template" }
+    }
+}
+
+// ============================================
 // TEMPLATE TRANSAKSI
 // ============================================
 

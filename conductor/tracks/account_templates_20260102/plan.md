@@ -8,10 +8,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Database & Schema Preparation' (Protocol in workflow.md)
 
 ## Phase 2: Core Utilities & Server Actions
-- [ ] Task: Buat `src/lib/template-utils.ts` untuk logika perhitungan tanggal tagihan dan tier bunga.
-- [ ] Task: Buat `src/app/actions/template.ts` untuk CRUD operasional `AccountTemplate`.
-- [ ] Task: Buat `src/app/actions/recurring-admin.ts` untuk engine `processMonthlyAdminFees` dan `processMonthlyInterest` dengan Prisma Transaction.
-- [ ] Task: Buat script pengujian `scripts/test-recurring.ts` dan tambahkan ke `package.json`.
+- [x] Task: Buat `src/lib/template-utils.ts` untuk logika perhitungan tanggal tagihan dan tier bunga.
+- [x] Task: Buat `src/app/actions/template.ts` untuk CRUD operasional `AccountTemplate`.
+- [x] Task: Buat `src/app/actions/recurring-admin.ts` untuk engine `processMonthlyAdminFees` dan `processMonthlyInterest` dengan Prisma Transaction.
+- [x] Task: Buat script pengujian `scripts/test-recurring.ts` and tambahkan ke `package.json`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Utilities & Server Actions' (Protocol in workflow.md)
 
 ## Phase 3: UI Implementation - Template Management
