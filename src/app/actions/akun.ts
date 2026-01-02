@@ -66,6 +66,8 @@ export async function createAkun(data: {
     tipe: string
     saldoAwal: number
     limitKredit?: number
+    templateId?: string | null
+    setoranAwal?: number | null
     icon?: string
     warna?: string
 }) {
@@ -100,6 +102,8 @@ export async function updateAkun(id: string, data: {
     nama?: string
     tipe?: string
     limitKredit?: number
+    templateId?: string | null
+    setoranAwal?: number | null
     icon?: string
     warna?: string
 }) {
@@ -186,7 +190,8 @@ export async function getAkunDetail(id: string, days: number = 30) {
 
         // 1. Ambil info akun
         const akun = await prisma.akun.findUnique({
-            where: { id }
+            where: { id },
+            include: { template: true }
         })
 
         if (!akun) return { success: false, error: "Akun tidak ditemukan" }

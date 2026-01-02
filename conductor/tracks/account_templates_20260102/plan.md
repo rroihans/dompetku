@@ -21,10 +21,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: UI Implementation - Template Management' (Protocol in workflow.md)
 
 ## Phase 4: UI Implementation - Account Integration
-- [ ] Task: Modifikasi `app/akun/add-account-form.tsx` untuk integrasi Combobox template dan auto-fill.
-- [ ] Task: Tambahkan badge informasi template pada card akun di halaman `/akun`.
-- [ ] Task: Tambahkan section "Informasi Template" dan riwayat biaya admin di halaman detail akun `/akun/[id]`.
-- [ ] Task: Implementasi warning dialog saat mengganti template pada akun yang sudah memiliki transaksi.
+- [x] Task: Modifikasi `app/akun/add-account-form.tsx` untuk integrasi Combobox template dan auto-fill.
+- [x] Task: Tambahkan badge informasi template pada card akun di halaman `/akun`.
+- [x] Task: Tambahkan section "Informasi Template" dan riwayat biaya admin di halaman detail akun `/akun/[id]`.
+- [x] Task: Implementasi warning dialog saat mengganti template pada akun yang sudah memiliki transaksi.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: UI Implementation - Account Integration' (Protocol in workflow.md)
 
 ## Phase 5: Dashboard & Settings Integration

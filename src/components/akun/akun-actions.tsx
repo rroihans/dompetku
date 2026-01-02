@@ -37,23 +37,38 @@ interface Akun {
     tipe: string
     saldoSekarang: number
     limitKredit: number | null
+    templateId?: string | null
+    setoranAwal?: number | null
 }
 
 interface AkunActionsProps {
     akun: Akun
+    templates?: any[]
 }
 
-export function AkunActions({ akun }: AkunActionsProps) {
+export function AkunActions({ akun, templates = [] }: AkunActionsProps) {
     const router = useRouter()
     const [editOpen, setEditOpen] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
+    const [showTemplateWarning, setShowTemplateWarning] = useState(false)
 
     // Edit form state
     const [nama, setNama] = useState(akun.nama)
     const [tipe, setTipe] = useState(akun.tipe)
     const [limitKredit, setLimitKredit] = useState(akun.limitKredit || 0)
+    const [templateId, setTemplateId] = useState<string | null>(akun.templateId || null)
+
+    const handleTemplateChange = (val: string) => {
+        const newVal = val === "none" ? null : val
+        if (newVal !== akun.templateId) {
+            setShowTemplateWarning(true)
+        } else {
+            setShowTemplateWarning(false)
+        }
+        setTemplateId(newVal)
+    }
 
     async function handleEdit() {
         setLoading(true)
@@ -63,10 +78,12 @@ export function AkunActions({ akun }: AkunActionsProps) {
                 nama,
                 tipe,
                 limitKredit: tipe === "CREDIT_CARD" ? limitKredit : undefined,
+                templateId,
             })
 
             if (res.success) {
                 setEditOpen(false)
+                setShowTemplateWarning(false)
                 router.refresh()
             } else {
                 setError(res.error || "Gagal memperbarui akun")
@@ -157,6 +174,25 @@ export function AkunActions({ akun }: AkunActionsProps) {
                                     <SelectItem value="CREDIT_CARD">Kartu Kredit</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="template">Template Automasi</Label>
+                            <Select value={templateId || "none"} onValueChange={handleTemplateChange}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Tanpa Template</SelectItem>
+                                    {templates.map((t) => (
+                                        <SelectItem key={t.id} value={t.id}>{t.nama}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {showTemplateWarning && (
+                                <p className="text-[10px] text-amber-600 font-medium bg-amber-50 p-2 rounded border border-amber-200">
+                                    ⚠️ Mengganti template akan mempengaruhi perhitungan biaya admin ke depan. Transaksi sebelumnya tidak akan terpengaruh.
+                                </p>
+                            )}
                         </div>
                         {tipe === "CREDIT_CARD" && (
                             <div className="grid gap-2">

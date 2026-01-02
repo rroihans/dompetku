@@ -1,6 +1,7 @@
 
 import { notFound } from "next/navigation"
 import { getAkunDetail } from "@/app/actions/akun"
+import { getActiveAccountTemplates } from "@/app/actions/template"
 import { formatRupiah } from "@/lib/format"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,10 +14,16 @@ import {
     History,
     TrendingUp,
     ArrowUpRight,
-    ArrowDownLeft
+    ArrowDownLeft,
+    Receipt,
+    Percent,
+    Calendar,
+    Info
 } from "lucide-react"
 import Link from "next/link"
 import { SaldoTrendChart } from "@/components/charts/saldo-trend-chart"
+import { AkunActions } from "@/components/akun/akun-actions"
+import prisma from "@/lib/prisma"
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -24,13 +31,27 @@ interface PageProps {
 
 export default async function AkunDetailPage({ params }: PageProps) {
     const { id } = await params
-    const result = await getAkunDetail(id)
+    const [result, templatesResult] = await Promise.all([
+        getAkunDetail(id),
+        getActiveAccountTemplates()
+    ])
 
     if (!result.success || !result.data) {
         return notFound()
     }
 
     const { akun, recentTransactions, trendData } = result.data
+    const templates = templatesResult.data || []
+
+    // Fetch riwayat biaya admin (6 bulan terakhir)
+    const adminFees = await prisma.transaksi.findMany({
+        where: {
+            kreditAkunId: id,
+            kategori: "Biaya Admin Bank"
+        },
+        orderBy: { tanggal: 'desc' },
+        take: 6
+    })
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -58,6 +79,9 @@ export default async function AkunDetailPage({ params }: PageProps) {
                     <p className="text-muted-foreground text-sm">
                         Detail informasi dan riwayat akun
                     </p>
+                </div>
+                <div className="ml-auto">
+                    <AkunActions akun={akun} templates={templates} />
                 </div>
             </div>
 
@@ -107,6 +131,81 @@ export default async function AkunDetailPage({ params }: PageProps) {
                     />
                 </div>
             </div>
+
+            {/* Template Information Section */}
+            {akun.template && (
+                <div className="grid gap-6 md:grid-cols-2">
+                    <Card className="border-primary/20 bg-primary/5">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <Receipt className="w-4 h-4 text-primary" />
+                                Informasi Template: {akun.template.nama}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground italic">
+                                &ldquo;{akun.template.deskripsi}&rdquo;
+                            </p>
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                                <div className="space-y-1">
+                                    <p className="text-muted-foreground flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" /> Pola Tagihan
+                                    </p>
+                                    <p className="font-bold">
+                                        {akun.template.polaTagihan === 'TANGGAL_TETAP' ? `Setiap tanggal ${akun.template.tanggalTagihan}` : 
+                                         akun.template.polaTagihan === 'JUMAT_MINGGU_KETIGA' ? 'Jumat minggu ketiga' : 'Hari kerja terakhir'}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-muted-foreground flex items-center gap-1">
+                                        <Receipt className="w-3 h-3" /> Biaya Admin
+                                    </p>
+                                    <p className="font-bold" data-private="true">
+                                        {akun.template.biayaAdmin ? formatRupiah(akun.template.biayaAdmin) : 'Gratis'}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-muted-foreground flex items-center gap-1">
+                                        <Percent className="w-3 h-3" /> Bunga Tabungan
+                                    </p>
+                                    <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                                        {akun.template.bungaTier ? 'Tier Berlaku' : 'Tidak Ada'}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-muted-foreground flex items-center gap-1">
+                                        <Info className="w-3 h-3" /> Status Automasi
+                                    </p>
+                                    <p className="font-bold text-primary">Aktif</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                <History className="w-4 h-4 text-muted-foreground" />
+                                Riwayat Biaya Admin (6 Bln Terakhir)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {adminFees.length === 0 ? (
+                                <p className="text-xs text-muted-foreground py-4 text-center italic">Belum ada riwayat biaya admin.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {adminFees.map((fee) => (
+                                        <div key={fee.id} className="flex justify-between items-center text-xs p-2 rounded bg-muted/30">
+                                            <span>{new Date(fee.tanggal).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</span>
+                                            <span className="font-bold text-red-500" data-private="true">-{formatRupiah(fee.nominal)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Recent Transactions */}
             <Card>

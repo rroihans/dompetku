@@ -26,6 +26,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { createAkun } from "@/app/actions/akun"
+import { formatCurrency } from "@/lib/format"
 
 const formSchema = z.object({
     nama: z.string()
@@ -36,12 +37,15 @@ const formSchema = z.object({
     saldoAwal: z.number()
         .min(0, "Saldo tidak boleh negatif"),
     limitKredit: z.number().min(0, "Limit tidak boleh negatif").optional(),
+    templateId: z.string().optional().nullable(),
+    setoranAwal: z.number().optional().nullable(),
     warna: z.string().optional(),
 })
 
 // Preset warna yang bisa dipilih
 const PRESET_COLORS = [
     '#3b82f6', // blue
+    '#005696', // BCA blue
     '#8b5cf6', // purple
     '#ef4444', // red
     '#22c55e', // green
@@ -56,14 +60,27 @@ interface AddAccountFormValues {
     tipe: "BANK" | "E_WALLET" | "CREDIT_CARD" | "CASH";
     saldoAwal: number;
     limitKredit?: number;
+    templateId?: string | null;
+    setoranAwal?: number | null;
     warna?: string;
 }
 
-export function AddAccountForm() {
+interface AccountTemplate {
+    id: string;
+    nama: string;
+    tipeAkun: string;
+    biayaAdmin: number | null;
+    polaTagihan: string;
+    tanggalTagihan: number | null;
+    deskripsi: string | null;
+}
+
+export function AddAccountForm({ templates = [] }: { templates?: any[] }) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
     const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0])
+    const [selectedTemplate, setSelectedTemplate] = useState<AccountTemplate | null>(null)
 
     const {
         register,
@@ -71,19 +88,41 @@ export function AddAccountForm() {
         setValue,
         watch,
         reset,
-        formState: { errors, isValid, isDirty },
+        formState: { errors },
     } = useForm<AddAccountFormValues>({
         resolver: zodResolver(formSchema),
-        mode: "onChange", // Real-time validation
+        mode: "onChange",
         defaultValues: {
             nama: "",
             tipe: "BANK",
             saldoAwal: 0,
+            templateId: null,
             warna: PRESET_COLORS[0],
         },
     })
 
     const tipeAkun = watch("tipe")
+
+    const handleTemplateChange = (templateId: string) => {
+        if (templateId === "none") {
+            setSelectedTemplate(null)
+            setValue("templateId", null)
+            return
+        }
+
+        const template = templates.find(t => t.id === templateId)
+        if (template) {
+            setSelectedTemplate(template)
+            setValue("templateId", template.id)
+            setValue("nama", template.nama)
+            setValue("tipe", template.tipeAkun as any)
+            
+            // Set default color based on bank if possible
+            if (template.nama.toLowerCase().includes("bca")) setSelectedColor("#005696")
+            else if (template.nama.toLowerCase().includes("mandiri")) setSelectedColor("#f97316")
+            else if (template.nama.toLowerCase().includes("bni")) setSelectedColor("#f97316")
+        }
+    }
 
     async function onSubmit(values: AddAccountFormValues) {
         setLoading(true)
@@ -94,6 +133,8 @@ export function AddAccountForm() {
                 tipe: values.tipe,
                 saldoAwal: values.saldoAwal,
                 limitKredit: values.limitKredit,
+                templateId: values.templateId,
+                setoranAwal: values.setoranAwal,
                 icon: "wallet",
                 warna: selectedColor,
             })
@@ -101,6 +142,7 @@ export function AddAccountForm() {
             if (res.success) {
                 setOpen(false)
                 reset()
+                setSelectedTemplate(null)
                 setSelectedColor(PRESET_COLORS[0])
             } else {
                 setError(res.error || "Gagal membuat akun")
@@ -120,14 +162,41 @@ export function AddAccountForm() {
                     <Plus className="h-4 w-4" /> Tambah Akun
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Tambah Akun Baru</DialogTitle>
                     <DialogDescription>
-                        Buat akun untuk melacak aset atau kewajiban Anda.
+                        Pilih template untuk otomatisasi biaya admin atau buat manual.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
+                    {/* Template Selector */}
+                    <div className="grid gap-2">
+                        <Label htmlFor="template">Gunakan Template</Label>
+                        <Select onValueChange={handleTemplateChange}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih template bank (opsional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">Tanpa Template (Custom)</SelectItem>
+                                {templates.map((t) => (
+                                    <SelectItem key={t.id} value={t.id}>{t.nama}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {selectedTemplate && (
+                        <div className="bg-primary/5 p-3 rounded-lg border border-primary/10 text-xs space-y-1">
+                            <p className="font-semibold text-primary">{selectedTemplate.nama}</p>
+                            <p className="text-muted-foreground">{selectedTemplate.deskripsi}</p>
+                            <div className="flex gap-4 mt-2 font-medium">
+                                <span>Admin: {selectedTemplate.biayaAdmin ? formatCurrency(selectedTemplate.biayaAdmin) : 'Gratis'}</span>
+                                <span>Tagihan: {selectedTemplate.polaTagihan.replace(/_/g, ' ')}</span>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid gap-2">
                         <Label htmlFor="nama">Nama Akun</Label>
                         <Input
@@ -142,8 +211,9 @@ export function AddAccountForm() {
                     <div className="grid gap-2">
                         <Label htmlFor="tipe">Tipe Akun</Label>
                         <Select
-                            defaultValue="BANK"
-                            onValueChange={(val) => setValue("tipe", val as "BANK" | "E_WALLET" | "CREDIT_CARD" | "CASH")}
+                            value={tipeAkun}
+                            onValueChange={(val) => setValue("tipe", val as any)}
+                            disabled={!!selectedTemplate}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih tipe" />
@@ -155,20 +225,26 @@ export function AddAccountForm() {
                                 <SelectItem value="CREDIT_CARD">Kartu Kredit</SelectItem>
                             </SelectContent>
                         </Select>
-                        {errors.tipe && (
-                            <p className="text-sm text-red-500">{errors.tipe.message}</p>
-                        )}
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="saldoAwal">Saldo Awal (Rp)</Label>
-                        <Input
-                            id="saldoAwal"
-                            type="number"
-                            {...register("saldoAwal", { valueAsNumber: true })}
-                        />
-                        {errors.saldoAwal && (
-                            <p className="text-sm text-red-500">{errors.saldoAwal.message}</p>
-                        )}
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="saldoAwal">Saldo Awal (Rp)</Label>
+                            <Input
+                                id="saldoAwal"
+                                type="number"
+                                {...register("saldoAwal", { valueAsNumber: true })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="setoranAwal">Setoran Awal (Rp)</Label>
+                            <Input
+                                id="setoranAwal"
+                                type="number"
+                                placeholder="Opsional"
+                                {...register("setoranAwal", { valueAsNumber: true })}
+                            />
+                        </div>
                     </div>
 
                     {tipeAkun === "CREDIT_CARD" && (

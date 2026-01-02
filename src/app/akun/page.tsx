@@ -15,7 +15,9 @@ import { AddAccountForm } from "@/components/forms/add-account-form"
 import { TransferForm } from "@/components/forms/transfer-form"
 import { AkunActions } from "@/components/akun/akun-actions"
 import { getAkunUser } from "@/app/actions/akun"
+import { getActiveAccountTemplates } from "@/app/actions/template"
 import { formatRupiah } from "@/lib/format"
+import { calculateNextBillingDate } from "@/lib/template-utils"
 import Link from "next/link"
 
 interface PageProps {
@@ -25,9 +27,13 @@ interface PageProps {
 export default async function AkunPage({ searchParams }: PageProps) {
     const params = await searchParams
     const currentPage = Number(params.page) || 1
-    const result = await getAkunUser(currentPage)
+    const [result, templatesResult] = await Promise.all([
+        getAkunUser(currentPage),
+        getActiveAccountTemplates()
+    ])
     const accounts = result.data
     const { pagination } = result
+    const templates = templatesResult.data || []
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -71,7 +77,7 @@ export default async function AkunPage({ searchParams }: PageProps) {
                 </div>
                 <div className="flex gap-2">
                     <TransferForm />
-                    <AddAccountForm />
+                    <AddAccountForm templates={templates} />
                 </div>
             </div>
 
@@ -112,11 +118,23 @@ export default async function AkunPage({ searchParams }: PageProps) {
                                                         {typeBadge.label}
                                                     </span>
                                                 </div>
+                                                {account.template && (
+                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                        <Wallet className="w-3 h-3 text-primary" />
+                                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                                            {account.template.nama} • Next: {calculateNextBillingDate(
+                                                                account.template.polaTagihan,
+                                                                account.template.tanggalTagihan,
+                                                                new Date()
+                                                            ).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </CardHeader>
                                 </Link>
-                                <AkunActions akun={account} />
+                                <AkunActions akun={account} templates={templates} />
                             </div>
                             <Link href={`/akun/${account.id}`}>
                                 <CardContent>
@@ -225,7 +243,7 @@ export default async function AkunPage({ searchParams }: PageProps) {
                         <p className="text-muted-foreground text-center mb-4 max-w-md">
                             Mulai dengan menambahkan rekening bank, e-wallet, atau kartu kredit Anda.
                         </p>
-                        <AddAccountForm />
+                        <AddAccountForm templates={templates} />
                     </CardContent>
                 </Card>
             )}
