@@ -15,9 +15,9 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Core Utilities & Server Actions' (Protocol in workflow.md)
 
 ## Phase 3: UI Implementation - Template Management
-- [ ] Task: Buat halaman `/template-akun` dengan tabel list template dan integrasi CRUD.
-- [ ] Task: Implementasi dialog form tambah/edit template dengan dynamic fields untuk tier bunga.
-- [ ] Task: Pastikan responsivitas UI menggunakan mobile-first approach (bottom sheets).
+- [x] Task: Buat halaman `/template-akun` dengan tabel list template dan integrasi CRUD.
+- [x] Task: Implementasi dialog form tambah/edit template dengan dynamic fields untuk tier bunga.
+- [x] Task: Pastikan responsivitas UI menggunakan mobile-first approach (bottom sheets).
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: UI Implementation - Template Management' (Protocol in workflow.md)
 
 ## Phase 4: UI Implementation - Account Integration
