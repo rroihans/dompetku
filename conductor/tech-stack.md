@@ -18,6 +18,6 @@
 - **ORM:** Prisma
 - **Database:** SQLite
 - **Architecture:** Double-Entry Bookkeeping (Debit & Kredit)
-- **Reliability:** Idempotency Key for data mutation
+- **Reliability:** Idempotency Key for data mutation and real-time data synchronization for net worth analytics.
 - **Validation:** Zod & React Hook Form
 - **Logging:** Custom logger (lib/logger.ts)

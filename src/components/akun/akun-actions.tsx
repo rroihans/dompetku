@@ -1,0 +1,212 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Pencil, Trash2, MoreVertical, ExternalLink } from "lucide-react"
+import Link from "next/link"
+
+import { Button } from "@/components/ui/button"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { updateAkun, deleteAkun } from "@/app/actions/akun"
+
+interface Akun {
+    id: string
+    nama: string
+    tipe: string
+    saldoSekarang: number
+    limitKredit: number | null
+}
+
+interface AkunActionsProps {
+    akun: Akun
+}
+
+export function AkunActions({ akun }: AkunActionsProps) {
+    const router = useRouter()
+    const [editOpen, setEditOpen] = useState(false)
+    const [deleteOpen, setDeleteOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+
+    // Edit form state
+    const [nama, setNama] = useState(akun.nama)
+    const [tipe, setTipe] = useState(akun.tipe)
+    const [limitKredit, setLimitKredit] = useState(akun.limitKredit || 0)
+
+    async function handleEdit() {
+        setLoading(true)
+        setError("")
+        try {
+            const res = await updateAkun(akun.id, {
+                nama,
+                tipe,
+                limitKredit: tipe === "CREDIT_CARD" ? limitKredit : undefined,
+            })
+
+            if (res.success) {
+                setEditOpen(false)
+                router.refresh()
+            } else {
+                setError(res.error || "Gagal memperbarui akun")
+            }
+        } catch (err) {
+            setError("Terjadi kesalahan sistem")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    async function handleDelete() {
+        setLoading(true)
+        setError("")
+        try {
+            const res = await deleteAkun(akun.id)
+
+            if (res.success) {
+                setDeleteOpen(false)
+                router.refresh()
+            } else {
+                setError(res.error || "Gagal menghapus akun")
+            }
+        } catch (err) {
+            setError("Terjadi kesalahan sistem")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                        <Link href={`/akun/${akun.id}`} className="flex items-center">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Lihat Detail
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        className="text-red-500 focus:text-red-500"
+                    >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Hapus
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Edit Dialog */}
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Akun</DialogTitle>
+                        <DialogDescription>
+                            Perbarui informasi akun Anda.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="nama">Nama Akun</Label>
+                            <Input
+                                id="nama"
+                                value={nama}
+                                onChange={(e) => setNama(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="tipe">Tipe Akun</Label>
+                            <Select value={tipe} onValueChange={setTipe}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="BANK">Bank Transfer</SelectItem>
+                                    <SelectItem value="E_WALLET">E-Wallet</SelectItem>
+                                    <SelectItem value="CASH">Tunai</SelectItem>
+                                    <SelectItem value="CREDIT_CARD">Kartu Kredit</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {tipe === "CREDIT_CARD" && (
+                            <div className="grid gap-2">
+                                <Label htmlFor="limitKredit">Limit Kredit (Rp)</Label>
+                                <Input
+                                    id="limitKredit"
+                                    type="number"
+                                    value={limitKredit}
+                                    onChange={(e) => setLimitKredit(Number(e.target.value))}
+                                />
+                            </div>
+                        )}
+                        {error && (
+                            <p className="text-sm text-red-500">{error}</p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button onClick={handleEdit} disabled={loading}>
+                            {loading ? "Menyimpan..." : "Simpan"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle>Hapus Akun</DialogTitle>
+                        <DialogDescription>
+                            Apakah Anda yakin ingin menghapus akun <strong>{akun.nama}</strong>?
+                            Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {error && (
+                        <p className="text-sm text-red-500">{error}</p>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+                            {loading ? "Menghapus..." : "Hapus"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    )
+}

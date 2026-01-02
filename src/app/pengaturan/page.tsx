@@ -1,0 +1,498 @@
+"use client"
+
+import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+    Settings,
+    Database,
+    Shield,
+    Palette,
+    Info,
+    ExternalLink,
+    ChevronRight,
+    Download,
+    Upload,
+    Trash2,
+    RefreshCw,
+    CreditCard,
+    Target,
+    Wallet,
+    AlertTriangle,
+    CheckCircle2,
+    Loader2
+} from "lucide-react"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { exportBackup, importBackup, resetAllData, getBackupInfo } from "@/app/actions/backup"
+import { CurrencySettings } from "@/components/settings/currency-settings"
+
+export default function PengaturanPage() {
+    const router = useRouter()
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const [loading, setLoading] = useState(false)
+    const [resetDialogOpen, setResetDialogOpen] = useState(false)
+    const [resultDialogOpen, setResultDialogOpen] = useState(false)
+    const [resultMessage, setResultMessage] = useState("")
+    const [resultSuccess, setResultSuccess] = useState(false)
+
+    // Handler untuk ekspor backup
+    const handleExport = async () => {
+        setLoading(true)
+        try {
+            const result = await exportBackup()
+
+            if (result.success && result.data) {
+                // Buat dan download file JSON
+                const jsonString = JSON.stringify(result.data, null, 2)
+                const blob = new Blob([jsonString], { type: "application/json" })
+                const url = URL.createObjectURL(blob)
+
+                const date = new Date().toISOString().split('T')[0]
+                const filename = `dompetku-backup-${date}.json`
+
+                const a = document.createElement("a")
+                a.href = url
+                a.download = filename
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+
+                setResultSuccess(true)
+                setResultMessage(`Backup berhasil! File ${filename} telah diunduh.\n\nStatistik:\n• ${result.data.stats.totalAkun} akun\n• ${result.data.stats.totalTransaksi} transaksi\n• ${result.data.stats.totalCicilan} cicilan\n• ${result.data.stats.totalBudget} anggaran`)
+                setResultDialogOpen(true)
+            } else {
+                setResultSuccess(false)
+                setResultMessage(result.error || "Gagal melakukan backup")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Handler untuk import restore
+    const handleImport = () => {
+        fileInputRef.current?.click()
+    }
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setLoading(true)
+        try {
+            const content = await file.text()
+            const result = await importBackup(content)
+
+            if (result.success) {
+                const stats = result.stats
+                setResultSuccess(true)
+                setResultMessage(
+                    `Restore berhasil!\n\nDiimpor:\n• ${stats?.imported.akun} akun\n• ${stats?.imported.transaksi} transaksi\n• ${stats?.imported.cicilan} cicilan\n• ${stats?.imported.recurring} recurring\n• ${stats?.imported.budget} anggaran\n\nDilewati (sudah ada):\n• ${stats?.skipped.akun} akun\n• ${stats?.skipped.transaksi} transaksi`
+                )
+                setResultDialogOpen(true)
+                router.refresh()
+            } else {
+                setResultSuccess(false)
+                setResultMessage(result.error || "Gagal melakukan restore")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setLoading(false)
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
+        }
+    }
+
+    // Handler untuk reset data
+    const handleReset = async () => {
+        setLoading(true)
+        try {
+            const result = await resetAllData()
+
+            if (result.success) {
+                setResetDialogOpen(false)
+                setResultSuccess(true)
+                setResultMessage("Reset berhasil! Semua data telah dihapus.\n\nAnda akan dialihkan ke halaman utama dalam 3 detik...")
+                setResultDialogOpen(true)
+
+                // Redirect ke halaman utama setelah 3 detik
+                setTimeout(() => {
+                    router.push("/")
+                    router.refresh()
+                }, 3000)
+            } else {
+                setResultSuccess(false)
+                setResultMessage(result.error || "Gagal melakukan reset")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <div className="space-y-6 max-w-full overflow-hidden">
+            {/* Hidden file input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                accept=".json"
+                className="hidden"
+                onChange={handleFileChange}
+            />
+
+            <div>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Pengaturan</h2>
+                <p className="text-muted-foreground text-sm sm:text-base">
+                    Konfigurasi aplikasi dan preferensi pembukuan Anda.
+                </p>
+            </div>
+
+            <div className="grid gap-6 max-w-full">
+                {/* Tampilan & Tema */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Palette className="w-5 h-5" />
+                            Tampilan & Tema
+                        </CardTitle>
+                        <CardDescription>Sesuaikan bagaimana Dompetku terlihat di perangkat Anda.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                            <div className="space-y-0.5 min-w-0 flex-1">
+                                <div className="font-medium">Mode Gelap / Terang</div>
+                                <div className="text-xs text-muted-foreground">Ubah skema warna aplikasi.</div>
+                            </div>
+                            <div className="shrink-0">
+                                <ThemeToggle />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Pintasan Cepat */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Settings className="w-5 h-5" />
+                            Pintasan Cepat
+                        </CardTitle>
+                        <CardDescription>Akses cepat ke fitur-fitur utama.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-2 md:grid-cols-2">
+                        <Link href="/akun">
+                            <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
+                                <Wallet className="w-4 h-4 mr-3" />
+                                <div className="text-left">
+                                    <div className="font-medium">Kelola Akun</div>
+                                    <div className="text-xs text-muted-foreground">Bank, E-Wallet, Kartu Kredit</div>
+                                </div>
+                            </Button>
+                        </Link>
+                        <Link href="/cicilan">
+                            <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
+                                <CreditCard className="w-4 h-4 mr-3" />
+                                <div className="text-left">
+                                    <div className="font-medium">Cicilan</div>
+                                    <div className="text-xs text-muted-foreground">Tracking kartu kredit</div>
+                                </div>
+                            </Button>
+                        </Link>
+                        <Link href="/recurring">
+                            <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
+                                <RefreshCw className="w-4 h-4 mr-3" />
+                                <div className="text-left">
+                                    <div className="font-medium">Transaksi Berulang</div>
+                                    <div className="text-xs text-muted-foreground">Tagihan otomatis</div>
+                                </div>
+                            </Button>
+                        </Link>
+                        <Link href="/anggaran">
+                            <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
+                                <Target className="w-4 h-4 mr-3" />
+                                <div className="text-left">
+                                    <div className="font-medium">Anggaran</div>
+                                    <div className="text-xs text-muted-foreground">Batas pengeluaran</div>
+                                </div>
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+
+                {/* Sistem Pembukuan */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="w-5 h-5" />
+                            Sistem Pembukuan
+                        </CardTitle>
+                        <CardDescription>Konfigurasi standar akuntansi yang digunakan.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-3 border rounded-lg bg-primary/5">
+                            <div className="space-y-0.5">
+                                <div className="font-medium flex items-center gap-2">
+                                    Standar PSAK Indonesia
+                                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">Aktif</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">Gunakan klasifikasi akun sesuai standar PSAK Indonesia.</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded-lg bg-primary/5">
+                            <div className="space-y-0.5">
+                                <div className="font-medium flex items-center gap-2">
+                                    Double-Entry Bookkeeping
+                                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">Aktif</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">Setiap transaksi memiliki akun Debit & Kredit untuk integritas data.</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Data & Backup */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Database className="w-5 h-5" />
+                            Data & Backup
+                        </CardTitle>
+                        <CardDescription>Kelola dan amankan data keuangan Anda.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-4 hover:bg-primary/5"
+                            onClick={handleExport}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                {loading ? (
+                                    <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                                ) : (
+                                    <Download className="w-5 h-5 text-primary" />
+                                )}
+                                <div className="text-left">
+                                    <div className="font-medium">Backup / Ekspor Data</div>
+                                    <div className="text-xs text-muted-foreground">Unduh semua data ke file JSON.</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-4 hover:bg-primary/5"
+                            onClick={handleImport}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                {loading ? (
+                                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                                ) : (
+                                    <Upload className="w-5 h-5 text-blue-500" />
+                                )}
+                                <div className="text-left">
+                                    <div className="font-medium">Restore / Impor Data</div>
+                                    <div className="text-xs text-muted-foreground">Pulihkan data dari file backup JSON.</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-4 hover:bg-destructive/5 text-destructive hover:text-destructive"
+                            onClick={() => setResetDialogOpen(true)}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Trash2 className="w-5 h-5" />
+                                <div className="text-left">
+                                    <div className="font-medium">Hapus Seluruh Data</div>
+                                    <div className="text-xs text-muted-foreground">Reset aplikasi ke kondisi awal. Pastikan sudah backup!</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Multi-Currency Settings */}
+                <CurrencySettings />
+
+                {/* Developer Tools */}
+                <Card className="border-dashed">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-muted-foreground">
+                            <Settings className="w-5 h-5" />
+                            Developer Tools
+                        </CardTitle>
+                        <CardDescription>Fitur untuk pengembangan dan debugging.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Link href="/devdb">
+                            <Button variant="outline" className="w-full justify-between h-auto py-3">
+                                <div className="flex items-center gap-3">
+                                    <Database className="w-4 h-4" />
+                                    <div className="text-left">
+                                        <div className="font-medium">Database Inspector</div>
+                                        <div className="text-xs text-muted-foreground">Lihat isi database secara langsung.</div>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+
+                {/* Tentang Aplikasi */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Info className="w-5 h-5" />
+                            Tentang Aplikasi
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
+                            <span className="text-muted-foreground">Versi Aplikasi</span>
+                            <span className="font-mono bg-muted px-2 py-1 rounded">v0.2.0-beta</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
+                            <span className="text-muted-foreground">Framework</span>
+                            <span className="font-medium">Next.js + Prisma</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
+                            <span className="text-muted-foreground">Database</span>
+                            <span className="font-medium">SQLite (Lokal)</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm p-2 rounded hover:bg-muted/50">
+                            <span className="text-muted-foreground">Lisensi</span>
+                            <span className="font-medium">MIT License</span>
+                        </div>
+                        <div className="pt-4 flex flex-wrap gap-3 border-t">
+                            <a href="https://iaiglobal.or.id/v03/standar-akuntansi-keuangan/pernyataan-sak" target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                    Dokumentasi PSAK <ExternalLink className="w-3 h-3" />
+                                </Button>
+                            </a>
+                            <Link href="/laporan">
+                                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                    Lihat Laporan <ChevronRight className="w-3 h-3" />
+                                </Button>
+                            </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Dialog Konfirmasi Reset */}
+            <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5" />
+                            Hapus Seluruh Data?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-muted-foreground text-sm">
+                                <p>Tindakan ini akan menghapus <strong>semua data</strong> termasuk:</p>
+                                <ul className="list-disc list-inside space-y-1">
+                                    <li>Semua akun (Bank, E-Wallet, Kartu Kredit)</li>
+                                    <li>Semua transaksi</li>
+                                    <li>Semua cicilan dan recurring</li>
+                                    <li>Semua anggaran</li>
+                                </ul>
+                                <p className="font-semibold text-destructive">Tindakan ini TIDAK DAPAT dibatalkan!</p>
+                                <p>Pastikan Anda sudah melakukan backup terlebih dahulu.</p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleReset}
+                            disabled={loading}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Menghapus...
+                                </>
+                            ) : (
+                                "Ya, Hapus Semua"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Dialog Hasil */}
+            <Dialog open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {resultSuccess ? (
+                                <>
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                    Berhasil
+                                </>
+                            ) : (
+                                <>
+                                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                                    Gagal
+                                </>
+                            )}
+                        </DialogTitle>
+                        <DialogDescription className="whitespace-pre-line">
+                            {resultMessage}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => setResultDialogOpen(false)}>
+                            Tutup
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}

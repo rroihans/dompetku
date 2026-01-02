@@ -1,0 +1,115 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import {
+    MoreVertical,
+    ToggleLeft,
+    ToggleRight,
+    Trash2
+} from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { toggleRecurringTransaction, deleteRecurringTransaction } from "@/app/actions/recurring"
+
+interface RecurringActionsProps {
+    recurring: {
+        id: string
+        nama: string
+        aktif: boolean
+    }
+}
+
+export function RecurringActions({ recurring }: RecurringActionsProps) {
+    const router = useRouter()
+    const [deleteOpen, setDeleteOpen] = useState(false)
+    const [loading, setLoading] = useState(false)
+
+    async function handleToggle() {
+        setLoading(true)
+        await toggleRecurringTransaction(recurring.id, !recurring.aktif)
+        router.refresh()
+        setLoading(false)
+    }
+
+    async function handleDelete() {
+        setLoading(true)
+        await deleteRecurringTransaction(recurring.id)
+        setDeleteOpen(false)
+        router.refresh()
+        setLoading(false)
+    }
+
+    return (
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" disabled={loading}>
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleToggle}>
+                        {recurring.aktif ? (
+                            <>
+                                <ToggleLeft className="mr-2 h-4 w-4" />
+                                Nonaktifkan
+                            </>
+                        ) : (
+                            <>
+                                <ToggleRight className="mr-2 h-4 w-4" />
+                                Aktifkan
+                            </>
+                        )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        className="text-red-600"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Hapus
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Transaksi Berulang?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Anda akan menghapus <strong>{recurring.nama}</strong>.
+                            Transaksi yang sudah dibuat sebelumnya tidak akan dihapus.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Hapus
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    )
+}
