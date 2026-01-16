@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
+import { Money } from "@/lib/money"
 
 // ============================================
 // NET WORTH TRACKING
@@ -13,6 +14,7 @@ export interface NetWorthData {
     tanggal: Date
     totalAset: number
     totalHutang: number
+    totalCicilan: number
     netWorth: number
     breakdown: Record<string, number>
 }
@@ -28,35 +30,38 @@ export async function calculateCurrentNetWorth(): Promise<NetWorthData> {
         const breakdown: Record<string, number> = {}
         let totalAset = 0
         let totalHutang = 0
+        let totalCicilan = 0
 
         for (const akun of akuns) {
             if (!breakdown[akun.tipe]) {
                 breakdown[akun.tipe] = 0
             }
-            breakdown[akun.tipe] += akun.saldoSekarang
+            const saldo = Money.toFloat(Number(akun.saldoSekarang))
+            breakdown[akun.tipe] += saldo
 
             if (akun.tipe === "CREDIT_CARD") {
                 // Kartu kredit: saldo negatif = hutang
-                if (akun.saldoSekarang < 0) {
-                    totalHutang += Math.abs(akun.saldoSekarang)
+                if (saldo < 0) {
+                    totalHutang += Math.abs(saldo)
                 }
             } else {
                 // Aset normal
-                if (akun.saldoSekarang > 0) {
-                    totalAset += akun.saldoSekarang
+                if (saldo > 0) {
+                    totalAset += saldo
                 }
             }
         }
 
-        // Tambahkan hutang cicilan aktif
+        // Hitung hutang cicilan aktif (untuk informasi saja, tidak ditambahkan ke totalHutang)
         const cicilanAktif = await prisma.rencanaCicilan.findMany({
             where: { status: "AKTIF" }
         })
 
         for (const cicilan of cicilanAktif) {
             const sisaBulan = cicilan.tenor - cicilan.cicilanKe + 1
-            const sisaHutang = cicilan.nominalPerBulan * sisaBulan
-            totalHutang += sisaHutang
+            const nominal = Money.toFloat(Number(cicilan.nominalPerBulan))
+            const sisaHutang = nominal * sisaBulan
+            totalCicilan += sisaHutang
         }
 
         const netWorth = totalAset - totalHutang
@@ -65,6 +70,7 @@ export async function calculateCurrentNetWorth(): Promise<NetWorthData> {
             tanggal: new Date(),
             totalAset,
             totalHutang,
+            totalCicilan,
             netWorth,
             breakdown
         }
@@ -74,6 +80,7 @@ export async function calculateCurrentNetWorth(): Promise<NetWorthData> {
             tanggal: new Date(),
             totalAset: 0,
             totalHutang: 0,
+            totalCicilan: 0,
             netWorth: 0,
             breakdown: {}
         }
@@ -199,6 +206,7 @@ export async function getNetWorthChange() {
                 changePercent: Math.round(changePercent * 10) / 10,
                 totalAset: current.totalAset,
                 totalHutang: current.totalHutang,
+                totalCicilan: current.totalCicilan,
                 breakdown: current.breakdown
             }
         }
@@ -212,6 +220,7 @@ export async function getNetWorthChange() {
                 changePercent: 0,
                 totalAset: 0,
                 totalHutang: 0,
+                totalCicilan: 0,
                 breakdown: {}
             }
         }

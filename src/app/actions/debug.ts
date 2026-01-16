@@ -77,16 +77,42 @@ export async function getRecurringData(page: number = 1) {
     }
 }
 
-export async function getLogData(page: number = 1) {
+export async function getLogData(page: number = 1, module?: string) {
     const skip = (page - 1) * PAGE_SIZE
+
+    const where = module ? { modul: module } : {}
 
     const [data, total] = await Promise.all([
         prisma.logSistem.findMany({
+            where,
             take: PAGE_SIZE,
             skip,
             orderBy: { createdAt: 'desc' }
         }),
-        prisma.logSistem.count()
+        prisma.logSistem.count({ where })
+    ])
+
+    return {
+        data,
+        pagination: {
+            page,
+            pageSize: PAGE_SIZE,
+            total,
+            totalPages: Math.ceil(total / PAGE_SIZE)
+        }
+    }
+}
+
+export async function getAppSettingsData(page: number = 1) {
+    const skip = (page - 1) * PAGE_SIZE
+
+    const [data, total] = await Promise.all([
+        prisma.appSetting.findMany({
+            take: PAGE_SIZE,
+            skip,
+            orderBy: { kunci: 'asc' }
+        }),
+        prisma.appSetting.count()
     ])
 
     return {
@@ -103,12 +129,13 @@ export async function getLogData(page: number = 1) {
 export async function getDatabaseStats() {
     const USER_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
 
-    const [akunTotal, akunUser, transaksiCount, recurringCount, logCount] = await Promise.all([
+    const [akunTotal, akunUser, transaksiCount, recurringCount, logCount, settingCount] = await Promise.all([
         prisma.akun.count(),
         prisma.akun.count({ where: { tipe: { in: USER_TYPES } } }),
         prisma.transaksi.count(),
         prisma.recurringTransaction.count(),
-        prisma.logSistem.count()
+        prisma.logSistem.count(),
+        prisma.appSetting.count()
     ])
 
     return {
@@ -117,7 +144,8 @@ export async function getDatabaseStats() {
         akunInternal: akunTotal - akunUser,
         transaksi: transaksiCount,
         recurring: recurringCount,
-        log: logCount
+        log: logCount,
+        setting: settingCount
     }
 }
 

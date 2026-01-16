@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Pencil, Trash2, MoreHorizontal } from "lucide-react"
+import { Pencil, Trash2, MoreHorizontal, RefreshCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,10 +19,12 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { updateTransaksi, deleteTransaksi } from "@/app/actions/transaksi"
 import { formatRupiah } from "@/lib/format"
+import { ConvertToInstallmentDialog } from "./convert-to-installment-dialog"
 
 interface Transaksi {
     id: string
@@ -31,6 +33,13 @@ interface Transaksi {
     kategori: string
     catatan: string | null
     tanggal: Date
+    convertedToInstallment?: boolean
+    kreditAkun?: {
+        id: string
+        nama: string
+        tipe: string
+        isSyariah?: boolean
+    } | null
 }
 
 interface TransaksiActionsProps {
@@ -41,6 +50,7 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
     const router = useRouter()
     const [editOpen, setEditOpen] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
+    const [convertOpen, setConvertOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
 
@@ -48,6 +58,10 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
     const [deskripsi, setDeskripsi] = useState(transaksi.deskripsi)
     const [catatan, setCatatan] = useState(transaksi.catatan || "")
     const [nominal, setNominal] = useState(transaksi.nominal)
+
+    // Check if can convert to installment
+    const isCreditCardTx = transaksi.kreditAkun?.tipe === "CREDIT_CARD"
+    const canConvert = isCreditCardTx && !transaksi.convertedToInstallment
 
     async function handleEdit() {
         setLoading(true)
@@ -92,7 +106,21 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
     }
 
     return (
-        <>
+        <div className="flex items-center justify-center gap-1">
+            {/* Convert Button - Visible directly for CC transactions */}
+            {canConvert && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    onClick={() => setConvertOpen(true)}
+                >
+                    <RefreshCcw className="w-3.5 h-3.5 mr-1" />
+                    <span className="text-xs">Cicilan</span>
+                </Button>
+            )}
+
+            {/* Menu Dropdown for Edit/Delete */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -104,6 +132,7 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
                         <Pencil className="w-4 h-4 mr-2" />
                         Edit
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-500 focus:text-red-500"
@@ -202,6 +231,20 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </>
+
+            {/* Convert to Installment Dialog */}
+            {canConvert && transaksi.kreditAkun && convertOpen && (
+                <ConvertToInstallmentDialog
+                    transaksiId={transaksi.id}
+                    transaksiDeskripsi={transaksi.deskripsi}
+                    transaksiNominal={transaksi.nominal}
+                    akunNama={transaksi.kreditAkun.nama}
+                    onSuccess={() => {
+                        setConvertOpen(false)
+                        router.refresh()
+                    }}
+                />
+            )}
+        </div>
     )
 }

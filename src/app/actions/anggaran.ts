@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
+import { Money } from "@/lib/money"
 
 export interface BudgetData {
     kategori: string
@@ -90,18 +91,45 @@ export async function getBudgetWithRealization(bulan: number, tahun: number) {
         const startDate = new Date(tahun, bulan - 1, 1)
         const endDate = new Date(tahun, bulan, 0, 23, 59, 59)
 
-        const transaksi = await prisma.transaksi.findMany({
-            where: {
-                tanggal: { gte: startDate, lte: endDate },
-                debitAkun: { tipe: "EXPENSE" }
-            }
-        })
+        const [transaksi, recurringList] = await Promise.all([
+            prisma.transaksi.findMany({
+                where: {
+                    tanggal: { gte: startDate, lte: endDate },
+                    debitAkun: { tipe: "EXPENSE" }
+                }
+            }),
+            prisma.recurringTransaction.findMany({
+                where: {
+                    aktif: true,
+                    tipeTransaksi: "KELUAR",
+                    OR: [
+                        { tanggalSelesai: null },
+                        { tanggalSelesai: { gte: startDate } }
+                    ]
+                }
+            })
+        ])
 
-        // Group by kategori
+        // Group by kategori (Realisasi)
         const realisasiMap = new Map<string, number>()
         for (const tx of transaksi) {
             const current = realisasiMap.get(tx.kategori) || 0
-            realisasiMap.set(tx.kategori, current + tx.nominal)
+            const nominal = Money.toFloat(Number(tx.nominal))
+            realisasiMap.set(tx.kategori, current + nominal)
+        }
+
+        // Group by kategori (Proyeksi Recurring)
+        const proyeksiMap = new Map<string, number>()
+        for (const r of recurringList) {
+            // Cek apakah sudah dieksekusi bulan ini
+            const isExecuted = r.terakhirDieksekusi && 
+                new Date(r.terakhirDieksekusi) >= startDate && 
+                new Date(r.terakhirDieksekusi) <= endDate
+
+            if (!isExecuted) {
+                const current = proyeksiMap.get(r.kategori) || 0
+                proyeksiMap.set(r.kategori, current + r.nominal)
+            }
         }
 
         // Hitung sisa hari
@@ -118,14 +146,18 @@ export async function getBudgetWithRealization(bulan: number, tahun: number) {
             }
         }
 
-        // Gabungkan budget dengan realisasi
+        // Gabungkan budget dengan realisasi dan proyeksi
         const result = budgets.map(b => {
             const realisasi = realisasiMap.get(b.kategori) || 0
-            const sisa = b.nominal - realisasi
+            const proyeksi = proyeksiMap.get(b.kategori) || 0
+            const totalPrediksi = realisasi + proyeksi
+            const sisa = b.nominal - totalPrediksi
             return {
                 ...b,
                 realisasi,
+                proyeksi,
                 persentase: Math.round((realisasi / b.nominal) * 100),
+                persentaseProyeksi: Math.round((totalPrediksi / b.nominal) * 100),
                 sisa,
                 saranHarian: sisa > 0 && sisaHari > 0 ? Math.floor(sisa / sisaHari) : 0,
             }
@@ -134,17 +166,25 @@ export async function getBudgetWithRealization(bulan: number, tahun: number) {
         // Tambahkan kategori yang ada pengeluaran tapi tidak ada budget
         const budgetKategori = new Set(budgets.map(b => b.kategori))
         const unbudgetedCategories: any[] = []
-        realisasiMap.forEach((nominal, kategori) => {
+        
+        // Merge realisasi and proyeksi categories
+        const allCategories = new Set([...realisasiMap.keys(), ...proyeksiMap.keys()])
+        
+        allCategories.forEach(kategori => {
             if (!budgetKategori.has(kategori)) {
+                const realisasi = realisasiMap.get(kategori) || 0
+                const proyeksi = proyeksiMap.get(kategori) || 0
+                const total = realisasi + proyeksi
                 unbudgetedCategories.push({
                     id: null,
                     kategori,
                     bulan,
                     tahun,
-                    nominal: 0,  // Tidak ada budget
-                    realisasi: nominal,
+                    nominal: 0,
+                    realisasi,
+                    proyeksi,
                     persentase: 100,
-                    sisa: -nominal,
+                    sisa: -total,
                     noBudget: true,
                 })
             }
@@ -157,6 +197,7 @@ export async function getBudgetWithRealization(bulan: number, tahun: number) {
                 unbudgeted: unbudgetedCategories,
                 totalBudget: budgets.reduce((sum, b) => sum + b.nominal, 0),
                 totalRealisasi: Array.from(realisasiMap.values()).reduce((sum, n) => sum + n, 0),
+                totalProyeksi: Array.from(proyeksiMap.values()).reduce((sum, n) => sum + n, 0),
                 sisaHari,
             }
         }

@@ -16,7 +16,9 @@ import {
     RefreshCw,
     Settings,
     Database,
-    BarChart3
+    BarChart3,
+    Bug,
+    Zap
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -37,6 +39,11 @@ const allMenuItems = [
     { name: "Laporan", href: "/laporan", icon: PieChart },
     { name: "Statistik", href: "/statistik", icon: BarChart3 },
     { name: "Pengaturan", href: "/pengaturan", icon: Settings },
+]
+
+const debugMenuItems = [
+    { name: "Debug Automasi", href: "/debug-automation", icon: Zap },
+    { name: "Database", href: "/devdb", icon: Database },
 ]
 
 export function BottomNav() {
@@ -132,10 +139,31 @@ export function BottomNav() {
                         })}
                     </div>
 
+                    {/* Debug Tools Section */}
+                    <div className="mt-4 pt-4 border-t">
+                        <p className="text-xs text-muted-foreground mb-2 font-semibold">Developer Tools</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {debugMenuItems.map((item) => {
+                                const Icon = item.icon
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        onClick={() => setIsDrawerOpen(false)}
+                                        className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20"
+                                    >
+                                        <Icon className="w-4 h-4" />
+                                        <span className="text-xs font-medium">{item.name}</span>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    </div>
+
                     {/* Quick Info */}
                     <div className="mt-6 p-4 bg-muted/30 rounded-xl">
                         <p className="text-xs text-muted-foreground text-center">
-                            Dompetku v0.2.0 • Double-Entry Bookkeeping
+                            Dompetku v0.5.0 • Double-Entry Bookkeeping
                         </p>
                     </div>
                 </div>

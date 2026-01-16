@@ -6,6 +6,10 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
+import { DebugMenu } from "@/components/layout/debug-menu";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { LiveClock } from "@/components/layout/live-clock";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,9 +47,13 @@ export default function RootLayout({
             <main className="flex-1 pb-20 md:pb-0 relative overflow-x-hidden w-full max-w-full md:h-screen md:overflow-y-auto">
               <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex h-14 items-center justify-between px-4 w-full">
-                  <div className="md:hidden font-bold text-primary text-xl">Dompetku</div>
-                  <div className="flex-1"></div>
+                  <div className="md:hidden font-bold text-primary text-xl mr-4">Dompetku</div>
+                  <div className="flex-1 flex items-center">
+                    <LiveClock />
+                  </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <NotificationBell />
+                    <DebugMenu />
                     <PrivacyToggle />
                     <ThemeToggle />
                   </div>
@@ -57,6 +65,7 @@ export default function RootLayout({
             </main>
           </div>
           <BottomNav />
+          <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>

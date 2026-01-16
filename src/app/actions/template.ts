@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
+import { Money } from "@/lib/money"
 
 // ============================================
 // ACCOUNT TEMPLATE (PERBANKAN)
@@ -215,12 +216,14 @@ export async function useTemplate(templateId: string, tanggal?: Date) {
             return { success: false, error: "Kategori tidak ditemukan" }
         }
 
+        const nominalInt = BigInt(Money.fromFloat(template.nominal))
+
         // Buat transaksi berdasarkan template
         const transaksi = await prisma.transaksi.create({
             data: {
                 tanggal: tanggal || new Date(),
                 deskripsi: template.deskripsi,
-                nominal: template.nominal,
+                nominal: nominalInt, // BigInt
                 kategori: template.kategori,
                 debitAkunId: template.tipeTransaksi === "KELUAR" ? kategoriAkun.id : template.akunId,
                 kreditAkunId: template.tipeTransaksi === "KELUAR" ? template.akunId : kategoriAkun.id,
@@ -232,12 +235,12 @@ export async function useTemplate(templateId: string, tanggal?: Date) {
         if (template.tipeTransaksi === "KELUAR") {
             await prisma.akun.update({
                 where: { id: template.akunId },
-                data: { saldoSekarang: { decrement: template.nominal } }
+                data: { saldoSekarang: { decrement: nominalInt } }
             })
         } else {
             await prisma.akun.update({
                 where: { id: template.akunId },
-                data: { saldoSekarang: { increment: template.nominal } }
+                data: { saldoSekarang: { increment: nominalInt } }
             })
         }
 
@@ -251,7 +254,12 @@ export async function useTemplate(templateId: string, tanggal?: Date) {
         revalidatePath("/")
         revalidatePath("/transaksi")
 
-        return { success: true, data: transaksi }
+        const mappedResult = {
+            ...transaksi,
+            nominal: Money.toFloat(Number(transaksi.nominal))
+        }
+
+        return { success: true, data: mappedResult }
     } catch (error) {
         await logSistem("ERROR", "TEMPLATE", "Gagal menggunakan template", (error as Error).stack)
         return { success: false, error: "Gagal menggunakan template" }
@@ -297,7 +305,7 @@ export async function saveAsTemplate(transaksiId: string, nama: string) {
             data: {
                 nama,
                 deskripsi: transaksi.deskripsi,
-                nominal: transaksi.nominal,
+                nominal: Money.toFloat(Number(transaksi.nominal)), // Convert BigInt to Float
                 kategori: transaksi.kategori,
                 tipeTransaksi: isKeluar ? "KELUAR" : "MASUK",
                 akunId,

@@ -22,7 +22,8 @@ import {
     Wallet,
     AlertTriangle,
     CheckCircle2,
-    Loader2
+    Loader2,
+    FileText
 } from "lucide-react"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import {
@@ -43,8 +44,22 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { exportBackup, importBackup, resetAllData, getBackupInfo } from "@/app/actions/backup"
+import { exportBackup, importBackup, resetAllData, getBackupInfo, exportSelective } from "@/app/actions/backup"
+import { getLogData } from "@/app/actions/debug"
+import { checkDatabaseIntegrity, fixDatabaseIntegrity, IntegrityReport } from "@/app/actions/integrity"
+import { saveNetWorthSnapshot } from "@/app/actions/networth"
 import { CurrencySettings } from "@/components/settings/currency-settings"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { FinancialAutomationCard } from "@/components/settings/financial-automation-card"
+import { useEffect, useCallback } from "react"
+
+interface LogEntry {
+    id: string
+    level: string
+    pesan: string
+    createdAt: Date | string
+}
 
 export default function PengaturanPage() {
     const router = useRouter()
@@ -55,6 +70,36 @@ export default function PengaturanPage() {
     const [resultDialogOpen, setResultDialogOpen] = useState(false)
     const [resultMessage, setResultMessage] = useState("")
     const [resultSuccess, setResultSuccess] = useState(false)
+    const [lastLogs, setLastLogs] = useState<LogEntry[]>([])
+    
+    // Integrity check states
+    const [integrityLoading, setIntegrityLoading] = useState(false)
+    const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null)
+    const [integrityDialogOpen, setIntegrityDialogOpen] = useState(false)
+
+    // Selective Export states
+    const [selectiveExportOpen, setSelectiveExportOpen] = useState(false)
+    const [selectedTypes, setSelectedTypes] = useState<string[]>(['akun', 'transaksi', 'budget'])
+
+    const fetchLogs = useCallback(async () => {
+        try {
+            // Fetch logs for AUTOMASI context (used by recurring-admin.ts)
+            const res = await getLogData(1, "AUTOMASI")
+
+            const allLogs = (res.data || [])
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .slice(0, 8)
+
+            setLastLogs(allLogs)
+        } catch (err) {
+            console.error("Failed to fetch logs:", err)
+        }
+    }, [])
+
+    // Load logs for automation card
+    useEffect(() => {
+        fetchLogs()
+    }, [fetchLogs])
 
     // Handler untuk ekspor backup
     const handleExport = async () => {
@@ -156,6 +201,114 @@ export default function PengaturanPage() {
             } else {
                 setResultSuccess(false)
                 setResultMessage(result.error || "Gagal melakukan reset")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Handler untuk cek integritas
+    const handleCheckIntegrity = async () => {
+        setIntegrityLoading(true)
+        try {
+            const result = await checkDatabaseIntegrity()
+            if (result.success && result.data) {
+                setIntegrityReport(result.data)
+                setIntegrityDialogOpen(true)
+            } else {
+                setResultSuccess(false)
+                setResultMessage(result.error || "Gagal mengecek integritas")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setIntegrityLoading(false)
+        }
+    }
+
+    // Handler untuk perbaikan integritas
+    const handleFixIntegrity = async () => {
+        setIntegrityLoading(true)
+        try {
+            const result = await fixDatabaseIntegrity()
+            if (result.success) {
+                setIntegrityDialogOpen(false)
+                setResultSuccess(true)
+                setResultMessage(`Perbaikan berhasil! ${result.fixedCount} masalah telah diselesaikan.`)
+                setResultDialogOpen(true)
+                router.refresh()
+            } else {
+                setResultSuccess(false)
+                setResultMessage(result.error || "Gagal memperbaiki integritas")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setIntegrityLoading(false)
+        }
+    }
+
+    // Handler untuk manual snapshot
+    const handleSaveSnapshot = async () => {
+        setLoading(true)
+        try {
+            const result = await saveNetWorthSnapshot()
+            if (result.success) {
+                setResultSuccess(true)
+                setResultMessage("Snapshot kekayaan bersih berhasil disimpan!")
+                setResultDialogOpen(true)
+            } else {
+                setResultSuccess(false)
+                setResultMessage(result.error || "Gagal menyimpan snapshot")
+                setResultDialogOpen(true)
+            }
+        } catch (err) {
+            setResultSuccess(false)
+            setResultMessage("Terjadi kesalahan: " + (err as Error).message)
+            setResultDialogOpen(true)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleSelectiveExport = async () => {
+        if (selectedTypes.length === 0) {
+            alert("Pilih minimal satu tipe data")
+            return
+        }
+        
+        setLoading(true)
+        try {
+            const result = await exportSelective(selectedTypes)
+            if (result.success && result.data) {
+                const jsonString = JSON.stringify(result.data, null, 2)
+                const blob = new Blob([jsonString], { type: "application/json" })
+                const url = URL.createObjectURL(blob)
+                const date = new Date().toISOString().split('T')[0]
+                const filename = `dompetku-selective-${date}.json`
+                
+                const a = document.createElement("a")
+                a.href = url
+                a.download = filename
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+                
+                setSelectiveExportOpen(false)
+                setResultSuccess(true)
+                setResultMessage(`Export selektif berhasil! Tipe data: ${selectedTypes.join(', ')}`)
                 setResultDialogOpen(true)
             }
         } catch (err) {
@@ -320,6 +473,21 @@ export default function PengaturanPage() {
                         <Button
                             variant="outline"
                             className="w-full justify-between h-auto py-4 hover:bg-primary/5"
+                            onClick={() => setSelectiveExportOpen(true)}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-emerald-500" />
+                                <div className="text-left">
+                                    <div className="font-medium">Export Selektif</div>
+                                    <div className="text-xs text-muted-foreground">Ekspor hanya kategori data tertentu.</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-4 hover:bg-primary/5"
                             onClick={handleImport}
                             disabled={loading}
                         >
@@ -332,6 +500,44 @@ export default function PengaturanPage() {
                                 <div className="text-left">
                                     <div className="font-medium">Restore / Impor Data</div>
                                     <div className="text-xs text-muted-foreground">Pulihkan data dari file backup JSON.</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-4 hover:bg-primary/5"
+                            onClick={handleCheckIntegrity}
+                            disabled={integrityLoading}
+                        >
+                            <div className="flex items-center gap-3">
+                                {integrityLoading ? (
+                                    <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                                ) : (
+                                    <Shield className="w-5 h-5 text-amber-500" />
+                                )}
+                                <div className="text-left">
+                                    <div className="font-medium">Periksa Integritas Database</div>
+                                    <div className="text-xs text-muted-foreground">Cek dan perbaiki data yang tidak konsisten.</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-4 hover:bg-primary/5"
+                            onClick={handleSaveSnapshot}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                {loading ? (
+                                    <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="w-5 h-5 text-emerald-500" />
+                                )}
+                                <div className="text-left">
+                                    <div className="font-medium">Simpan Snapshot Kekayaan</div>
+                                    <div className="text-xs text-muted-foreground">Ambil snapshot net worth sekarang secara manual.</div>
                                 </div>
                             </div>
                             <ChevronRight className="w-4 h-4" />
@@ -353,6 +559,9 @@ export default function PengaturanPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                {/* Automasi Keuangan */}
+                <FinancialAutomationCard lastLogs={lastLogs} onProcessComplete={fetchLogs} />
 
                 {/* Multi-Currency Settings */}
                 <CurrencySettings />
@@ -489,6 +698,147 @@ export default function PengaturanPage() {
                     <DialogFooter>
                         <Button onClick={() => setResultDialogOpen(false)}>
                             Tutup
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog Integritas */}
+            <Dialog open={integrityDialogOpen} onOpenChange={setIntegrityDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-amber-500" />
+                            Laporan Integritas Database
+                        </DialogTitle>
+                        <DialogDescription>
+                            Hasil pemindaian konsistensi data sistem.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    {integrityReport && (
+                        <div className="space-y-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 border rounded-lg bg-muted/50">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Orphaned Recurring</p>
+                                    <p className={`text-xl font-bold ${integrityReport.orphanedRecurring > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                        {integrityReport.orphanedRecurring}
+                                    </p>
+                                </div>
+                                <div className="p-3 border rounded-lg bg-muted/50">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Orphaned Cicilan</p>
+                                    <p className={`text-xl font-bold ${integrityReport.orphanedCicilan > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                        {integrityReport.orphanedCicilan}
+                                    </p>
+                                </div>
+                                <div className="p-3 border rounded-lg bg-muted/50">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Mismatched Admin</p>
+                                    <p className={`text-xl font-bold ${integrityReport.mismatchedAdminFees > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                        {integrityReport.mismatchedAdminFees}
+                                    </p>
+                                </div>
+                                <div className="p-3 border rounded-lg bg-primary/5 border-primary/20">
+                                    <p className="text-[10px] text-primary uppercase font-bold">Total Masalah</p>
+                                    <p className="text-xl font-bold text-primary">
+                                        {integrityReport.totalIssues}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {integrityReport.totalIssues > 0 ? (
+                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <div className="flex gap-2 text-amber-800 dark:text-amber-300">
+                                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                        <p className="text-xs">
+                                            Ditemukan ketidakkonsistenan data. Hal ini bisa terjadi jika akun dihapus namun data terkait masih tersisa. Disarankan untuk melakukan perbaikan otomatis.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                                    <div className="flex gap-2 text-emerald-800 dark:text-emerald-300">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                                        <p className="text-xs">
+                                            Luar biasa! Tidak ditemukan masalah integritas data. Semua record terhubung dengan benar.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                        <Button variant="ghost" onClick={() => setIntegrityDialogOpen(false)} disabled={integrityLoading}>
+                            Tutup
+                        </Button>
+                        {integrityReport && integrityReport.totalIssues > 0 && (
+                            <Button 
+                                onClick={handleFixIntegrity} 
+                                disabled={integrityLoading}
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                                {integrityLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Memperbaiki...
+                                    </>
+                                ) : (
+                                    "Perbaiki Otomatis"
+                                )}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog Export Selektif */}
+            <Dialog open={selectiveExportOpen} onOpenChange={setSelectiveExportOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-emerald-500" />
+                            Export Data Selektif
+                        </DialogTitle>
+                        <DialogDescription>
+                            Pilih jenis data yang ingin Anda ekspor ke file JSON.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="grid gap-4 py-4">
+                        {[
+                            { id: 'akun', label: 'Daftar Akun' },
+                            { id: 'transaksi', label: 'Histori Transaksi' },
+                            { id: 'cicilan', label: 'Rencana Cicilan' },
+                            { id: 'recurring', label: 'Transaksi Berulang' },
+                            { id: 'budget', label: 'Anggaran Bulanan' },
+                            { id: 'template', label: 'Template Pengaturan' }
+                        ].map((type) => (
+                            <div key={type.id} className="flex items-center space-x-3">
+                                <Checkbox 
+                                    id={type.id} 
+                                    checked={selectedTypes.includes(type.id)}
+                                    onCheckedChange={(checked) => {
+                                        if (checked) {
+                                            setSelectedTypes([...selectedTypes, type.id])
+                                        } else {
+                                            setSelectedTypes(selectedTypes.filter(t => t !== type.id))
+                                        }
+                                    }}
+                                />
+                                <Label htmlFor={type.id} className="text-sm font-medium leading-none cursor-pointer">
+                                    {type.label}
+                                </Label>
+                            </div>
+                        ))}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setSelectiveExportOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button onClick={handleSelectiveExport} disabled={loading || selectedTypes.length === 0}>
+                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                            Export Sekarang
                         </Button>
                     </DialogFooter>
                 </DialogContent>

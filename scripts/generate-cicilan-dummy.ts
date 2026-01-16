@@ -114,6 +114,11 @@ async function generateCicilanDummy() {
         const totalBunga = (tpl.totalPokok * tpl.bungaPersen) / 100
         const totalDenganBunga = tpl.totalPokok + totalBunga + tpl.biayaAdmin
         const nominalPerBulan = Math.ceil(totalDenganBunga / tpl.tenor)
+        
+        // Convert to BigInt (Sen)
+        const nominalPerBulanInt = BigInt(Math.round(nominalPerBulan * 100))
+        const totalPokokInt = BigInt(Math.round(tpl.totalPokok * 100))
+        const biayaAdminInt = BigInt(Math.round(tpl.biayaAdmin * 100))
 
         // Tentukan status
         const isLunas = tpl.cicilanKe > tpl.tenor
@@ -123,11 +128,11 @@ async function generateCicilanDummy() {
         const cicilan = await prisma.rencanaCicilan.create({
             data: {
                 namaProduk: tpl.namaProduk,
-                totalPokok: tpl.totalPokok,
+                totalPokok: totalPokokInt,
                 tenor: tpl.tenor,
                 cicilanKe: tpl.cicilanKe,
-                nominalPerBulan,
-                biayaAdmin: tpl.biayaAdmin,
+                nominalPerBulan: nominalPerBulanInt,
+                biayaAdmin: biayaAdminInt,
                 bungaPersen: tpl.bungaPersen,
                 tanggalJatuhTempo: tpl.tanggalJatuhTempo,
                 status,
@@ -146,7 +151,7 @@ async function generateCicilanDummy() {
                 await prisma.transaksi.create({
                     data: {
                         deskripsi: `Cicilan ${tpl.namaProduk} (${i + 1}/${tpl.tenor})`,
-                        nominal: nominalPerBulan,
+                        nominal: nominalPerBulanInt,
                         kategori: "Cicilan",
                         tanggal,
                         debitAkunId: akunCicilan.id,
@@ -158,7 +163,7 @@ async function generateCicilanDummy() {
             }
 
             // Update saldo kartu kredit
-            const totalDibayar = pembayaranDone * nominalPerBulan
+            const totalDibayar = BigInt(pembayaranDone) * nominalPerBulanInt
             await prisma.akun.update({
                 where: { id: kartuKredit.id },
                 data: { saldoSekarang: { decrement: totalDibayar } }
@@ -183,17 +188,20 @@ async function generateCicilanDummy() {
     const aktif = stats.filter(c => c.status === "AKTIF")
     const lunas = stats.filter(c => c.status === "LUNAS")
 
-    let totalHutang = 0
+    let totalHutang = BigInt(0)
     for (const c of aktif) {
         const sisaTenor = c.tenor - c.cicilanKe + 1
-        totalHutang += sisaTenor * c.nominalPerBulan
+        totalHutang += BigInt(sisaTenor) * c.nominalPerBulan
     }
+
+    // Display totalHutang as float string
+    const totalHutangFloat = Number(totalHutang) / 100
 
     console.log("📊 Summary:")
     console.log(`   Total Cicilan: ${stats.length}`)
     console.log(`   Aktif: ${aktif.length}`)
     console.log(`   Lunas: ${lunas.length}`)
-    console.log(`   Total Hutang: Rp ${totalHutang.toLocaleString("id-ID")}`)
+    console.log(`   Total Hutang: Rp ${totalHutangFloat.toLocaleString("id-ID")}`)
 
     console.log("\n🎉 Cicilan dummy data generation complete!")
     console.log("   Visit /cicilan to see the result")

@@ -58,12 +58,15 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
     // Hitung statistik
     const totalBudget = data.totalBudget
     const totalRealisasi = data.totalRealisasi
-    const sisaTotal = totalBudget - totalRealisasi
+    const totalProyeksi = data.totalProyeksi || 0
+    const totalPrediksi = totalRealisasi + totalProyeksi
+    const sisaTotal = totalBudget - totalPrediksi
     const persentaseTotal = totalBudget > 0 ? Math.round((totalRealisasi / totalBudget) * 100) : 0
+    const persentasePrediksiTotal = totalBudget > 0 ? Math.round((totalPrediksi / totalBudget) * 100) : 0
 
-    // Kategori yang melebihi budget
-    const overBudget = data.budgets.filter((b: any) => b.persentase > 100)
-    const nearLimit = data.budgets.filter((b: any) => b.persentase >= 80 && b.persentase <= 100)
+    // Kategori yang melebihi budget (berdasarkan prediksi total)
+    const overBudget = data.budgets.filter((b: any) => (b.persentaseProyeksi || 0) > 100)
+    const nearLimit = data.budgets.filter((b: any) => (b.persentaseProyeksi || 0) >= 80 && (b.persentaseProyeksi || 0) <= 100)
 
     return (
         <div className="space-y-6">
@@ -117,9 +120,14 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold" data-private="true">{formatRupiah(totalRealisasi)}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {persentaseTotal}% dari anggaran
+                        <div className="text-2xl font-bold text-destructive" data-private="true">{formatRupiah(totalRealisasi)}</div>
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            {persentaseTotal}% terpakai
+                            {totalProyeksi > 0 && (
+                                <span className="text-amber-500">
+                                    (+{Math.round((totalProyeksi / totalBudget) * 100)}% terjadwal)
+                                </span>
+                            )}
                         </p>
                     </CardContent>
                 </Card>
@@ -139,7 +147,7 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                             {formatRupiah(sisaTotal)}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {sisaTotal >= 0 ? "Masih dalam batas" : "Melebihi anggaran!"}
+                            {sisaTotal >= 0 ? "Masih dalam batas aman" : "Diprediksi akan melebihi!"}
                         </p>
                     </CardContent>
                 </Card>
@@ -152,8 +160,8 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{overBudget.length + nearLimit.length}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {overBudget.length} melebihi, {nearLimit.length} hampir limit
+                        <p className="text-xs text-muted-foreground mt-1 text-amber-600 font-medium">
+                            {overBudget.length} melebihi, {nearLimit.length} mendekati
                         </p>
                     </CardContent>
                 </Card>
@@ -164,14 +172,27 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex justify-between text-sm font-medium mb-2">
-                            <span>Progress Keseluruhan</span>
-                            <span className={persentaseTotal > 100 ? 'text-red-500' : ''}>
-                                {persentaseTotal}%
+                            <div className="flex gap-4">
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-primary rounded-sm"></span> Realisasi ({persentaseTotal}%)</span>
+                                {totalProyeksi > 0 && (
+                                    <span className="flex items-center gap-1 text-muted-foreground"><span className="w-3 h-3 bg-amber-500/30 rounded-sm"></span> Terjadwal ({persentasePrediksiTotal - persentaseTotal}%)</span>
+                                )}
+                            </div>
+                            <span className={persentasePrediksiTotal > 100 ? 'text-red-500 font-bold' : ''}>
+                                {persentasePrediksiTotal}% Total
                             </span>
                         </div>
-                        <div className="w-full bg-secondary h-3 rounded-full overflow-hidden">
+                        <div className="w-full bg-secondary h-4 rounded-full overflow-hidden relative">
+                            {/* Layer 1: Projected (wider) */}
+                            {totalProyeksi > 0 && (
+                                <div
+                                    className="h-full absolute left-0 top-0 bg-amber-500/30 transition-all duration-1000"
+                                    style={{ width: `${Math.min(persentasePrediksiTotal, 100)}%`, zIndex: 1 }}
+                                />
+                            )}
+                            {/* Layer 2: Actual (solid) */}
                             <div
-                                className={`h-full transition-all duration-500 ${persentaseTotal > 100 ? 'bg-red-500' : persentaseTotal > 80 ? 'bg-amber-500' : 'bg-primary'
+                                className={`h-full absolute left-0 top-0 transition-all duration-500 z-10 ${persentaseTotal > 100 ? 'bg-red-500' : persentaseTotal > 80 ? 'bg-amber-500' : 'bg-primary'
                                     }`}
                                 style={{ width: `${Math.min(persentaseTotal, 100)}%` }}
                             />
@@ -195,11 +216,12 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                 <div className="grid gap-4">
                     <h3 className="text-lg font-semibold">Detail per Kategori</h3>
                     {data.budgets.map((budget: any) => {
-                        const isOver = budget.persentase > 100
-                        const isNear = budget.persentase >= 80 && budget.persentase <= 100
+                        const isOver = (budget.persentaseProyeksi || 0) > 100
+                        const isNear = (budget.persentaseProyeksi || 0) >= 80 && (budget.persentaseProyeksi || 0) <= 100
+                        const realOver = (budget.persentase || 0) > 100
 
                         return (
-                            <Card key={budget.id} className={`border-l-4 ${isOver ? 'border-l-red-500' : isNear ? 'border-l-amber-500' : 'border-l-primary'
+                            <Card key={budget.id} className={`border-l-4 ${realOver ? 'border-l-red-600' : isOver ? 'border-l-red-400' : isNear ? 'border-l-amber-500' : 'border-l-primary'
                                 }`}>
                                 <CardContent className="pt-4">
                                     <div className="flex items-start justify-between mb-3">
@@ -207,7 +229,7 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                                             <h4 className="font-semibold flex items-center gap-2">
                                                 {budget.kategori}
                                                 {isOver && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                                                {isNear && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+                                                {isNear && !isOver && <AlertTriangle className="h-4 w-4 text-amber-500" />}
                                             </h4>
                                             <p className="text-sm text-muted-foreground">
                                                 Anggaran: <span data-private="true">{formatRupiah(budget.nominal)}</span>
@@ -215,23 +237,40 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <div className="text-right">
-                                                <p className={`font-bold ${isOver ? 'text-red-500' : ''}`} data-private="true">
-                                                    {formatRupiah(budget.realisasi)}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    {(budget.proyeksi || 0) > 0 && (
+                                                        <span className="text-[10px] text-amber-600 font-medium" data-private="true">
+                                                            +{formatRupiah(budget.proyeksi)}
+                                                        </span>
+                                                    )}
+                                                    <p className={`font-bold ${realOver ? 'text-red-500' : ''}`} data-private="true">
+                                                        {formatRupiah(budget.realisasi)}
+                                                    </p>
+                                                </div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {budget.persentase}% terpakai
+                                                    {budget.persentaseProyeksi || 0}% (inc. terjadwal)
                                                 </p>
                                             </div>
                                             <BudgetActions budget={budget} />
                                         </div>
                                     </div>
-                                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                                    
+                                    <div className="w-full bg-secondary h-3 rounded-full overflow-hidden relative">
+                                        {/* Proyeksi Layer */}
+                                        {(budget.proyeksi || 0) > 0 && (
+                                            <div
+                                                className="h-full absolute left-0 top-0 bg-amber-500/30 transition-all duration-1000"
+                                                style={{ width: `${Math.min(budget.persentaseProyeksi || 0, 100)}%`, zIndex: 1 }}
+                                            />
+                                        )}
+                                        {/* Realisasi Layer */}
                                         <div
-                                            className={`h-full transition-all duration-500 ${isOver ? 'bg-red-500' : isNear ? 'bg-amber-500' : 'bg-primary'
+                                            className={`h-full absolute left-0 top-0 transition-all duration-500 z-10 ${realOver ? 'bg-red-500' : (budget.persentase || 0) > 80 ? 'bg-amber-500' : 'bg-primary'
                                                 }`}
-                                            style={{ width: `${Math.min(budget.persentase, 100)}%` }}
+                                            style={{ width: `${Math.min(budget.persentase || 0, 100)}%` }}
                                         />
                                     </div>
+
                                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
                                         <div className="flex flex-col">
                                             <span>

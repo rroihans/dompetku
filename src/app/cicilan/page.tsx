@@ -47,6 +47,19 @@ export default async function CicilanPage() {
                 <AddCicilanForm accounts={accounts} />
             </div>
 
+            {/* Info Box */}
+            <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="py-3 flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-full">
+                        <CreditCard className="w-4 h-4 text-primary" />
+                    </div>
+                    <p className="text-sm">
+                        <span className="font-bold">Info:</span> Cicilan adalah metode pembayaran hutang kartu kredit. 
+                        Total hutang sudah termasuk dalam saldo kartu kredit Anda di Dashboard.
+                    </p>
+                </CardContent>
+            </Card>
+
             {/* Statistik Cards */}
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>

@@ -1,6 +1,7 @@
 "use server"
 
 import prisma from "@/lib/prisma"
+import { Money } from "@/lib/money"
 
 export interface CalendarEvent {
     id: string
@@ -61,7 +62,7 @@ export async function getCalendarEvents(bulan: number, tahun: number) {
                     date: jatuhTempo,
                     type: 'cicilan',
                     title: cicilan.namaProduk,
-                    nominal: cicilan.nominalPerBulan,
+                    nominal: Money.toFloat(Number(cicilan.nominalPerBulan)), // BigInt
                     description: `Cicilan ke-${cicilan.cicilanKe} dari ${cicilan.tenor} - Sisa ${sisaBulan} bulan`,
                     color: '#f59e0b' // amber
                 })
@@ -80,7 +81,7 @@ export async function getCalendarEvents(bulan: number, tahun: number) {
                                 date: new Date(tahun, bulan - 1, day),
                                 type: 'recurring',
                                 title: rec.nama,
-                                nominal: rec.nominal,
+                                nominal: rec.nominal, // Float
                                 description: `${rec.kategori} - Harian`,
                                 color: '#8b5cf6' // violet
                             })
@@ -96,7 +97,7 @@ export async function getCalendarEvents(bulan: number, tahun: number) {
                                 date: new Date(tahun, bulan - 1, day),
                                 type: 'recurring',
                                 title: rec.nama,
-                                nominal: rec.nominal,
+                                nominal: rec.nominal, // Float
                                 description: `${rec.kategori} - Mingguan`,
                                 color: '#8b5cf6'
                             })
@@ -113,7 +114,7 @@ export async function getCalendarEvents(bulan: number, tahun: number) {
                         date: new Date(tahun, bulan - 1, Math.min(tanggalBulanan, maxDay)),
                         type: 'recurring',
                         title: rec.nama,
-                        nominal: rec.nominal,
+                        nominal: rec.nominal, // Float
                         description: `${rec.kategori} - Bulanan`,
                         color: '#8b5cf6'
                     })
@@ -128,7 +129,7 @@ export async function getCalendarEvents(bulan: number, tahun: number) {
                             date: new Date(tahun, bulan - 1, rec.tanggalMulai.getDate()),
                             type: 'recurring',
                             title: rec.nama,
-                            nominal: rec.nominal,
+                            nominal: rec.nominal, // Float
                             description: `${rec.kategori} - Tahunan`,
                             color: '#8b5cf6'
                         })
@@ -149,7 +150,7 @@ export async function getCalendarEvents(bulan: number, tahun: number) {
                     date: tx.tanggal,
                     type: 'transaksi',
                     title: tx.deskripsi,
-                    nominal: tx.nominal,
+                    nominal: Money.toFloat(Number(tx.nominal)), // BigInt
                     description: isExpense ? `Pengeluaran - ${tx.kategori}` : `Pemasukan - ${tx.kategori}`,
                     color: isExpense ? '#ef4444' : '#22c55e' // red for expense, green for income
                 })
@@ -198,7 +199,7 @@ export async function getCalendarSummary(bulan: number, tahun: number) {
             success: true,
             data: {
                 cicilanAktif,
-                totalCicilan: totalCicilan._sum.nominalPerBulan || 0,
+                totalCicilan: Money.toFloat(Number(totalCicilan._sum.nominalPerBulan || 0)), // BigInt
                 recurringCount,
                 transaksiCount
             }

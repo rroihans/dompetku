@@ -1,0 +1,336 @@
+# Prisma Schema
+
+```prisma
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Tabel Akun: Untuk menyimpan Bank, E-Wallet, Kartu Kredit, dll.
+model Akun {
+  id                String            @id @default(cuid())
+  nama              String            // Contoh: "BCA Tahapan", "Kartu Kredit Jenius"
+  tipe              String            // BANK, E_WALLET, CREDIT_CARD, CASH, EXPENSE, INCOME (SQLite use string)
+  
+  saldoAwal         BigInt            @default(0) // Integer (Sen)
+  saldoSekarang     BigInt            @default(0) // Integer (Sen)
+  limitKredit       BigInt?           // Integer (Sen)
+  
+  icon              String?           // URL atau nama icon Lucide
+  warna             String?           // Hex code untuk identitas visual di UI
+  
+  // Fitur Automasi (v0.4.0 - v0.4.1 Refactored)
+  templateId        String?
+  template          AccountTemplate?  @relation(fields: [templateId], references: [id])
+  templateSource    String?           // ID template asal untuk tracking (v0.4.1)
+  
+  biayaAdminAktif   Boolean           @default(false)
+  biayaAdminNominal Int?
+  biayaAdminPola    String?           // FIXED_DATE, LAST_WORKING_DAY, FRIDAY_WEEK_3, MANUAL
+  biayaAdminTanggal Int?              // 1-31 (untuk FIXED_DATE)
+  
+  bungaAktif        Boolean           @default(false)
+  bungaTiers        String?           // JSON: [{min_saldo: 0, max_saldo: 999999, bunga_pa: 0}, ...]
+  
+  templateOverrides String?           // JSON: Log perubahan dari nilai default
+  settingsLastModified DateTime?      // Audit trail perubahan setting
+  
+  setoranAwal       BigInt?           // Integer (Sen)
+  lastAdminChargeDate DateTime?       // Tanggal terakhir biaya admin ditarik
+  lastInterestCreditDate DateTime?    // Tanggal terakhir bunga dikreditkan
+
+  // Credit Card Specific Fields (v0.5.0)
+  isSyariah           Boolean?        // TRUE = Syariah, FALSE = Konvensional
+  billingDate         Int?            // 1-31, tanggal statement keluar
+  dueDate             Int?            // 1-31, tanggal deadline pembayaran
+  minPaymentFixed     BigInt?         // Integer (Sen)
+  minPaymentPercent   Float?          @default(5) // Persentase minimum payment
+  minInstallmentAmount BigInt?        // Integer (Sen)
+  
+  // Display Format (v0.5.0)
+  useDecimalFormat    Boolean         @default(false) // TRUE = format 2 desimal (1.203.930,88)
+
+  // Relasi Pembukuan Berpasangan
+  transaksiDebit    Transaksi[]       @relation("DebitRelation")
+  transaksiKredit   Transaksi[]       @relation("KreditRelation")
+  
+  // Relasi Admin Fee
+  adminFees         AdminFee[]
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("akun")
+}
+
+// 1.1 Tabel AccountTemplate: Definisi biaya admin dan bunga perbankan (v0.4.0)
+model AccountTemplate {
+  id                String            @id @default(cuid())
+  nama              String            // Contoh: "BCA Tahapan Xpresi"
+  tipeAkun          String            // BANK, E_WALLET, dll
+  biayaAdmin        Float?            // Nominal biaya admin bulanan
+  bungaTier         String?           // JSON: [{min_saldo: 0, max_saldo: 999999, bunga_pa: 0}, ...]
+  
+  polaTagihan       String            // TANGGAL_TETAP, JUMAT_MINGGU_KETIGA, HARI_KERJA_TERAKHIR
+  tanggalTagihan    Int?              // 1-31 (untuk TANGGAL_TETAP)
+  
+  deskripsi         String?           @default("")
+  isActive          Boolean           @default(true)
+  
+  akun              Akun[]
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("account_template")
+}
+
+// 2. Tabel Transaksi: Jantung dari aplikasi (General Ledger)
+model Transaksi {
+  id                String            @id @default(cuid())
+  tanggal           DateTime          @default(now())
+  deskripsi         String
+  nominal           BigInt            // Integer (Sen)
+  kategori          String            // Contoh: Makan, Transport, Cicilan
+  
+  // Logika Double-Entry
+  debitAkunId       String            // Akun yang bertambah (misal: Pengeluaran_Makan)
+  kreditAkunId      String            // Akun yang berkurang (misal: Bank_BCA)
+  debitAkun         Akun              @relation("DebitRelation", fields: [debitAkunId], references: [id])
+  kreditAkun        Akun              @relation("KreditRelation", fields: [kreditAkunId], references: [id])
+
+  // Opsional: Untuk menghubungkan dengan Cicilan
+  rencanaCicilanId  String?
+  rencanaCicilan    RencanaCicilan?   @relation("CicilanTransaksi", fields: [rencanaCicilanId], references: [id])
+
+  // Convert to Installment (v0.5.0)
+  convertedToInstallment Boolean      @default(false)
+  convertedCicilan       RencanaCicilan? @relation("ConvertedInstallment")
+
+  // Metadata untuk Troubleshooting & Audit
+  idempotencyKey    String?           @unique // Mencegah duplikasi input
+  catatan           String?           // Catatan tambahan manual
+  createdAt         DateTime          @default(now())
+
+  @@index([tanggal, id])
+  @@index([kategori])
+  @@index([debitAkunId, tanggal])
+  @@index([kreditAkunId, tanggal])
+  @@map("transaksi")
+}
+
+// 3. Tabel Rencana Cicilan: Mesin otomatisasi untuk Kartu Kredit
+model RencanaCicilan {
+  id                String            @id @default(cuid())
+  namaProduk        String            // Contoh: "iPhone 15 Pro"
+  totalPokok        BigInt            // Integer (Sen)
+  tenor             Int               // Jumlah bulan (misal: 12)
+  cicilanKe         Int               @default(1)
+  nominalPerBulan   BigInt            // Integer (Sen)
+  biayaAdmin        BigInt            @default(0) // Integer (Sen)
+  bungaPersen       Float             @default(0)
+  tanggalJatuhTempo Int               // Tanggal 1-31 setiap bulan
+  
+  status            String            @default("AKTIF") // AKTIF, LUNAS, DIBALIKKAN
+  
+  // Akun sumber dan tujuan untuk otomatisasi
+  akunKreditId      String            // Akun kartu kredit yang terpotong
+  akunDebitId       String            // Akun pengeluaran cicilan
+  
+  transaksi         Transaksi[]       @relation("CicilanTransaksi") // Histori transaksi yang sudah di-generate
+
+  // Convert from Transaction (v0.5.0)
+  isConvertedFromTx Boolean           @default(false)
+  originalTxId      String?           @unique
+  originalTx        Transaksi?        @relation("ConvertedInstallment", fields: [originalTxId], references: [id])
+  
+  // Installment Template (v0.5.0)
+  templateId        String?
+  installmentTemplate InstallmentTemplate? @relation(fields: [templateId], references: [id])
+  adminFeeType      String?           // "FLAT" | "PERCENTAGE"
+  adminFeeAmount    Float?            // Nilai biaya admin cicilan
+  installmentType   String?           // "ZERO_PERCENT" | "REGULAR"
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([status, tanggalJatuhTempo])  // Performance Optimization
+  @@map("rencana_cicilan")
+}
+
+// 4. Tabel Log Sistem: Untuk troubleshooting (Audit Trail)
+model LogSistem {
+  id                String            @id @default(cuid())
+  level             String            // INFO, WARN, ERROR
+  modul             String            // AUTH, TRANSACTION, SYNC
+  pesan             String
+  stackTrace        String?           // Jika error, simpan detailnya di sini
+  createdAt         DateTime          @default(now())
+
+  @@map("log_sistem")
+}
+
+// 5. Tabel Budget: Anggaran per kategori
+model Budget {
+  id                String            @id @default(cuid())
+  kategori          String            // Kategori pengeluaran
+  bulan             Int               // 1-12
+  tahun             Int               // 2024, 2025, etc
+  nominal           Float             // Limit anggaran
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([kategori, bulan, tahun])
+  @@index([bulan, tahun]) // Monthly queries
+  @@index([kategori, bulan, tahun]) // Composite lookup
+  @@map("budget")
+}
+
+// 6. Tabel Recurring Transaction: Transaksi berulang otomatis
+model RecurringTransaction {
+  id                String            @id @default(cuid())
+  nama              String            // Nama transaksi berulang
+  nominal           Float
+  kategori          String            // Contoh: Makan, Transport, Cicilan
+  tipeTransaksi     String            // KELUAR atau MASUK
+  
+  akunId            String            // Akun yang terlibat
+  
+  frekuensi         String            // HARIAN, MINGGUAN, BULANAN, TAHUNAN
+  hariDalamBulan    Int?              // 1-31 untuk bulanan
+  hariDalamMinggu   Int?              // 0-6 untuk mingguan (0=Minggu)
+  
+  tanggalMulai      DateTime          @default(now())
+  tanggalSelesai    DateTime?         // Opsional, jika ada batas waktu
+  
+  aktif             Boolean           @default(true)
+  terakhirDieksekusi DateTime?
+  
+  // Admin Fee Link (v0.5.0)
+  adminFee          AdminFee?
+  isAutoGenerated   Boolean           @default(false)
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([aktif, frekuensi])
+  @@index([terakhirDieksekusi])
+  @@map("recurring_transaction")
+}
+
+// 7. Tabel Template Transaksi: Template untuk quick-add transaksi
+model TemplateTransaksi {
+  id                String            @id @default(cuid())
+  nama              String            // Nama template (misal: "Kopi Starbucks")
+  deskripsi         String            // Deskripsi default transaksi
+  nominal           Float             // Nominal default
+  kategori          String            // Kategori default
+  tipeTransaksi     String            // KELUAR atau MASUK
+  
+  akunId            String            // Akun default yang digunakan
+  
+  icon              String?           // Icon untuk tampilan (emoji atau lucide icon)
+  warna             String?           // Warna untuk identitas visual
+  
+  usageCount        Int               @default(0) // Berapa kali digunakan
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("template_transaksi")
+}
+
+// 8. Tabel Net Worth Snapshot: Menyimpan histori kekayaan bersih
+model NetWorthSnapshot {
+  id                String            @id @default(cuid())
+  tanggal           DateTime          @default(now())
+  
+  totalAset         Float             // Total aset (Bank + E-Wallet + Cash)
+  totalHutang       Float             // Total hutang (Kartu Kredit negatif + Cicilan)
+  netWorth          Float             // Aset - Hutang
+  
+  // Breakdown per tipe akun
+  breakdown         String?           // JSON: {"BANK": 1000000, "E_WALLET": 500000, ...}
+  
+  createdAt         DateTime          @default(now())
+
+  @@map("net_worth_snapshot")
+}
+
+// 9. Tabel Currency Rate: Untuk multi-currency support
+model CurrencyRate {
+  id                String            @id @default(cuid())
+  kodeAsal          String            // Contoh: "USD", "EUR", "SGD"
+  kodeTujuan        String            @default("IDR") // Default ke Rupiah
+  rate              Float             // 1 USD = 15500 IDR
+  
+  tanggalUpdate     DateTime          @default(now())
+  sumber            String?           // "manual" atau "api"
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([kodeAsal, kodeTujuan])
+  @@map("currency_rate")
+}
+
+// 10. Tabel App Settings: Pengaturan aplikasi global
+model AppSetting {
+  id                String            @id @default(cuid())
+  kunci             String            @unique // Contoh: "default_currency", "net_worth_tracking"
+  nilai             String            // Nilai setting (bisa JSON)
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("app_setting")
+}
+
+// 11. Tabel Admin Fee: Biaya admin per akun (v0.5.0)
+model AdminFee {
+  id              String   @id @default(cuid())
+  akunId          String
+  akun            Akun     @relation(fields: [akunId], references: [id], onDelete: Cascade)
+  
+  deskripsi       String   // "Biaya Admin Bulanan BCA"
+  nominal         Float
+  
+  recurringTxId   String?  @unique
+  recurringTx     RecurringTransaction? @relation(fields: [recurringTxId], references: [id])
+  
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([akunId, isActive])
+  @@map("admin_fee")
+}
+
+// 12. Tabel Installment Template: Template cicilan bank (v0.5.0)
+model InstallmentTemplate {
+  id              String   @id @default(cuid())
+  nama            String   // "CIMB Niaga 0% 3 Bulan (App)"
+  bankName        String
+  cardType        String   // "SYARIAH" | "KONVENSIONAL"
+  
+  tenorOptions    String   // JSON: [3, 6, 12]
+  adminFeeType    String   // "FLAT" | "PERCENTAGE"
+  adminFeeAmount  Float?
+  interestRate    Float    @default(0)
+  
+  notes           String?
+  isActive        Boolean  @default(true)
+  
+  cicilan         RencanaCicilan[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("installment_template")
+}
+```

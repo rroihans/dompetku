@@ -17,8 +17,10 @@ import { getAkun } from "@/app/actions/akun"
 import { getTransaksi } from "@/app/actions/transaksi"
 import { getDashboardAnalytics, getSaldoTrend, getMonthlyComparison, getAccountComposition, getEnhancedStats } from "@/app/actions/analytics"
 import { getCicilanStats } from "@/app/actions/cicilan"
+import { getUpcomingAdminFees } from "@/app/actions/recurring-admin"
 import { getNetWorthChange, getNetWorthHistory, saveNetWorthSnapshot } from "@/app/actions/networth"
-import { seedInitialData } from "@/app/actions/seed"
+import { runSystemAlertChecks } from "@/app/actions/notifications"
+import { seedInitialData, seedInstallmentTemplates } from "@/app/actions/seed"
 import { pruneOldLogs } from "@/app/actions/debug"
 import { formatRupiah } from "@/lib/format"
 import Link from "next/link"
@@ -29,10 +31,17 @@ import { MonthlyComparisonChart } from "@/components/charts/monthly-comparison-c
 import { AssetCompositionChart } from "@/components/charts/asset-composition-chart"
 import { DrilldownPieChart } from "@/components/charts/drilldown-pie-chart"
 import { NetWorthChart } from "@/components/charts/net-worth-chart"
+import { AdminFeeReminder } from "@/components/charts/admin-fee-reminder"
 
 export default async function Dashboard() {
   // Auto-prune logs > 30 hari
   await pruneOldLogs(30)
+
+  // Run system notifications checks
+  await runSystemAlertChecks()
+
+  // Auto-seed installment templates if not exists
+  await seedInstallmentTemplates()
 
   let accounts = await getAkun()
   if (accounts.length === 0) {
@@ -45,6 +54,7 @@ export default async function Dashboard() {
     analytics,
     transactionsResult,
     cicilanStats,
+    upcomingFeesResult,
     saldoTrendResult,
     monthlyComparisonResult,
     assetCompositionResult,
@@ -55,6 +65,7 @@ export default async function Dashboard() {
     getDashboardAnalytics(),
     getTransaksi(),
     getCicilanStats(),
+    getUpcomingAdminFees(),
     getSaldoTrend(30),
     getMonthlyComparison(),
     getAccountComposition(),
@@ -63,6 +74,7 @@ export default async function Dashboard() {
     getNetWorthHistory(30)
   ])
   const transactions = transactionsResult.data
+  const upcomingFees = upcomingFeesResult.data || []
   const saldoTrend = saldoTrendResult.data || []
   const monthlyComparison = monthlyComparisonResult.data || []
   const assetComposition = assetCompositionResult.data || []
@@ -167,6 +179,9 @@ export default async function Dashboard() {
         </Link>
       </div>
 
+      {/* NEW: Admin Fee Reminder */}
+      <AdminFeeReminder fees={upcomingFees} />
+
       {/* Alert jika ada cicilan */}
       {cicilanStats.data.jumlahCicilanAktif > 0 && (
         <Link href="/cicilan" className="block mb-4">
@@ -255,6 +270,7 @@ export default async function Dashboard() {
         changePercent={netWorth.changePercent}
         totalAset={netWorth.totalAset}
         totalHutang={netWorth.totalHutang}
+        totalCicilan={netWorth.totalCicilan}
       />
 
       {/* Bottom Row - Accounts & Recent Transactions */}

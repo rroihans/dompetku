@@ -118,10 +118,11 @@ async function generateDummyData() {
                 })
 
                 if (expenseAkun) {
+                    const nominalInt = BigInt(Math.round(nominal * 100))
                     await prisma.transaksi.create({
                         data: {
                             deskripsi,
-                            nominal,
+                            nominal: nominalInt,
                             kategori,
                             tanggal: randomDate(monthStart, monthEnd),
                             debitAkunId: expenseAkun.id,
@@ -147,10 +148,11 @@ async function generateDummyData() {
                 })
 
                 if (incomeAkun) {
+                    const nominalInt = BigInt(Math.round(nominal * 100))
                     await prisma.transaksi.create({
                         data: {
                             deskripsi,
-                            nominal,
+                            nominal: nominalInt,
                             kategori,
                             tanggal: randomDate(monthStart, monthEnd),
                             debitAkunId: userAkun.id,
@@ -222,7 +224,7 @@ async function generateDummyData() {
             }
         })
 
-        let balance = akun.saldoAwal
+        let balance = BigInt(Math.round(Number(akun.saldoAwal) * 100))
         for (const tx of transactions) {
             if (tx.debitAkunId === akun.id) {
                 balance += tx.nominal // Masuk ke akun ini
@@ -237,7 +239,7 @@ async function generateDummyData() {
             data: { saldoSekarang: balance }
         })
 
-        console.log(`   ${akun.nama}: Rp ${balance.toLocaleString("id-ID")}`)
+        console.log(`   ${akun.nama}: Rp ${(Number(balance) / 100).toLocaleString("id-ID")}`)
     }
 
     console.log("\n🎉 Dummy data generation complete!")

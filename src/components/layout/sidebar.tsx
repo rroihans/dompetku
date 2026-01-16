@@ -14,14 +14,16 @@ import {
     Target,
     BarChart3,
     Calendar,
-    FileText
+    FileText,
+    Shield
 } from "lucide-react"
 
 const menuItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
     { name: "Akun", href: "/akun", icon: Wallet },
     { name: "Transaksi", href: "/transaksi", icon: ArrowLeftRight },
-    { name: "Template", href: "/template", icon: FileText },
+    { name: "Template Bank", href: "/template-akun", icon: Shield },
+    { name: "Template Cepat", href: "/template", icon: FileText },
     { name: "Berulang", href: "/recurring", icon: RefreshCw },
     { name: "Cicilan", href: "/cicilan", icon: CreditCard },
     { name: "Anggaran", href: "/anggaran", icon: Target },
@@ -64,7 +66,7 @@ export function Sidebar() {
                 })}
             </nav>
             <div className="p-4 border-t">
-                <p className="text-xs text-muted-foreground">© 2025 Dompetku Pro</p>
+                <p className="text-xs text-muted-foreground">© 2026 Dompetku Pro</p>
             </div>
         </aside>
     )

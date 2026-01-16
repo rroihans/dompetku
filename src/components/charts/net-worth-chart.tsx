@@ -22,6 +22,7 @@ interface NetWorthChartProps {
     changePercent: number
     totalAset: number
     totalHutang: number
+    totalCicilan: number
 }
 
 export function NetWorthChart({
@@ -30,7 +31,8 @@ export function NetWorthChart({
     change,
     changePercent,
     totalAset,
-    totalHutang
+    totalHutang,
+    totalCicilan
 }: NetWorthChartProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [chartWidth, setChartWidth] = useState(300)
@@ -136,6 +138,11 @@ export function NetWorthChart({
                         <p className="text-sm sm:text-base font-bold text-red-500" data-private="true">
                             {formatRupiah(totalHutang)}
                         </p>
+                        {totalCicilan > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                                (Inc. {formatRupiah(totalCicilan)} cicilan)
+                            </p>
+                        )}
                     </div>
                     <div className={`rounded-lg p-2 sm:p-3 text-center ${currentNetWorth >= 0 ? 'bg-primary/10' : 'bg-red-500/10'}`}>
                         <PiggyBank className="w-4 h-4 text-primary mx-auto mb-1" />

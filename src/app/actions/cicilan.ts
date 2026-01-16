@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
+import { Money } from "@/lib/money"
 
 export interface CicilanData {
     namaProduk: string
@@ -38,8 +39,8 @@ export async function createCicilan(data: CicilanData) {
                 data: {
                     nama: namaAkunDebit,
                     tipe: "EXPENSE",
-                    saldoAwal: 0,
-                    saldoSekarang: 0,
+                    saldoAwal: BigInt(0),
+                    saldoSekarang: BigInt(0),
                 }
             })
         }
@@ -47,11 +48,11 @@ export async function createCicilan(data: CicilanData) {
         const cicilan = await prisma.rencanaCicilan.create({
             data: {
                 namaProduk: data.namaProduk,
-                totalPokok: data.totalPokok,
+                totalPokok: BigInt(Money.fromFloat(data.totalPokok)),
                 tenor: data.tenor,
                 cicilanKe: 1,
-                nominalPerBulan: data.nominalPerBulan,
-                biayaAdmin: data.biayaAdmin || 0,
+                nominalPerBulan: BigInt(Money.fromFloat(data.nominalPerBulan)),
+                biayaAdmin: BigInt(Money.fromFloat(data.biayaAdmin || 0)),
                 bungaPersen: data.bungaPersen || 0,
                 tanggalJatuhTempo: data.tanggalJatuhTempo,
                 status: "AKTIF",
@@ -64,7 +65,14 @@ export async function createCicilan(data: CicilanData) {
         revalidatePath("/cicilan")
         revalidatePath("/")
 
-        return { success: true, data: cicilan }
+        const mappedCicilan = {
+            ...cicilan,
+            totalPokok: Money.toFloat(Number(cicilan.totalPokok)),
+            nominalPerBulan: Money.toFloat(Number(cicilan.nominalPerBulan)),
+            biayaAdmin: Money.toFloat(Number(cicilan.biayaAdmin)),
+        }
+
+        return { success: true, data: mappedCicilan }
     } catch (error) {
         await logSistem("ERROR", "CICILAN", "Gagal membuat rencana cicilan", (error as Error).stack)
         return { success: false, error: "Gagal membuat rencana cicilan" }
@@ -80,7 +88,15 @@ export async function getCicilan() {
                 { createdAt: "desc" }
             ],
         })
-        return { success: true, data: cicilan }
+        
+        const mapped = cicilan.map(c => ({
+            ...c,
+            totalPokok: Money.toFloat(Number(c.totalPokok)),
+            nominalPerBulan: Money.toFloat(Number(c.nominalPerBulan)),
+            biayaAdmin: Money.toFloat(Number(c.biayaAdmin)),
+        }))
+
+        return { success: true, data: mapped }
     } catch (error) {
         await logSistem("ERROR", "CICILAN", "Gagal mengambil data cicilan", (error as Error).stack)
         return { success: false, data: [], error: "Gagal mengambil data cicilan" }
@@ -90,7 +106,7 @@ export async function getCicilan() {
 // Ambil cicilan by ID
 export async function getCicilanById(id: string) {
     try {
-        return await prisma.rencanaCicilan.findUnique({
+        const cicilan = await prisma.rencanaCicilan.findUnique({
             where: { id },
             include: {
                 transaksi: {
@@ -98,6 +114,19 @@ export async function getCicilanById(id: string) {
                 }
             }
         })
+        
+        if (!cicilan) return null
+
+        return {
+            ...cicilan,
+            totalPokok: Money.toFloat(Number(cicilan.totalPokok)),
+            nominalPerBulan: Money.toFloat(Number(cicilan.nominalPerBulan)),
+            biayaAdmin: Money.toFloat(Number(cicilan.biayaAdmin)),
+            transaksi: cicilan.transaksi.map(tx => ({
+                ...tx,
+                nominal: Money.toFloat(Number(tx.nominal))
+            }))
+        }
     } catch (error) {
         await logSistem("ERROR", "CICILAN", "Gagal mengambil detail cicilan", (error as Error).stack)
         return null
@@ -129,7 +158,7 @@ export async function bayarCicilan(id: string) {
             await tx.transaksi.create({
                 data: {
                     deskripsi: `Cicilan ${cicilan.namaProduk} (${cicilan.cicilanKe}/${cicilan.tenor})`,
-                    nominal: cicilan.nominalPerBulan,
+                    nominal: cicilan.nominalPerBulan, // BigInt
                     kategori: "Cicilan",
                     debitAkunId: cicilan.akunDebitId,
                     kreditAkunId: cicilan.akunKreditId,
@@ -192,7 +221,8 @@ export async function pelunasanDipercepat(id: string) {
 
         // Hitung sisa yang harus dibayar
         const sisaTenor = cicilan.tenor - cicilan.cicilanKe + 1
-        const sisaNominal = sisaTenor * cicilan.nominalPerBulan
+        // Use BigInt math
+        const sisaNominal = BigInt(sisaTenor) * cicilan.nominalPerBulan
 
         await prisma.$transaction(async (tx: any) => {
             // Buat transaksi pelunasan
@@ -251,15 +281,27 @@ export async function updateCicilan(id: string, data: {
     bungaPersen?: number
 }) {
     try {
+        const updateData: any = { ...data }
+        if (data.biayaAdmin !== undefined) {
+            updateData.biayaAdmin = BigInt(Money.fromFloat(data.biayaAdmin))
+        }
+
         const cicilan = await prisma.rencanaCicilan.update({
             where: { id },
-            data,
+            data: updateData,
         })
 
         await logSistem("INFO", "CICILAN", `Cicilan diperbarui: ${cicilan.namaProduk}`)
         revalidatePath("/cicilan")
 
-        return { success: true, data: cicilan }
+        const mappedCicilan = {
+            ...cicilan,
+            totalPokok: Money.toFloat(Number(cicilan.totalPokok)),
+            nominalPerBulan: Money.toFloat(Number(cicilan.nominalPerBulan)),
+            biayaAdmin: Money.toFloat(Number(cicilan.biayaAdmin)),
+        }
+
+        return { success: true, data: mappedCicilan }
     } catch (error) {
         await logSistem("ERROR", "CICILAN", "Gagal memperbarui cicilan", (error as Error).stack)
         return { success: false, error: "Gagal memperbarui cicilan" }
@@ -304,12 +346,12 @@ export async function getCicilanStats() {
         })
 
         // Total hutang = sisa cicilan yang belum dibayar
-        let totalHutang = 0
-        let tagihanBulanIni = 0
+        let totalHutang = BigInt(0)
+        let tagihanBulanIni = BigInt(0)
 
         for (const c of cicilanAktif) {
             const sisaTenor = c.tenor - c.cicilanKe + 1
-            totalHutang += sisaTenor * c.nominalPerBulan
+            totalHutang += BigInt(sisaTenor) * c.nominalPerBulan
             tagihanBulanIni += c.nominalPerBulan
         }
 
@@ -317,14 +359,19 @@ export async function getCicilanStats() {
         const kartuKredit = await prisma.akun.findMany({
             where: { tipe: "CREDIT_CARD" }
         })
-        const totalLimit = kartuKredit.reduce((sum, k) => sum + (k.limitKredit || 0), 0)
-        const rasioHutang = totalLimit > 0 ? (totalHutang / totalLimit) * 100 : 0
+        const totalLimit = kartuKredit.reduce((sum, k) => sum + (k.limitKredit || BigInt(0)), BigInt(0))
+        
+        // Float calculations for Ratio
+        const totalHutangFloat = Money.toFloat(Number(totalHutang))
+        const totalLimitFloat = Money.toFloat(Number(totalLimit))
+        
+        const rasioHutang = totalLimitFloat > 0 ? (totalHutangFloat / totalLimitFloat) * 100 : 0
 
         return {
             success: true,
             data: {
-                totalHutang,
-                tagihanBulanIni,
+                totalHutang: totalHutangFloat,
+                tagihanBulanIni: Money.toFloat(Number(tagihanBulanIni)),
                 jumlahCicilanAktif: cicilanAktif.length,
                 rasioHutang: Math.round(rasioHutang)
             }

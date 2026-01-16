@@ -28,13 +28,13 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: UI Implementation - Account Integration' (Protocol in workflow.md)
 
 ## Phase 5: Dashboard & Settings Integration
-- [ ] Task: Buat widget "Pengingat Biaya Admin" di Dashboard.
-- [ ] Task: Tambahkan section "Automasi Keuangan" di halaman `/pengaturan` dengan tombol trigger manual dan toggle experimental.
-- [ ] Task: Integrasi display log terakhir dari `LogSistem` di halaman pengaturan.
+- [x] Task: Buat widget "Pengingat Biaya Admin" di Dashboard.
+- [x] Task: Tambahkan section "Automasi Keuangan" di halaman `/pengaturan` dengan tombol trigger manual dan toggle experimental.
+- [x] Task: Integrasi display log terakhir dari `LogSistem` di halaman pengaturan.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Dashboard & Settings Integration' (Protocol in workflow.md)
 
 ## Phase 6: Finalization & Documentation
-- [ ] Task: Update `LOG_PERUBAHAN.md` dan `CHANGELOG.md` ke v0.4.0.
-- [ ] Task: Jalankan build dan lint check untuk memastikan kualitas kode.
-- [ ] Task: Verifikasi akhir seluruh alur fitur (End-to-End).
+- [x] Task: Update `LOG_PERUBAHAN.md` dan `CHANGELOG.md` ke v0.4.0.
+- [x] Task: Jalankan build dan lint check untuk memastikan kualitas kode.
+- [x] Task: Verifikasi akhir seluruh alur fitur (End-to-End).
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Finalization & Documentation' (Protocol in workflow.md)

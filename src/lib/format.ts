@@ -1,8 +1,9 @@
-export function formatRupiah(amount: number) {
-    const isNegative = amount < 0
-    const absAmount = Math.abs(amount)
+import { Money } from "./money"
 
-    return `${isNegative ? '-' : ''}Rp ${absAmount.toLocaleString('id-ID')}`
+export function formatRupiah(amount: number) {
+    // Gunakan Money utility untuk format yang konsisten (2 desimal)
+    // Money.format menerima Integer (Sen), jadi konversi dulu
+    return Money.format(Money.fromFloat(amount))
 }
 
 // Simbol mata uang

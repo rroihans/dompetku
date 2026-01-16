@@ -69,6 +69,38 @@ export async function exportBackup(): Promise<{ success: boolean; data?: BackupD
     }
 }
 
+/**
+ * Selective export of specific data types
+ */
+export async function exportSelective(types: string[]): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+        await logSistem("INFO", "BACKUP", `Memulai export selektif: ${types.join(', ')}`)
+
+        const result: any = {
+            version: "1.0.0",
+            createdAt: new Date().toISOString(),
+            data: {},
+            types: types
+        }
+
+        const promises = []
+
+        if (types.includes('akun')) promises.push(prisma.akun.findMany().then(data => result.data.akun = data))
+        if (types.includes('transaksi')) promises.push(prisma.transaksi.findMany().then(data => result.data.transaksi = data))
+        if (types.includes('cicilan')) promises.push(prisma.rencanaCicilan.findMany().then(data => result.data.rencanaCicilan = data))
+        if (types.includes('recurring')) promises.push(prisma.recurringTransaction.findMany().then(data => result.data.recurringTransaction = data))
+        if (types.includes('budget')) promises.push(prisma.budget.findMany().then(data => result.data.budget = data))
+        if (types.includes('template')) promises.push(prisma.accountTemplate.findMany().then(data => result.data.accountTemplate = data))
+
+        await Promise.all(promises)
+
+        return { success: true, data: result }
+    } catch (error) {
+        await logSistem("ERROR", "BACKUP", "Gagal melakukan export selektif", (error as Error).stack)
+        return { success: false, error: "Gagal melakukan export selektif" }
+    }
+}
+
 // Import/Restore data dari backup
 export async function importBackup(backupJson: string): Promise<{
     success: boolean

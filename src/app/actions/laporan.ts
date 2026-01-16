@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
+import { Money } from "@/lib/money"
 
 const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
 
@@ -51,15 +52,16 @@ export async function getRingkasanBulanan(bulan: number, tahun: number): Promise
         for (const tx of transaksi) {
             const isExpense = tx.debitAkun?.tipe === "EXPENSE"
             const isIncome = tx.kreditAkun?.tipe === "INCOME"
+            const nominal = Money.toFloat(Number(tx.nominal))
 
             if (isExpense) {
-                totalPengeluaran += tx.nominal
+                totalPengeluaran += nominal
                 const existing = pengeluaranMap.get(tx.kategori) || 0
-                pengeluaranMap.set(tx.kategori, existing + tx.nominal)
+                pengeluaranMap.set(tx.kategori, existing + nominal)
             } else if (isIncome) {
-                totalPemasukan += tx.nominal
+                totalPemasukan += nominal
                 const existing = pemasukanMap.get(tx.kategori) || 0
-                pemasukanMap.set(tx.kategori, existing + tx.nominal)
+                pemasukanMap.set(tx.kategori, existing + nominal)
             }
         }
 
@@ -86,7 +88,7 @@ export async function getRingkasanBulanan(bulan: number, tahun: number): Promise
             .slice(0, 5)
             .map(tx => ({
                 deskripsi: tx.deskripsi,
-                nominal: tx.nominal,
+                nominal: Money.toFloat(Number(tx.nominal)),
                 kategori: tx.kategori,
                 tanggal: tx.tanggal
             }))

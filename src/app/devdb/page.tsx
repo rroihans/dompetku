@@ -8,17 +8,20 @@ import {
     FileText,
     Wallet,
     ArrowLeftRight,
+    Settings,
 } from "lucide-react"
 import {
     getAkunData,
     getTransaksiData,
     getRecurringData,
     getLogData,
-    getDatabaseStats
+    getDatabaseStats,
+    getAppSettingsData
 } from "@/app/actions/debug"
 import Link from "next/link"
 
 interface PageProps {
+    params: Promise<{ id: string }>
     searchParams: Promise<{
         tab?: string
         page?: string
@@ -46,7 +49,7 @@ export default async function DebugDatabasePage({ searchParams }: PageProps) {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Link href="/devdb?tab=akun">
                     <Card className={`cursor-pointer hover:border-primary transition ${tab === 'akun' ? 'border-primary' : ''}`}>
                         <CardHeader className="pb-2">
@@ -57,7 +60,7 @@ export default async function DebugDatabasePage({ searchParams }: PageProps) {
                         <CardContent>
                             <p className="text-2xl font-bold">{stats.akun}</p>
                             <p className="text-xs text-muted-foreground">
-                                {stats.akunUser} user, {stats.akunInternal} internal
+                                {stats.akunUser} user
                             </p>
                         </CardContent>
                     </Card>
@@ -95,6 +98,18 @@ export default async function DebugDatabasePage({ searchParams }: PageProps) {
                         </CardHeader>
                         <CardContent>
                             <p className="text-2xl font-bold">{stats.log}</p>
+                        </CardContent>
+                    </Card>
+                </Link>
+                <Link href="/devdb?tab=setting">
+                    <Card className={`cursor-pointer hover:border-primary transition ${tab === 'setting' ? 'border-primary' : ''}`}>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                                <Settings className="w-4 h-4" /> Settings
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-bold">{stats.setting}</p>
                         </CardContent>
                     </Card>
                 </Link>
@@ -139,6 +154,10 @@ async function DataTable({ tab, page }: { tab: string; page: number }) {
         case "log":
             result = await getLogData(page)
             columns = ["id", "level", "modul", "pesan", "createdAt"]
+            break
+        case "setting":
+            result = await getAppSettingsData(page)
+            columns = ["id", "kunci", "nilai", "updatedAt"]
             break
         default:
             return null

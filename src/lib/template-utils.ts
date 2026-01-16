@@ -29,7 +29,7 @@ export function calculateNextBillingDate(
     const firstDay = new Date(result.getFullYear(), result.getMonth(), 1);
     // Cari Jumat pertama
     let fridayCount = 0;
-    let currentDay = firstDay;
+    const currentDay = firstDay;
     while (fridayCount < 1) {
       if (currentDay.getDay() === 5) { // 5 = Jumat
         fridayCount++;
@@ -45,7 +45,7 @@ export function calculateNextBillingDate(
     if (thirdFriday < fromDate) {
       const nextMonthFirstDay = new Date(result.getFullYear(), result.getMonth() + 1, 1);
       let nextFridayCount = 0;
-      let nextCurrentDay = nextMonthFirstDay;
+      const nextCurrentDay = nextMonthFirstDay;
       while (nextFridayCount < 1) {
         if (nextCurrentDay.getDay() === 5) {
           nextFridayCount++;

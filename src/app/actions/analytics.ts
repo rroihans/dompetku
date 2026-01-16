@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
+import { Money } from "@/lib/money"
 
 // Tipe akun user (bukan internal)
 const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
@@ -39,7 +40,8 @@ export async function getDashboardAnalytics(): Promise<RingkasanDashboard> {
             where: { tipe: { in: USER_ACCOUNT_TYPES } },
             _sum: { saldoSekarang: true }
         })
-        const totalSaldo = totalSaldoResult._sum.saldoSekarang || 0
+        // Convert BigInt -> Float
+        const totalSaldo = Money.toFloat(Number(totalSaldoResult._sum.saldoSekarang || 0))
 
         // 2. Transaksi bulan ini (Parallel Aggregations)
         const [pemasukanResult, pengeluaranResult, kategoriResult] = await Promise.all([
@@ -72,52 +74,70 @@ export async function getDashboardAnalytics(): Promise<RingkasanDashboard> {
             })
         ])
 
-        const pemasukanBulanIni = pemasukanResult._sum.nominal || 0
-        const pengeluaranBulanIni = pengeluaranResult._sum.nominal || 0
+        const pemasukanBulanIni = Money.toFloat(Number(pemasukanResult._sum.nominal || 0))
+        const pengeluaranBulanIni = Money.toFloat(Number(pengeluaranResult._sum.nominal || 0))
         
         const pengeluaranPerKategori: PengeluaranPerKategori[] = kategoriResult.map(item => ({
             kategori: item.kategori,
-            total: item._sum.nominal || 0,
+            total: Money.toFloat(Number(item._sum.nominal || 0)),
             jumlah: item._count.id
         }))
 
-        // 3. Trend 6 bulan terakhir
+        // 3. Trend 6 bulan terakhir (OPTIMIZED)
         const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
         const trendBulanan: TrendBulanan[] = []
 
-        // Optimization: Get all aggregate data for the last 6 months in one go if possible? 
-        // Prisma doesn't support grouping by month/year directly in SQLite easily without raw query.
-        // For 6 iterations, it's acceptable for now, but using Promise.all
-        const monthRanges = []
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+        const sixMonthsEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+        
+        // Single Query
+        const transactions = await prisma.transaksi.findMany({
+            where: {
+                tanggal: { gte: sixMonthsAgo, lte: sixMonthsEnd },
+                OR: [
+                    { debitAkun: { tipe: "EXPENSE" } },
+                    { kreditAkun: { tipe: "INCOME" } }
+                ]
+            },
+            select: {
+                tanggal: true,
+                nominal: true,
+                debitAkun: { select: { tipe: true } },
+                kreditAkun: { select: { tipe: true } }
+            }
+        })
+
+        // Group in-memory
+        const monthlyStats: Record<string, { income: number, expense: number }> = {}
+        
+        for (const tx of transactions) {
+            const monthKey = `${tx.tanggal.getFullYear()}-${String(tx.tanggal.getMonth() + 1).padStart(2, '0')}`
+            if (!monthlyStats[monthKey]) monthlyStats[monthKey] = { income: 0, expense: 0 }
+            
+            const nominal = Money.toFloat(Number(tx.nominal))
+            
+            if (tx.kreditAkun?.tipe === "INCOME") {
+                monthlyStats[monthKey].income += nominal
+            }
+            if (tx.debitAkun?.tipe === "EXPENSE") {
+                monthlyStats[monthKey].expense += nominal
+            }
+        }
+        
+        // Format Result
         for (let i = 5; i >= 0; i--) {
             const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
-            const monthStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1)
-            const monthEnd = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59)
-            monthRanges.push({ monthStart, monthEnd, targetDate })
-        }
-
-        const monthlyStats = await Promise.all(monthRanges.map(range => 
-            Promise.all([
-                prisma.transaksi.aggregate({
-                    where: { tanggal: { gte: range.monthStart, lte: range.monthEnd }, debitAkun: { tipe: "EXPENSE" } },
-                    _sum: { nominal: true }
-                }),
-                prisma.transaksi.aggregate({
-                    where: { tanggal: { gte: range.monthStart, lte: range.monthEnd }, kreditAkun: { tipe: "INCOME" } },
-                    _sum: { nominal: true }
-                })
-            ])
-        ))
-
-        monthRanges.forEach((range, index) => {
-            const [expense, income] = monthlyStats[index]
+            const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`
+            
+            const stats = monthlyStats[monthKey] || { income: 0, expense: 0 }
+            
             trendBulanan.push({
-                bulan: `${range.targetDate.getFullYear()}-${String(range.targetDate.getMonth() + 1).padStart(2, '0')}`,
-                bulanNama: namaBulan[range.targetDate.getMonth()],
-                pemasukan: income._sum.nominal || 0,
-                pengeluaran: expense._sum.nominal || 0
+                bulan: monthKey,
+                bulanNama: namaBulan[targetDate.getMonth()],
+                pemasukan: stats.income,
+                pengeluaran: stats.expense
             })
-        })
+        }
 
         return {
             totalSaldo,
@@ -166,14 +186,14 @@ export async function getSaldoTrend(days: number = 30) {
         startDate.setDate(startDate.getDate() - days)
         startDate.setHours(0, 0, 0, 0)
 
-        // 1. Ambil saldo awal (saldoAwal di tabel Akun)
+        // 1. Ambil saldo awal (saldoAwal di tabel Akun) - BigInt
         const accounts = await prisma.akun.findMany({
             where: { tipe: { in: USER_ACCOUNT_TYPES } },
             select: { id: true, saldoAwal: true }
         })
-        let totalInitialBalance = accounts.reduce((sum, acc) => sum + acc.saldoAwal, 0)
+        let totalInitialBalanceInt = accounts.reduce((sum, acc) => sum + acc.saldoAwal, BigInt(0))
 
-        // 2. Ambil akumulasi mutasi transaksi SEBELUM startDate
+        // 2. Ambil akumulasi mutasi transaksi SEBELUM startDate - BigInt
         const [pastDebit, pastKredit] = await Promise.all([
             prisma.transaksi.aggregate({
                 where: {
@@ -191,12 +211,10 @@ export async function getSaldoTrend(days: number = 30) {
             })
         ])
 
-        // Saldo pada H-1 dari startDate
-        let runningBalance = totalInitialBalance + (pastDebit._sum.nominal || 0) - (pastKredit._sum.nominal || 0)
+        // Saldo pada H-1 dari startDate (BigInt)
+        let runningBalanceInt = totalInitialBalanceInt + (pastDebit._sum.nominal || BigInt(0)) - (pastKredit._sum.nominal || BigInt(0))
 
         // 3. Ambil mutasi transaksi HARIAN dalam range (startDate s/d endDate)
-        // Karena SQLite/Prisma tidak bisa group by date string dengan mudah, 
-        // kita ambil semua transaksi dalam range dan group di memory (masih jauh lebih cepat dibanding fetching semua histori)
         const transactionsInRange = await prisma.transaksi.findMany({
             where: {
                 tanggal: { gte: startDate, lte: endDate }
@@ -204,8 +222,6 @@ export async function getSaldoTrend(days: number = 30) {
             select: {
                 tanggal: true,
                 nominal: true,
-                debitAkunId: true,
-                kreditAkunId: true,
                 debitAkun: { select: { tipe: true } },
                 kreditAkun: { select: { tipe: true } }
             },
@@ -213,17 +229,17 @@ export async function getSaldoTrend(days: number = 30) {
         })
 
         // Group mutasi per hari
-        const dailyMutations: Record<string, number> = {}
+        const dailyMutations: Record<string, bigint> = {}
         for (const tx of transactionsInRange) {
             const dateStr = tx.tanggal.toISOString().split('T')[0]
-            let mutation = 0
+            let mutation = BigInt(0)
             if (tx.debitAkun && USER_ACCOUNT_TYPES.includes(tx.debitAkun.tipe)) {
                 mutation += tx.nominal
             }
             if (tx.kreditAkun && USER_ACCOUNT_TYPES.includes(tx.kreditAkun.tipe)) {
                 mutation -= tx.nominal
             }
-            dailyMutations[dateStr] = (dailyMutations[dateStr] || 0) + mutation
+            dailyMutations[dateStr] = (dailyMutations[dateStr] || BigInt(0)) + mutation
         }
 
         // 4. Bangun data trend harian
@@ -233,11 +249,11 @@ export async function getSaldoTrend(days: number = 30) {
             targetDate.setDate(startDate.getDate() + i)
             const dateStr = targetDate.toISOString().split('T')[0]
 
-            runningBalance += (dailyMutations[dateStr] || 0)
+            runningBalanceInt += (dailyMutations[dateStr] || BigInt(0))
             
             trendData.push({
                 tanggal: dateStr,
-                saldo: runningBalance
+                saldo: Money.toFloat(Number(runningBalanceInt))
             })
         }
 
@@ -300,8 +316,11 @@ export async function getMonthlyComparison() {
         const comparison: MonthlyComparison[] = []
 
         for (const kategori of categories) {
-            const bulanIni = thisMonthTx.find(t => t.kategori === kategori)?._sum.nominal || 0
-            const bulanLalu = lastMonthTx.find(t => t.kategori === kategori)?._sum.nominal || 0
+            const bulanIniBig = thisMonthTx.find(t => t.kategori === kategori)?._sum.nominal || BigInt(0)
+            const bulanLaluBig = lastMonthTx.find(t => t.kategori === kategori)?._sum.nominal || BigInt(0)
+            
+            const bulanIni = Money.toFloat(Number(bulanIniBig))
+            const bulanLalu = Money.toFloat(Number(bulanLaluBig))
 
             let persentasePerubahan = 0
             if (bulanLalu > 0) {
@@ -342,19 +361,24 @@ export async function getAccountComposition() {
         })
 
         // Hitung total (hanya positif untuk proporsi)
-        const totalPositive = accounts
-            .filter(a => a.saldoSekarang > 0)
-            .reduce((sum, a) => sum + a.saldoSekarang, 0)
+        const accountsMapped = accounts.map(a => ({
+             ...a,
+             saldo: Money.toFloat(Number(a.saldoSekarang))
+        }))
 
-        const composition: AccountComposition[] = accounts
-            .filter(a => a.saldoSekarang > 0) // Hanya tampilkan yang positif
+        const totalPositive = accountsMapped
+            .filter(a => a.saldo > 0)
+            .reduce((sum, a) => sum + a.saldo, 0)
+
+        const composition: AccountComposition[] = accountsMapped
+            .filter(a => a.saldo > 0) // Hanya tampilkan yang positif
             .map(a => ({
                 nama: a.nama,
                 tipe: a.tipe,
-                saldo: a.saldoSekarang,
+                saldo: a.saldo,
                 warna: a.warna || getDefaultColor(a.tipe),
                 persentase: totalPositive > 0
-                    ? Math.round((a.saldoSekarang / totalPositive) * 100)
+                    ? Math.round((a.saldo / totalPositive) * 100)
                     : 0
             }))
             .sort((a, b) => b.saldo - a.saldo)
@@ -391,7 +415,7 @@ export async function getEnhancedStats() {
             where: { tipe: { in: USER_ACCOUNT_TYPES } },
             select: { saldoSekarang: true }
         })
-        const totalSaldo = accounts.reduce((sum, a) => sum + a.saldoSekarang, 0)
+        const totalSaldo = accounts.reduce((sum, a) => sum + Money.toFloat(Number(a.saldoSekarang)), 0)
 
         // Pemasukan bulan ini
         const pemasukanBulanIni = await prisma.transaksi.aggregate({
@@ -430,13 +454,13 @@ export async function getEnhancedStats() {
         })
 
         const pemasukan = {
-            bulanIni: pemasukanBulanIni._sum.nominal || 0,
-            bulanLalu: pemasukanBulanLalu._sum.nominal || 0
+            bulanIni: Money.toFloat(Number(pemasukanBulanIni._sum.nominal || 0)),
+            bulanLalu: Money.toFloat(Number(pemasukanBulanLalu._sum.nominal || 0))
         }
 
         const pengeluaran = {
-            bulanIni: pengeluaranBulanIni._sum.nominal || 0,
-            bulanLalu: pengeluaranBulanLalu._sum.nominal || 0
+            bulanIni: Money.toFloat(Number(pengeluaranBulanIni._sum.nominal || 0)),
+            bulanLalu: Money.toFloat(Number(pengeluaranBulanLalu._sum.nominal || 0))
         }
 
         const selisih = {
@@ -502,10 +526,20 @@ export async function getCategoryDetail(kategori: string, bulan?: number, tahun?
         const weeklyData: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
         let total = 0
 
+        const transaksiMapped = []
         for (const tx of transaksi) {
-            total += tx.nominal
+             const nominal = Money.toFloat(Number(tx.nominal))
+            total += nominal
             const week = Math.ceil(tx.tanggal.getDate() / 7)
-            weeklyData[Math.min(week, 5)] += tx.nominal
+            weeklyData[Math.min(week, 5)] += nominal
+            
+             transaksiMapped.push({
+                    id: tx.id,
+                    deskripsi: tx.deskripsi,
+                    nominal: nominal,
+                    tanggal: tx.tanggal,
+                    akun: tx.kreditAkun?.nama || "Unknown"
+             })
         }
 
         const weeklyBreakdown = Object.entries(weeklyData).map(([week, nominal]) => ({
@@ -520,13 +554,7 @@ export async function getCategoryDetail(kategori: string, bulan?: number, tahun?
                 total,
                 jumlahTransaksi: transaksi.length,
                 weeklyBreakdown,
-                transaksi: transaksi.map(tx => ({
-                    id: tx.id,
-                    deskripsi: tx.deskripsi,
-                    nominal: tx.nominal,
-                    tanggal: tx.tanggal,
-                    akun: tx.kreditAkun?.nama || "Unknown"
-                }))
+                transaksi: transaksiMapped
             }
         }
     } catch (error) {
@@ -672,22 +700,24 @@ export async function getCashFlowTable(period: PeriodType = '30D') {
         let expenseCount = 0, expenseTotal = 0
 
         for (const tx of currentTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             if (tx.kreditAkun?.tipe === "INCOME") {
                 incomeCount++
-                incomeTotal += tx.nominal
+                incomeTotal += nominal
             } else if (tx.debitAkun?.tipe === "EXPENSE") {
                 expenseCount++
-                expenseTotal += tx.nominal
+                expenseTotal += nominal
             }
         }
 
         // Calculate previous period
         let prevIncomeTotal = 0, prevExpenseTotal = 0
         for (const tx of prevTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             if (tx.kreditAkun?.tipe === "INCOME") {
-                prevIncomeTotal += tx.nominal
+                prevIncomeTotal += nominal
             } else if (tx.debitAkun?.tipe === "EXPENSE") {
-                prevExpenseTotal += tx.nominal
+                prevExpenseTotal += nominal
             }
         }
 
@@ -761,12 +791,13 @@ export async function getIncomeExpenseBook(period: PeriodType = '30D') {
         let totalIncome = 0, totalExpense = 0
 
         for (const tx of currentTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             if (tx.kreditAkun?.tipe === "INCOME") {
-                totalIncome += tx.nominal
-                incomeMap.set(tx.kategori, (incomeMap.get(tx.kategori) || 0) + tx.nominal)
+                totalIncome += nominal
+                incomeMap.set(tx.kategori, (incomeMap.get(tx.kategori) || 0) + nominal)
             } else if (tx.debitAkun?.tipe === "EXPENSE") {
-                totalExpense += tx.nominal
-                expenseMap.set(tx.kategori, (expenseMap.get(tx.kategori) || 0) + tx.nominal)
+                totalExpense += nominal
+                expenseMap.set(tx.kategori, (expenseMap.get(tx.kategori) || 0) + nominal)
             }
         }
 
@@ -776,12 +807,13 @@ export async function getIncomeExpenseBook(period: PeriodType = '30D') {
         let prevTotalIncome = 0, prevTotalExpense = 0
 
         for (const tx of prevTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             if (tx.kreditAkun?.tipe === "INCOME") {
-                prevTotalIncome += tx.nominal
-                prevIncomeMap.set(tx.kategori, (prevIncomeMap.get(tx.kategori) || 0) + tx.nominal)
+                prevTotalIncome += nominal
+                prevIncomeMap.set(tx.kategori, (prevIncomeMap.get(tx.kategori) || 0) + nominal)
             } else if (tx.debitAkun?.tipe === "EXPENSE") {
-                prevTotalExpense += tx.nominal
-                prevExpenseMap.set(tx.kategori, (prevExpenseMap.get(tx.kategori) || 0) + tx.nominal)
+                prevTotalExpense += nominal
+                prevExpenseMap.set(tx.kategori, (prevExpenseMap.get(tx.kategori) || 0) + nominal)
             }
         }
 
@@ -912,15 +944,17 @@ export async function getSpendingInsights(period: PeriodType = '30D') {
         const categoryMap = new Map<string, { current: number, prev: number, count: number }>()
 
         for (const tx of currentTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             const existing = categoryMap.get(tx.kategori) || { current: 0, prev: 0, count: 0 }
-            existing.current += tx.nominal
+            existing.current += nominal
             existing.count++
             categoryMap.set(tx.kategori, existing)
         }
 
         for (const tx of prevTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             const existing = categoryMap.get(tx.kategori) || { current: 0, prev: 0, count: 0 }
-            existing.prev += tx.nominal
+            existing.prev += nominal
             categoryMap.set(tx.kategori, existing)
         }
 
@@ -948,8 +982,9 @@ export async function getSpendingInsights(period: PeriodType = '30D') {
         const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
         for (const tx of currentTx) {
+            const nominal = Money.toFloat(Number(tx.nominal))
             const day = dayNames[tx.tanggal.getDay()]
-            dailySpending[day] = (dailySpending[day] || 0) + tx.nominal
+            dailySpending[day] = (dailySpending[day] || 0) + nominal
         }
 
         const spendingByDay = dayNames.map(day => ({
@@ -972,4 +1007,3 @@ export async function getSpendingInsights(period: PeriodType = '30D') {
         return { success: false, data: null }
     }
 }
-

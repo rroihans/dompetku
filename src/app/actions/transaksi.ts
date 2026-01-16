@@ -4,12 +4,86 @@ import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
 import { saveNetWorthSnapshot } from "@/app/actions/networth"
+import { createNotification } from "@/app/actions/notifications"
+import { Money } from "@/lib/money"
+import { ErrorMessages } from "@/lib/constants/error-messages"
+import { TransaksiSchema } from "@/lib/validations/transaksi"
+import { ServerActionResult } from "@/types"
 
 // Untuk pagination - 25 item per halaman untuk tampilan lebih lengkap
 const PAGE_SIZE = 25
 
 // Tipe akun user
 const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
+
+/**
+ * Helper to check budget and create notification if needed
+ */
+async function checkBudgetNotification(kategori: string, tanggal: Date) {
+    try {
+        const bulan = tanggal.getMonth() + 1
+        const tahun = tanggal.getFullYear()
+
+        const budget = await prisma.budget.findFirst({
+            where: { kategori, bulan, tahun }
+        })
+
+        if (!budget) return
+
+        // Get total realization for this category
+        const startDate = new Date(tahun, bulan - 1, 1)
+        const endDate = new Date(tahun, bulan, 0, 23, 59, 59)
+
+        const result = await prisma.transaksi.aggregate({
+            where: {
+                kategori,
+                tanggal: { gte: startDate, lte: endDate },
+                debitAkun: { tipe: "EXPENSE" }
+            },
+            _sum: { nominal: true }
+        })
+
+        const realization = Money.toFloat(Number(result._sum.nominal || 0))
+        const percentage = (realization / budget.nominal) * 100
+
+        if (percentage >= 100) {
+            await createNotification({
+                type: "BUDGET_WARNING",
+                title: "❌ Anggaran Terlampaui",
+                message: `Pengeluaran kategori ${kategori} telah melebihi anggaran (Rp ${budget.nominal.toLocaleString('id-ID')}).`,
+                severity: "ERROR",
+                actionUrl: "/anggaran"
+            })
+        } else if (percentage >= 80) {
+            await createNotification({
+                type: "BUDGET_WARNING",
+                title: "⚠️ Anggaran Hampir Habis",
+                message: `Pengeluaran kategori ${kategori} sudah mencapai ${Math.round(percentage)}% dari anggaran.`,
+                severity: "WARNING",
+                actionUrl: "/anggaran"
+            })
+        }
+    } catch (error) {
+        console.error("Failed to check budget notification", error)
+    }
+}
+
+/**
+ * Helper to check large transactions
+ */
+async function checkLargeTransactionNotification(deskripsi: string, nominal: number) {
+    // Threshold can be dynamic, using fixed 10M for now or should be from settings
+    const THRESHOLD = 10000000 
+    if (nominal >= THRESHOLD) {
+        await createNotification({
+            type: "LARGE_TX",
+            title: "💰 Transaksi Besar Terdeteksi",
+            message: `Transaksi "${deskripsi}" sebesar Rp ${nominal.toLocaleString('id-ID')} telah dicatat.`,
+            severity: "INFO",
+            actionUrl: "/transaksi"
+        })
+    }
+}
 
 interface TransaksiFilter {
     page?: number
@@ -94,10 +168,10 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         if (minNominal !== undefined || maxNominal !== undefined) {
             where.nominal = {}
             if (minNominal !== undefined && minNominal > 0) {
-                where.nominal.gte = minNominal
+                where.nominal.gte = BigInt(Money.fromFloat(minNominal))
             }
             if (maxNominal !== undefined && maxNominal > 0) {
-                where.nominal.lte = maxNominal
+                where.nominal.lte = BigInt(Money.fromFloat(maxNominal))
             }
         }
 
@@ -128,52 +202,57 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         ])
 
         // Kalkulasi Running Balance jika memfilter per akun
-        let dataWithBalance = transaksi
+        let dataWithBalance = transaksi.map(tx => ({
+             ...tx,
+             // CAST BigInt to Number (Float) for UI
+             nominal: Money.toFloat(Number(tx.nominal)),
+             _nominalBigInt: tx.nominal
+        }))
+
         if (akunId && sort === "tanggal") {
-            // Ambil saldo saat ini dari akun tersebut
+            // Ambil saldo saat ini dari akun tersebut (BigInt)
             const akun = await prisma.akun.findUnique({
                 where: { id: akunId },
                 select: { saldoSekarang: true }
             })
 
             if (akun) {
-                let currentRunningBalance = akun.saldoSekarang
+                // Convert BigInt -> Number (Float) for calculation logic
+                let currentRunningBalance = Money.toFloat(Number(akun.saldoSekarang))
 
                 // Perbaikan: Jika bukan halaman pertama, sesuaikan saldo awal running balance
-                // dengan menghitung total perubahan dari transaksi di halaman-halaman sebelumnya
                 if (page > 1) {
                     const skippedTx = await prisma.transaksi.findMany({
                         where,
                         orderBy,
                         take: skip,
                         select: {
-                            nominal: true,
+                            nominal: true, // BigInt
                             debitAkunId: true,
                         }
                     })
 
                     for (const tx of skippedTx) {
+                        const nominal = Money.toFloat(Number(tx.nominal))
                         const isDebit = tx.debitAkunId === akunId
                         if (isDebit) {
-                            currentRunningBalance -= tx.nominal
+                            currentRunningBalance -= nominal
                         } else {
-                            currentRunningBalance += tx.nominal
+                            currentRunningBalance += nominal
                         }
                     }
                 }
 
-                // Karena data sorted by tanggal DESC, transaksi pertama di array adalah yang TERBARU
-                // Jadi kita hitung mundur dari saldo yang sudah disesuaikan
-                dataWithBalance = transaksi.map((tx) => {
+                // Hitung mundur
+                dataWithBalance = dataWithBalance.map((tx) => {
                     const txWithBalance = {
                         ...tx,
                         saldoSetelah: currentRunningBalance
                     }
                     
-                    // Hitung saldo sebelum transaksi ini untuk baris berikutnya
                     const isDebit = tx.debitAkunId === akunId
                     if (isDebit) {
-                        currentRunningBalance -= tx.nominal
+                        currentRunningBalance -= tx.nominal // tx.nominal is Float here (mapped above)
                     } else {
                         currentRunningBalance += tx.nominal
                     }
@@ -212,8 +291,8 @@ async function getOrCreateKategoriAkun(tx: any, kategori: string, tipe: "EXPENSE
             data: {
                 nama: namaAkun,
                 tipe,
-                saldoAwal: 0,
-                saldoSekarang: 0,
+                saldoAwal: BigInt(0),
+                saldoSekarang: BigInt(0),
             }
         })
     }
@@ -232,36 +311,53 @@ interface SimpleTransaksiData {
     idempotencyKey?: string
 }
 
-export async function createTransaksiSimple(data: SimpleTransaksiData) {
+export async function createTransaksiSimple(data: SimpleTransaksiData): Promise<ServerActionResult<any>> {
+    // 1. Validation with Zod
+    const validation = TransaksiSchema.safeParse({
+        ...data,
+        tanggal: data.tanggal || new Date()
+    })
+
+    if (!validation.success) {
+        return { 
+            success: false, 
+            error: "Data transaksi tidak valid", 
+            errors: validation.error.flatten().fieldErrors 
+        }
+    }
+
     try {
-        // 1. Cek idempotency key jika ada
+        // 2. Cek idempotency key jika ada
         if (data.idempotencyKey) {
             const existing = await prisma.transaksi.findUnique({
                 where: { idempotencyKey: data.idempotencyKey }
             })
-            if (existing) return { success: true, data: existing, duplicated: true }
+            if (existing) {
+                // Convert BigInt to Float for return
+                const mapped = {
+                    ...existing,
+                    nominal: Money.toFloat(Number(existing.nominal))
+                }
+                return { success: true, data: mapped, duplicated: true }
+            }
         }
 
-        // 2. Jalankan transaksi database (Atomic)
+        // 3. Jalankan transaksi database (Atomic)
         const result = await prisma.$transaction(async (tx: any) => {
             // Ambil atau buat akun kategori internal
             const kategoriTipe = data.tipeTransaksi === "KELUAR" ? "EXPENSE" : "INCOME"
             const kategoriAkun = await getOrCreateKategoriAkun(tx, data.kategori, kategoriTipe)
 
-            // Tentukan debit dan kredit berdasarkan tipe transaksi
-            // KELUAR: Uang keluar dari akun user -> masuk ke kategori pengeluaran
-            //   Debit: Kategori Pengeluaran (bertambah), Kredit: Akun User (berkurang)
-            // MASUK: Uang masuk ke akun user -> dari kategori pemasukan
-            //   Debit: Akun User (bertambah), Kredit: Kategori Pemasukan (berkurang)
-
             const debitAkunId = data.tipeTransaksi === "KELUAR" ? kategoriAkun.id : data.akunId
             const kreditAkunId = data.tipeTransaksi === "KELUAR" ? data.akunId : kategoriAkun.id
+
+            const nominalInt = BigInt(Money.fromFloat(data.nominal))
 
             // Buat record transaksi
             const transaksi = await tx.transaksi.create({
                 data: {
                     deskripsi: data.deskripsi || data.kategori,
-                    nominal: data.nominal,
+                    nominal: nominalInt, // BigInt
                     kategori: data.kategori,
                     debitAkunId,
                     kreditAkunId,
@@ -273,19 +369,27 @@ export async function createTransaksiSimple(data: SimpleTransaksiData) {
             // Update saldo akun debit (bertambah)
             await tx.akun.update({
                 where: { id: debitAkunId },
-                data: { saldoSekarang: { increment: data.nominal } }
+                data: { 
+                    saldoSekarang: { increment: nominalInt } // BigInt
+                }
             })
 
             // Update saldo akun kredit (berkurang)
             await tx.akun.update({
                 where: { id: kreditAkunId },
-                data: { saldoSekarang: { decrement: data.nominal } }
+                data: { 
+                    saldoSekarang: { decrement: nominalInt } // BigInt
+                }
             })
 
             return transaksi
         })
 
         await logSistem("INFO", "TRANSAKSI", `Transaksi baru dicatat: ${result.deskripsi}`)
+        
+        // Trigger non-blocking checks
+        void checkBudgetNotification(data.kategori, data.tanggal || new Date())
+        void checkLargeTransactionNotification(data.deskripsi || data.kategori, data.nominal)
         
         // Trigger background snapshot (non-blocking)
         void saveNetWorthSnapshot()
@@ -294,10 +398,15 @@ export async function createTransaksiSimple(data: SimpleTransaksiData) {
         revalidatePath("/akun")
         revalidatePath("/")
 
-        return { success: true, data: result }
+        const mappedResult = {
+            ...result,
+            nominal: Money.toFloat(Number(result.nominal))
+        }
+
+        return { success: true, data: mappedResult }
     } catch (error) {
         await logSistem("ERROR", "TRANSAKSI", "Gagal mencatat transaksi", (error as Error).stack)
-        return { success: false, error: "Gagal mencatat transaksi" }
+        return { success: false, error: ErrorMessages.GENERAL_ERROR }
     }
 }
 
@@ -311,20 +420,33 @@ export async function createTransaksi(data: {
     tanggal?: Date
     catatan?: string
     idempotencyKey?: string
-}) {
+}): Promise<ServerActionResult<any>> {
+    // Basic validation
+    if (data.nominal <= 0) {
+        return { success: false, error: ErrorMessages.INVALID_AMOUNT(data.nominal) }
+    }
+
     try {
         if (data.idempotencyKey) {
             const existing = await prisma.transaksi.findUnique({
                 where: { idempotencyKey: data.idempotencyKey }
             })
-            if (existing) return { success: true, data: existing, duplicated: true }
+            if (existing) {
+                 const mapped = {
+                    ...existing,
+                    nominal: Money.toFloat(Number(existing.nominal))
+                }
+                return { success: true, data: mapped, duplicated: true }
+            }
         }
+
+        const nominalInt = BigInt(Money.fromFloat(data.nominal))
 
         const result = await prisma.$transaction(async (tx: any) => {
             const transaksi = await tx.transaksi.create({
                 data: {
                     deskripsi: data.deskripsi,
-                    nominal: data.nominal,
+                    nominal: nominalInt, // BigInt
                     kategori: data.kategori,
                     debitAkunId: data.debitAkunId,
                     kreditAkunId: data.kreditAkunId,
@@ -336,18 +458,26 @@ export async function createTransaksi(data: {
 
             await tx.akun.update({
                 where: { id: data.debitAkunId },
-                data: { saldoSekarang: { increment: data.nominal } }
+                data: { 
+                    saldoSekarang: { increment: nominalInt }
+                }
             })
 
             await tx.akun.update({
                 where: { id: data.kreditAkunId },
-                data: { saldoSekarang: { decrement: data.nominal } }
+                data: { 
+                    saldoSekarang: { decrement: nominalInt }
+                }
             })
 
             return transaksi
         })
 
         await logSistem("INFO", "TRANSAKSI", `Transaksi baru dicatat: ${result.deskripsi}`)
+        
+        // Trigger non-blocking checks
+        void checkBudgetNotification(data.kategori, data.tanggal || new Date())
+        void checkLargeTransactionNotification(data.deskripsi || data.kategori, data.nominal)
         
         // Trigger background snapshot (non-blocking)
         void saveNetWorthSnapshot()
@@ -356,14 +486,19 @@ export async function createTransaksi(data: {
         revalidatePath("/akun")
         revalidatePath("/")
 
-        return { success: true, data: result }
+        const mappedResult = {
+            ...result,
+            nominal: Money.toFloat(Number(result.nominal))
+        }
+
+        return { success: true, data: mappedResult }
     } catch (error) {
         await logSistem("ERROR", "TRANSAKSI", "Gagal mencatat transaksi", (error as Error).stack)
-        return { success: false, error: "Gagal mencatat transaksi" }
+        return { success: false, error: ErrorMessages.GENERAL_ERROR }
     }
 }
 
-export async function deleteTransaksi(id: string) {
+export async function deleteTransaksi(id: string): Promise<ServerActionResult<void>> {
     try {
         // Ambil data transaksi terlebih dahulu
         const transaksi = await prisma.transaksi.findUnique({
@@ -380,17 +515,24 @@ export async function deleteTransaksi(id: string) {
 
         // Jalankan penghapusan dengan rollback saldo (Atomic)
         await prisma.$transaction(async (tx: any) => {
+            // transaksi.nominal is BigInt
+            const nominalInt = transaksi.nominal
+
             // Rollback saldo: kebalikan dari create
             // Debit akun: kurangi (sebelumnya ditambah)
             await tx.akun.update({
                 where: { id: transaksi.debitAkunId },
-                data: { saldoSekarang: { decrement: transaksi.nominal } }
+                data: { 
+                    saldoSekarang: { decrement: nominalInt }
+                }
             })
 
             // Kredit akun: tambah (sebelumnya dikurangi)
             await tx.akun.update({
                 where: { id: transaksi.kreditAkunId },
-                data: { saldoSekarang: { increment: transaksi.nominal } }
+                data: { 
+                    saldoSekarang: { increment: nominalInt }
+                }
             })
 
             // Hapus transaksi
@@ -408,10 +550,10 @@ export async function deleteTransaksi(id: string) {
         revalidatePath("/akun")
         revalidatePath("/")
 
-        return { success: true }
+        return { success: true, data: undefined }
     } catch (error) {
         await logSistem("ERROR", "TRANSAKSI", "Gagal menghapus transaksi", (error as Error).stack)
-        return { success: false, error: "Gagal menghapus transaksi" }
+        return { success: false, error: ErrorMessages.GENERAL_ERROR }
     }
 }
 
@@ -420,10 +562,15 @@ export async function updateTransaksi(id: string, data: {
     kategori?: string
     catatan?: string
     nominal?: number // Support edit nominal
-}) {
+}): Promise<ServerActionResult<any>> {
     try {
         // Jika nominal berubah, perlu adjust saldo akun
         if (data.nominal !== undefined) {
+            
+            if (data.nominal <= 0) {
+                return { success: false, error: ErrorMessages.INVALID_AMOUNT(data.nominal) }
+            }
+
             // Ambil transaksi lama
             const oldTransaksi = await prisma.transaksi.findUnique({
                 where: { id },
@@ -433,7 +580,10 @@ export async function updateTransaksi(id: string, data: {
                 return { success: false, error: "Transaksi tidak ditemukan" }
             }
 
-            const selisih = data.nominal - oldTransaksi.nominal
+            // Calculate Int diff
+            const oldNominalInt = oldTransaksi.nominal // BigInt
+            const newNominalInt = BigInt(Money.fromFloat(data.nominal))
+            const selisihInt = newNominalInt - oldNominalInt
 
             // Jalankan dalam transaction
             const transaksi = await prisma.$transaction(async (tx: any) => {
@@ -441,19 +591,26 @@ export async function updateTransaksi(id: string, data: {
                 // Debit akun: tambah selisih
                 await tx.akun.update({
                     where: { id: oldTransaksi.debitAkunId },
-                    data: { saldoSekarang: { increment: selisih } }
+                    data: { 
+                        saldoSekarang: { increment: selisihInt }
+                    }
                 })
 
                 // Kredit akun: kurang selisih
                 await tx.akun.update({
                     where: { id: oldTransaksi.kreditAkunId },
-                    data: { saldoSekarang: { decrement: selisih } }
+                    data: { 
+                        saldoSekarang: { decrement: selisihInt }
+                    }
                 })
 
                 // Update transaksi
                 return await tx.transaksi.update({
                     where: { id },
-                    data,
+                    data: {
+                        ...data,
+                        nominal: newNominalInt // Update BigInt column
+                    },
                 })
             })
 
@@ -466,7 +623,12 @@ export async function updateTransaksi(id: string, data: {
             revalidatePath("/akun")
             revalidatePath("/")
 
-            return { success: true, data: transaksi }
+            const mappedResult = {
+                ...transaksi,
+                nominal: Money.toFloat(Number(transaksi.nominal))
+            }
+
+            return { success: true, data: mappedResult }
         }
 
         // Jika nominal tidak berubah, update biasa
@@ -483,10 +645,14 @@ export async function updateTransaksi(id: string, data: {
         revalidatePath("/transaksi")
         revalidatePath("/")
 
-        return { success: true, data: transaksi }
+        const mappedResult = {
+            ...transaksi,
+            nominal: Money.toFloat(Number(transaksi.nominal))
+        }
+
+        return { success: true, data: mappedResult }
     } catch (error) {
         await logSistem("ERROR", "TRANSAKSI", "Gagal memperbarui transaksi", (error as Error).stack)
-        return { success: false, error: "Gagal memperbarui transaksi" }
+        return { success: false, error: ErrorMessages.GENERAL_ERROR }
     }
 }
-

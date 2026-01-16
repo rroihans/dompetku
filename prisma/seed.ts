@@ -76,6 +76,16 @@ async function main() {
     })
   }
 
+  console.log('Seeding app settings...')
+  await prisma.appSetting.upsert({
+    where: { kunci: 'USE_MIN_BALANCE_METHOD' },
+    update: {},
+    create: {
+      kunci: 'USE_MIN_BALANCE_METHOD',
+      nilai: 'false' // Default false for safe rollout
+    }
+  })
+
   console.log('Seeding completed.')
 }
 

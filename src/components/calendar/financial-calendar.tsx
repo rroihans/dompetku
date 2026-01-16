@@ -14,6 +14,7 @@ import {
     TrendingDown
 } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
+import { CalendarEventActions } from "./calendar-event-actions"
 
 interface CalendarEvent {
     id: string
@@ -235,13 +236,16 @@ export function FinancialCalendar({ events, bulan, tahun, onMonthChange }: Finan
                                                 <p className="text-xs text-muted-foreground">{event.description}</p>
                                             </div>
                                         </div>
-                                        <p
-                                            className="text-sm font-bold"
-                                            style={{ color: event.color }}
-                                            data-private="true"
-                                        >
-                                            {formatRupiah(event.nominal)}
-                                        </p>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <p
+                                                className="text-sm font-bold"
+                                                style={{ color: event.color }}
+                                                data-private="true"
+                                            >
+                                                {formatRupiah(event.nominal)}
+                                            </p>
+                                            <CalendarEventActions event={event} />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
