@@ -19,3 +19,5 @@ Personal finance management application for tracking accounts, credit card insta
 - **Budgeting System:** Ability to set monthly spending limits per category and monitor progress in real-time.
 - **Flexible Banking Automation:** Precision policy-based system for automating bank fees and interest. Supports "Minimum Balance" calculations for 90%+ accuracy, per-account customization of billing patterns, and automated tiered interest processing with tax handling.
 - **Multi-Account Support:** Comprehensive tracking for Banks, E-Wallets, Credit Cards, and Cash accounts, with detailed account history and balance auditing.
+- **Smart Notification System:** Real-time alerts for budget thresholds, upcoming installments, low balances, and system status updates to keep users informed.
+- **Reliability & Integrity:** Built-in database integrity tools to detect and fix inconsistencies, ensuring 100% data accuracy across all features.

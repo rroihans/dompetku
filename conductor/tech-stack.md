@@ -18,6 +18,7 @@
 ## Data & Backend
 - **ORM:** Prisma
 - **Database:** SQLite
+- **Date Handling:** date-fns
 - **Architecture:** Double-Entry Bookkeeping (Debit & Kredit) with Integer-based Money (BigInt/Sen) for precision.
 - **Banking Automation:** Policy-based engine for recurring fees and tiered interest calculations with deterministic billing patterns (Fixed Date, 3rd Friday, Last Working Day).
 - **Reliability:** Idempotency Key for data mutation and real-time data synchronization for net worth analytics.
