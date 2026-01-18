@@ -4,6 +4,7 @@
 - **High Contrast & Information Dense:** The interface should maximize data visibility. Power users need to see balances, upcoming installments, and recent transactions without excessive scrolling.
 - **Clarity over Flourish:** Prioritize legible typography and clear distinctions between different account types and transaction categories.
 - **Efficient Navigation:** Ensure common actions (like adding a transaction or checking the installment schedule) are accessible with minimal clicks.
+- **Grouped & Logical Menu:** Use hierarchical menus (Sidebar groups, Drawer sections) to organize features into logical categories (Analisis, Perencanaan, Utama) to handle increasing app complexity.
 
 ## Tone of Voice & Messaging
 - **Professional & Trustworthy:** Use precise, formal language. Financial data is sensitive; the app's communication must reflect accuracy and reliability.

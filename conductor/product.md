@@ -23,3 +23,4 @@ Personal finance management application for tracking accounts, credit card insta
 - **Multi-Account Support:** Comprehensive tracking for Banks, E-Wallets, Credit Cards, and Cash accounts, with detailed account history and balance auditing.
 - **Smart Notification System:** Real-time alerts for budget thresholds, upcoming installments, low balances, and system status updates to keep users informed.
 - **Reliability & Integrity:** Built-in database integrity tools (Balance Verification) to detect and auto-fix inconsistencies, ensuring 100% data accuracy across all features.
+- **Enhanced Accessibility:** Logical grouping of features in navigation menus for faster discovery and better user experience on both desktop and mobile.
