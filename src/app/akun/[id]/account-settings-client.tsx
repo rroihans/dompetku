@@ -15,7 +15,8 @@ import {
     Save, 
     RefreshCcw,
     Clock,
-    History
+    History,
+    FileText
 } from "lucide-react"
 import { 
     PatternBuilderUI, 
@@ -36,10 +37,12 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 
 interface AccountData {
     id: string;
     nama: string;
+    tipe: string;
     biayaAdminAktif: boolean;
     biayaAdminNominal: number | null;
     biayaAdminPola: string | null;
@@ -87,13 +90,13 @@ export function AccountSettingsClient({ akun, templates }: { akun: AccountData, 
             })
             if (result.success) {
                 router.refresh()
-                alert("Pengaturan berhasil disimpan")
+                toast.success("Pengaturan berhasil disimpan")
             } else {
-                alert(result.error || "Gagal menyimpan pengaturan")
+                toast.error(result.error || "Gagal menyimpan pengaturan")
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Terjadi kesalahan sistem";
-            alert(msg)
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -105,13 +108,13 @@ export function AccountSettingsClient({ akun, templates }: { akun: AccountData, 
             const result = await resetAccountToTemplate(akun.id)
             if (result.success) {
                 router.refresh()
-                alert("Pengaturan telah direset ke default template")
+                toast.success("Pengaturan telah direset ke default template")
             } else {
-                alert(result.error || "Gagal mereset pengaturan")
+                toast.error(result.error || "Gagal mereset pengaturan")
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Terjadi kesalahan sistem";
-            alert(msg)
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -119,6 +122,27 @@ export function AccountSettingsClient({ akun, templates }: { akun: AccountData, 
 
     return (
         <div className="space-y-6 pb-20">
+            {/* Credit Card Specific Settings */}
+            {akun.tipe === "CREDIT_CARD" && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Statements
+                        </CardTitle>
+                        <CardDescription>
+                            Generate monthly statement manual (Pre-release feature).
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <Button onClick={() => toast.info("Fitur ini akan tersedia di Sprint 2")} variant="outline" className="w-full sm:w-auto">
+                             <FileText className="mr-2 h-4 w-4" />
+                             Generate Statement (Manual)
+                         </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Biaya Admin Section */}
             <Card>
                 <CardHeader>
