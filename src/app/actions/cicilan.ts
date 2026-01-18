@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
 import { Money } from "@/lib/money"
+import { CicilanSchema } from "@/lib/validations/cicilan"
 
 export interface CicilanData {
     namaProduk: string
@@ -19,13 +20,26 @@ export interface CicilanData {
 // Buat cicilan baru
 export async function createCicilan(data: CicilanData) {
     try {
-        // Validasi
-        if (data.totalPokok <= 0 || data.tenor <= 0 || data.nominalPerBulan <= 0) {
-            return { success: false, error: "Nominal dan tenor harus lebih dari 0" }
-        }
+        // Validasi using Zod Schema
+        // We need to provide dummy akunDebitId because it's required by schema but created inside function
+        // Or we can update the schema to make it optional if it's generated?
+        // Actually, the schema expects ID. But here we create the account on the fly.
+        // Let's refine the schema usage.
+        // We will validate the INPUT data. The schema I defined `CicilanSchema` includes `akunDebitId`.
+        // But `createCicilan` function signature creates the debit account if missing.
+        // So I should validata `data` partially or adjust the schema.
+        // The `CicilanSchema` is likely intended for the FORM. The action should validate logic.
+        // Let's validate fields that map to `CicilanData`.
+        
+        const partialSchema = CicilanSchema.omit({ akunDebitId: true, adminFeeType: true, adminFeeAmount: true })
+        
+        const validation = partialSchema.safeParse(data)
 
-        if (data.tanggalJatuhTempo < 1 || data.tanggalJatuhTempo > 31) {
-            return { success: false, error: "Tanggal jatuh tempo harus antara 1-31" }
+        if (!validation.success) {
+             const errorMessages = validation.error.flatten().fieldErrors;
+             // Combine first error message
+             const firstError = Object.values(errorMessages).flat()[0] || "Data tidak valid";
+             return { success: false, error: firstError, errors: errorMessages }
         }
 
         // Cari atau buat akun pengeluaran cicilan

@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/select"
 import { createTransaksiSimple } from "@/app/actions/transaksi"
 import { getAkun } from "@/app/actions/akun"
+import { cn } from "@/lib/utils"
+import { toast } from "sonner" // Assuming sonner is installed as per Tech Stack
 
 // Kategori pengeluaran sederhana
 const KATEGORI_PENGELUARAN = [
@@ -47,24 +49,25 @@ const KATEGORI_PEMASUKAN = [
     "Lainnya (Pemasukan)",
 ]
 
-// Schema validasi form - SEDERHANA
+// Schema validasi form - Matches Server Side Strict Rules
 const formSchema = z.object({
-    nominal: z.number().min(1, "Nominal harus lebih dari 0"),
+    nominal: z.coerce.number()
+        .min(100, "Nominal minimal Rp 100")
+        .max(1_000_000_000, "Nominal maksimal Rp 1 miliar"),
     kategori: z.string().min(1, "Pilih kategori"),
     akunId: z.string().min(1, "Pilih akun"),
     tipeTransaksi: z.enum(["KELUAR", "MASUK"]),
-    tanggal: z.string().optional(), // Date string YYYY-MM-DD
-    deskripsi: z.string().optional(), // OPSIONAL
+    tanggal: z.string().refine((val) => {
+        if (!val) return true;
+        const d = new Date(val);
+        const now = new Date();
+        now.setHours(23, 59, 59, 999);
+        return d <= now;
+    }, "Tanggal tidak boleh di masa depan").optional(),
+    deskripsi: z.string().max(200, "Maksimal 200 karakter").optional(),
 })
 
-interface FormValues {
-    nominal: number;
-    kategori: string;
-    akunId: string;
-    tipeTransaksi: "KELUAR" | "MASUK";
-    tanggal?: string;
-    deskripsi?: string;
-}
+type FormValues = z.infer<typeof formSchema>
 
 interface Akun {
     id: string
@@ -83,9 +86,10 @@ export function AddTransactionForm() {
         setValue,
         watch,
         reset,
-        formState: { errors },
+        formState: { errors, isValid },
     } = useForm<FormValues>({
         resolver: zodResolver(formSchema),
+        mode: "onChange",
         defaultValues: {
             nominal: 0,
             kategori: "",
@@ -97,16 +101,16 @@ export function AddTransactionForm() {
     })
 
     const tipeTransaksi = watch("tipeTransaksi")
+    const kategoriValue = watch("kategori")
+    const akunIdValue = watch("akunId")
 
-    // Load daftar akun saat dialog dibuka (filter hanya akun uang, bukan kategori)
+    // Load daftar akun saat dialog dibuka
     useEffect(() => {
         if (open) {
             getAkun().then((akuns) => {
-                // Hanya tampilkan akun BANK, E_WALLET, CASH, CREDIT_CARD
                 const filtered = akuns.filter((a: Akun) =>
                     ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(a.tipe)
                 )
-                // Deduplicate berdasarkan ID
                 const unique = filtered.filter((akun: Akun, index: number, self: Akun[]) =>
                     index === self.findIndex((a) => a.id === akun.id)
                 )
@@ -119,10 +123,6 @@ export function AddTransactionForm() {
         setLoading(true)
         try {
             const idempotencyKey = `txn_${Date.now()}_${Math.random().toString(36).substring(7)}`
-
-            // Untuk KELUAR: akunId adalah sumber (kredit), kategori jadi akun debit internal
-            // Untuk MASUK: akunId adalah tujuan (debit), kategori jadi akun kredit internal
-            // Sistem akan handle internal account di server action
 
             const res = await createTransaksiSimple({
                 nominal: values.nominal,
@@ -137,12 +137,13 @@ export function AddTransactionForm() {
             if (res.success) {
                 setOpen(false)
                 reset()
+                toast.success("Transaksi berhasil disimpan")
             } else {
-                alert("Gagal menyimpan transaksi")
+                toast.error(res.error || "Gagal menyimpan transaksi")
             }
         } catch (error) {
             console.error(error)
-            alert("Terjadi kesalahan sistem")
+            toast.error("Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
         }
@@ -190,7 +191,10 @@ export function AddTransactionForm() {
                             id="nominal"
                             type="number"
                             placeholder="50000"
-                            className="text-lg font-bold"
+                            className={cn(
+                                "text-lg font-bold",
+                                errors.nominal && "border-red-500 focus-visible:ring-red-500"
+                            )}
                             {...register("nominal", { valueAsNumber: true })}
                         />
                         {errors.nominal && (
@@ -201,8 +205,11 @@ export function AddTransactionForm() {
                     {/* Kategori */}
                     <div className="grid gap-2">
                         <Label htmlFor="kategori">Kategori</Label>
-                        <Select onValueChange={(val) => setValue("kategori", val)}>
-                            <SelectTrigger>
+                        <Select 
+                            value={kategoriValue} 
+                            onValueChange={(val) => setValue("kategori", val, { shouldValidate: true })}
+                        >
+                            <SelectTrigger className={cn(errors.kategori && "border-red-500")}>
                                 <SelectValue placeholder="Pilih kategori" />
                             </SelectTrigger>
                             <SelectContent>
@@ -223,8 +230,11 @@ export function AddTransactionForm() {
                         <Label htmlFor="akunId">
                             {tipeTransaksi === "KELUAR" ? "Dari Akun" : "Ke Akun"}
                         </Label>
-                        <Select onValueChange={(val) => setValue("akunId", val)}>
-                            <SelectTrigger>
+                        <Select 
+                            value={akunIdValue}
+                            onValueChange={(val) => setValue("akunId", val, { shouldValidate: true })}
+                        >
+                            <SelectTrigger className={cn(errors.akunId && "border-red-500")}>
                                 <SelectValue placeholder="Pilih akun" />
                             </SelectTrigger>
                             <SelectContent>
@@ -250,8 +260,12 @@ export function AddTransactionForm() {
                         <Input
                             id="tanggal"
                             type="date"
+                            className={cn(errors.tanggal && "border-red-500")}
                             {...register("tanggal")}
                         />
+                        {errors.tanggal && (
+                            <p className="text-sm text-red-500">{errors.tanggal.message}</p>
+                        )}
                     </div>
 
                     {/* Deskripsi (Opsional) */}
@@ -262,12 +276,16 @@ export function AddTransactionForm() {
                         <Input
                             id="deskripsi"
                             placeholder="Makan siang di..."
+                            className={cn(errors.deskripsi && "border-red-500")}
                             {...register("deskripsi")}
                         />
+                         {errors.deskripsi && (
+                            <p className="text-sm text-red-500">{errors.deskripsi.message}</p>
+                        )}
                     </div>
 
                     <DialogFooter>
-                        <Button type="submit" disabled={loading} className="w-full">
+                        <Button type="submit" disabled={loading || !isValid} className="w-full">
                             {loading ? "Menyimpan..." : "Simpan"}
                         </Button>
                     </DialogFooter>

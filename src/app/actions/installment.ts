@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
 import { Money } from "@/lib/money"
+import { ConvertInstallmentSchema } from "@/lib/validations/cicilan"
 
 /**
  * Get all active installment templates
@@ -63,10 +64,25 @@ interface ConvertToInstallmentParams {
  * 4. Buat RencanaCicilan untuk tracking pembayaran
  */
 export async function convertTransactionToInstallment(params: ConvertToInstallmentParams) {
+    // Validation using Zod
+    const validation = ConvertInstallmentSchema.safeParse({
+        transaksiId: params.transaksiId,
+        tenor: params.tenor,
+        templateId: params.templateId,
+        adminFeeType: params.adminFeeType,
+        adminFeeAmount: params.adminFeeAmount,
+    })
+
+    if (!validation.success) {
+        const errorMessages = validation.error.flatten().fieldErrors;
+        return { success: false, error: Object.values(errorMessages).flat()[0] || "Data tidak valid" }
+    }
+    
+    // Deconstruct verified params, but keep using original params for flexibility if schema is slightly different or strict
     const { transaksiId, tenor, templateId, adminFeeAmount, adminFeeType } = params
 
     try {
-        // Validate inputs
+        // Validate inputs (redundant check but safe)
         if (!transaksiId || !tenor || tenor < 1) {
             return { success: false, error: "Data tidak valid" }
         }

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
 import { Money } from "@/lib/money"
+import { CreditCardSettingsSchema } from "@/lib/validations/credit-card"
 
 // Tipe akun yang ditampilkan ke user (bukan internal)
 const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
@@ -111,6 +112,25 @@ export async function createAkun(data: {
             return { success: false, error: `Akun dengan nama "${data.nama}" sudah ada` }
         }
 
+        // Validasi Credit Card Settings
+        if (data.tipe === "CREDIT_CARD") {
+             const ccValidation = CreditCardSettingsSchema.partial().safeParse({
+                 billingDate: data.billingDate,
+                 dueDate: data.dueDate,
+                 minPaymentPercent: data.minPaymentPercent,
+                 minPaymentFixed: data.minPaymentFixed,
+                 minInstallmentAmount: data.minInstallmentAmount,
+                 limitKredit: data.limitKredit,
+                 useDecimalFormat: data.useDecimalFormat,
+                 isSyariah: data.isSyariah
+             })
+             
+             if (!ccValidation.success) {
+                 const errorMessages = ccValidation.error.flatten().fieldErrors;
+                 return { success: false, error: Object.values(errorMessages).flat()[0] || "Data Kartu Kredit tidak valid" }
+             }
+        }
+
         const saldoAwalInt = BigInt(Money.fromFloat(data.saldoAwal))
         const limitKreditInt = data.limitKredit ? BigInt(Money.fromFloat(data.limitKredit)) : null
         const setoranAwalInt = data.setoranAwal ? BigInt(Money.fromFloat(data.setoranAwal)) : null
@@ -190,6 +210,27 @@ export async function updateAkun(id: string, data: {
                 return { success: false, error: `Akun dengan nama "${data.nama}" sudah ada` }
             }
         }
+        
+        // Validate CC Settings if type is CC or if we are updating CC fields
+        // Since we might not change type here, check if fields are present.
+        if (data.billingDate || data.dueDate || data.minPaymentPercent || data.minPaymentFixed) {
+             const ccValidation = CreditCardSettingsSchema.partial().safeParse({
+                 billingDate: data.billingDate,
+                 dueDate: data.dueDate,
+                 minPaymentPercent: data.minPaymentPercent,
+                 minPaymentFixed: data.minPaymentFixed,
+                 minInstallmentAmount: data.minInstallmentAmount,
+                 limitKredit: data.limitKredit,
+                 useDecimalFormat: data.useDecimalFormat,
+                 isSyariah: data.isSyariah
+             })
+             
+             if (!ccValidation.success) {
+                 const errorMessages = ccValidation.error.flatten().fieldErrors;
+                 return { success: false, error: Object.values(errorMessages).flat()[0] || "Data Kartu Kredit tidak valid" }
+             }
+        }
+
 
         const updateData: any = { ...data }
 
