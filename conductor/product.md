@@ -16,7 +16,7 @@ Personal finance management application for tracking accounts, credit card insta
 - **Core Transaction Engine:** Robust double-entry bookkeeping (debit/kredit) for accurate financial tracking.
 - **Automated Installment Engine:** Specialized management for credit card installments (cicilan), including automated generation of monthly transactions and calculation of fees/interest.
 - **Credit Card Payment & Tracking:** Dedicated interface for managing credit card bills with payment calculator, atomic transaction processing, and manual statement generation.
-- **Visual Analytics Dashboard:** High-level overview of net worth trends with real-time snapshots, asset composition, and spending breakdowns using interactive charts with deep drill-down and deterministic account history tracking.
+- **Visual Analytics Dashboard:** High-level overview of net worth trends with real-time snapshots, asset composition, and spending breakdowns using interactive charts. Includes advanced analytics like Year-over-Year comparison and Spending Heatmaps.
 - **Budgeting System:** Ability to set monthly spending limits per category and monitor progress in real-time.
 - **Real-Time Budget Alerts:** Proactive notifications (Toast/Banner) when spending approaches or exceeds defined budget limits.
 - **Flexible Banking Automation:** Precision policy-based system for automating bank fees and interest. Supports "Minimum Balance" calculations for 90%+ accuracy, per-account customization of billing patterns, and automated tiered interest processing with tax handling.
