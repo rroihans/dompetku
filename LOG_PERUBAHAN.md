@@ -130,6 +130,23 @@
 
 ## Riwayat Versi
 
+### v0.6.0 (2026-01-18)
+- **Critical Fixes & Foundation (Sprint 1):**
+    - **Balance Verification Tool:**
+        - Audit saldo akun vs histori transaksi (`/pengaturan/verify-balance`).
+        - **Auto-Fix** balance dengan audit trail ke Log Sistem.
+    - **Budget Alert System:**
+        - Real-time checks saat input transaksi.
+        - **Toast Notification:** Warning (80%), Danger (100%), Critical (120%).
+        - **Dashboard Banner:** Ringkasan kategori yang over-budget.
+    - **Credit Card Payment Flow:**
+        - UI Bayar Tagihan di detail kartu kredit.
+        - **Payment Calculator:** Integrasi dialog pembayaran dengan opsi Full/Minimum/Custom.
+        - **Atomic Transaction:** Pembayaran mengurangi saldo sumber dan menambah limit kartu kredit.
+    - **Data Integrity:**
+        - Strict Zod Validation untuk Transaksi, Cicilan, dan Kartu Kredit.
+        - Pencegahan input negatif, tanggal masa depan, dan data tidak valid.
+
 ### v0.5.0 (2026-01-15)
 - **Enhanced Credit Card Management System:**
     - **Mandatory Fields:** Kartu kredit: isSyariah, billingDate, dueDate, minPaymentFixed (minInstallmentAmount opsional).
