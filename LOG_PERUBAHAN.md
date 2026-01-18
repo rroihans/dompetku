@@ -130,6 +130,13 @@
 
 ## Riwayat Versi
 
+### v0.7.1 (2026-01-18)
+- **Analytics Polish:**
+    - **Filter Transaksi:** Advanced filter panel auto-expanded by default.
+    - **Heatmap Insights:** Enhanced logic with "Daily Average", "Zero Spending", "Highest Day", and "Normal Pattern" detection. Lowered threshold for weekend spike.
+    - **YoY Mobile Layout:** Improved chart responsiveness (responsive container + hidden axis) and table horizontal scroll.
+    - **UI Colors:** Softer insight colors (Pastel Amber/Emerald/Blue) for better readability.
+
 ### v0.7.0 (2026-01-18)
 - **Analytics & Advanced Features (Sprint 3):**
     - **Year-over-Year Comparison:** Dashboard perbandingan tahunan, tabel breakdown kategori, visualisasi grafik bar/line, dan automated AI insights.

@@ -54,17 +54,17 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
 
             <TabsContent value="monthly">
                 <Card>
-                    <CardContent className="pt-6 h-[400px]">
+                    <CardContent className="pt-6 h-[300px] sm:h-[400px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={data}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
                                 <YAxis 
                                     tickFormatter={(val) => `Rp ${val/1000000}M`} 
-                                    fontSize={12} 
+                                    fontSize={10} 
                                     tickLine={false} 
                                     axisLine={false} 
-                                    width={80}
+                                    width={50}
                                 />
                                 <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
                                 <Legend />
@@ -78,17 +78,17 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
 
             <TabsContent value="cumulative">
                 <Card>
-                    <CardContent className="pt-6 h-[400px]">
+                    <CardContent className="pt-6 h-[300px] sm:h-[400px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={lineData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
                                 <YAxis 
                                     tickFormatter={(val) => `Rp ${val/1000000}M`} 
-                                    fontSize={12} 
+                                    fontSize={10} 
                                     tickLine={false} 
                                     axisLine={false}
-                                    width={80} 
+                                    width={50} 
                                 />
                                 <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
                                 <Legend />

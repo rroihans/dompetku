@@ -34,29 +34,29 @@ export function CategoryComparisonTable({ year1, year2, categories1, categories2
     }).sort((a, b) => Math.abs(b.change) - Math.abs(a.change)); // Sort by absolute change impact
 
     return (
-        <div className="border rounded-md">
+        <div className="border rounded-md overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Kategori</TableHead>
-                        <TableHead>{year1}</TableHead>
-                        <TableHead>{year2}</TableHead>
-                        <TableHead>Perubahan (Rp)</TableHead>
-                        <TableHead>Perubahan (%)</TableHead>
-                        <TableHead>Trend</TableHead>
+                        <TableHead className="whitespace-nowrap">Kategori</TableHead>
+                        <TableHead className="whitespace-nowrap">{year1}</TableHead>
+                        <TableHead className="whitespace-nowrap">{year2}</TableHead>
+                        <TableHead className="whitespace-nowrap">Perubahan (Rp)</TableHead>
+                        <TableHead className="whitespace-nowrap">Perubahan (%)</TableHead>
+                        <TableHead className="whitespace-nowrap">Trend</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {data.map((row) => (
                         <TableRow key={row.name}>
-                            <TableCell className="font-medium">{row.name}</TableCell>
-                            <TableCell>{formatRupiah(row.amount1)}</TableCell>
-                            <TableCell>{formatRupiah(row.amount2)}</TableCell>
-                            <TableCell className={row.change > 0 ? "text-red-500" : "text-emerald-500"}>
+                            <TableCell className="font-medium whitespace-nowrap">{row.name}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatRupiah(row.amount1)}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatRupiah(row.amount2)}</TableCell>
+                            <TableCell className={`whitespace-nowrap ${row.change > 0 ? "text-red-500" : "text-emerald-500"}`}>
                                 {row.change > 0 ? '+' : ''}{formatRupiah(row.change)}
                             </TableCell>
-                            <TableCell>{row.percent.toFixed(1)}%</TableCell>
-                            <TableCell>
+                            <TableCell className="whitespace-nowrap">{row.percent.toFixed(1)}%</TableCell>
+                            <TableCell className="whitespace-nowrap">
                                 {row.change > 0 ? <TrendingUp className="w-4 h-4 text-red-500" /> : 
                                  row.change < 0 ? <TrendingDown className="w-4 h-4 text-emerald-500" /> : 
                                  <Minus className="w-4 h-4 text-gray-400" />}

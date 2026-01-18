@@ -14,6 +14,12 @@ import Link from "next/link"
 
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
+const SEVERITY_STYLES = {
+    info: "bg-blue-50 border-blue-200 text-blue-900",
+    warning: "bg-amber-50 border-amber-200 text-amber-900",
+    positive: "bg-emerald-50 border-emerald-200 text-emerald-900"
+}
+
 export default function HeatmapClient() {
     const today = new Date();
     const [year, setYear] = useState(today.getFullYear().toString());
@@ -115,11 +121,11 @@ export default function HeatmapClient() {
                                 <Lightbulb className="w-5 h-5 text-yellow-500" /> Pattern Insights
                             </h3>
                             {data.insights.map((insight, idx) => (
-                                <Alert key={idx} className={insight.severity === 'warning' ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}>
-                                    <AlertTitle className={insight.severity === 'warning' ? 'text-orange-800' : 'text-blue-800'}>
+                                <Alert key={idx} className={SEVERITY_STYLES[insight.severity]}>
+                                    <AlertTitle className="font-semibold mb-1">
                                         {insight.title}
                                     </AlertTitle>
-                                    <AlertDescription className="text-gray-700">
+                                    <AlertDescription className="text-sm opacity-90">
                                         {insight.message}
                                     </AlertDescription>
                                 </Alert>

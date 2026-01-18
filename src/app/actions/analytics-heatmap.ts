@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma"
 import { logSistem } from "@/lib/logger"
 import { Money } from "@/lib/money"
+import { formatRupiah } from "@/lib/format"
 
 export interface HeatmapData {
     date: string // YYYY-MM-DD
@@ -21,6 +22,7 @@ export async function getSpendingHeatmap(month: number, year: number) {
     try {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
+        const today = new Date();
 
         const transactions = await prisma.transaksi.findMany({
             where: {
@@ -36,6 +38,7 @@ export async function getSpendingHeatmap(month: number, year: number) {
         // 1. Daily Aggregation
         const dailyMap = new Map<string, { total: number, count: number }>();
         let maxTotal = 0;
+        let maxDate = "";
 
         for (const tx of transactions) {
             const dateStr = tx.tanggal.toISOString().split('T')[0];
@@ -46,12 +49,16 @@ export async function getSpendingHeatmap(month: number, year: number) {
             current.count += 1;
             dailyMap.set(dateStr, current);
 
-            if (current.total > maxTotal) maxTotal = current.total;
+            if (current.total > maxTotal) {
+                maxTotal = current.total;
+                maxDate = dateStr;
+            }
         }
 
         // Fill all days
         const heatmap: HeatmapData[] = [];
         const daysInMonth = new Date(year, month, 0).getDate();
+        let zeroSpendingDays = 0;
         
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -73,10 +80,50 @@ export async function getSpendingHeatmap(month: number, year: number) {
                 count: data.count,
                 intensity
             });
+
+            // Count zero spending (only for passed days)
+            const currentDate = new Date(dateStr);
+            if (data.total === 0 && currentDate < today) {
+                zeroSpendingDays++;
+            }
         }
 
         // 2. Pattern Analysis
         const insights: PatternInsight[] = [];
+        const monthTotal = heatmap.reduce((sum, d) => sum + d.total, 0);
+        // Average based on days PASSED or total days?
+        // Usually total days passed if current month, or total days if past month.
+        let daysPassed = daysInMonth;
+        if (year === today.getFullYear() && month === (today.getMonth() + 1)) {
+            daysPassed = today.getDate();
+        }
+        const dailyAverage = daysPassed > 0 ? monthTotal / daysPassed : 0;
+
+        // A. Daily Average (Always show)
+        insights.push({
+            title: "Rata-rata Harian",
+            message: `Rata-rata pengeluaran Anda adalah ${formatRupiah(dailyAverage)} per hari.`,
+            severity: "info"
+        });
+
+        // B. Zero Spending
+        if (zeroSpendingDays > 0) {
+            insights.push({
+                title: "Zero Spending Days",
+                message: `Hebat! Ada ${zeroSpendingDays} hari tanpa pengeluaran sama sekali bulan ini.`,
+                severity: "positive"
+            });
+        }
+
+        // C. Highest Spending
+        if (maxTotal > 0) {
+            const maxDateObj = new Date(maxDate);
+            insights.push({
+                title: "Pengeluaran Tertinggi",
+                message: `Puncak pengeluaran terjadi pada tanggal ${maxDateObj.getDate()} sebesar ${formatRupiah(maxTotal)}.`,
+                severity: "warning" // Neutral/Warning depending on amount? warning is safer for visibility
+            });
+        }
         
         // Weekend Spike
         let weekdaySum = 0, weekdayCount = 0;
@@ -97,7 +144,8 @@ export async function getSpendingHeatmap(month: number, year: number) {
         const weekdayAvg = weekdayCount > 0 ? weekdaySum / weekdayCount : 0;
         const weekendAvg = weekendCount > 0 ? weekendSum / weekendCount : 0;
 
-        if (weekendAvg > weekdayAvg * 1.5 && weekdayAvg > 0) {
+        // Threshold lowered to 1.3 (30%)
+        if (weekendAvg > weekdayAvg * 1.3 && weekdayAvg > 0) {
             const increase = ((weekendAvg - weekdayAvg) / weekdayAvg) * 100;
             insights.push({
                 title: "Weekend Spending Spike",
@@ -108,13 +156,30 @@ export async function getSpendingHeatmap(month: number, year: number) {
 
         // Paycheck Splurge (Assume 25th)
         const payday = heatmap.find(d => d.date.endsWith("-25"));
-        const monthAvg = heatmap.reduce((sum, d) => sum + d.total, 0) / daysInMonth;
         
-        if (payday && payday.total > monthAvg * 3) {
+        if (payday && payday.total > dailyAverage * 3) {
             insights.push({
                 title: "Paycheck Day Splurge",
                 message: "Pengeluaran tanggal 25 sangat tinggi (3x rata-rata). Hindari belanja impulsif saat gajian.",
                 severity: "warning"
+            });
+        }
+
+        // D. Normal Pattern Fallback
+        // If only "Daily Average" exists (length 1), add Normal Pattern
+        // Or if no warning/positive insights.
+        // Zero Spending is "positive", Highest is "warning".
+        // If we strictly follow spec "If truly no specific patterns", but we always add Average, Zero, Highest.
+        // So "Specific Patterns" refers to anomalies like Weekend/Paycheck.
+        // But users said "tidak ada insight apapun". Now we populate it with Average, Zero, Highest.
+        // So fallback might not be needed if we always have those.
+        // Let's keep it robust.
+
+        if (insights.length === 1) {
+             insights.push({
+                title: "Pola Normal",
+                message: "Tidak ada lonjakan pengeluaran yang signifikan. Pola belanja Anda stabil.",
+                severity: "positive"
             });
         }
 
@@ -125,7 +190,7 @@ export async function getSpendingHeatmap(month: number, year: number) {
                 insights,
                 stats: {
                     maxTotal,
-                    monthAvg
+                    monthAvg: dailyAverage
                 }
             }
         };

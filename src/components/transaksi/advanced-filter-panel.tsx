@@ -20,7 +20,7 @@ import { SavePresetDialog } from "./save-preset-dialog"
 export function AdvancedFilterPanel() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(true)
     const [mode, setMode] = useState<'standard' | 'advanced'>('standard')
     
     // Standard Filter States
