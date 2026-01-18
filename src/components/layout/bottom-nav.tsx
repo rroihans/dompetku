@@ -17,8 +17,11 @@ import {
     Settings,
     Database,
     BarChart3,
-    Bug,
-    Zap
+    Zap,
+    Calendar,
+    TrendingUp,
+    Shield,
+    FileText
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -29,16 +32,26 @@ const mainNavItems = [
     { name: "Budget", href: "/anggaran", icon: Target },
 ]
 
-const allMenuItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Akun", href: "/akun", icon: Wallet },
-    { name: "Transaksi", href: "/transaksi", icon: ArrowLeftRight },
-    { name: "Anggaran", href: "/anggaran", icon: Target },
-    { name: "Cicilan", href: "/cicilan", icon: CreditCard },
-    { name: "Berulang", href: "/recurring", icon: RefreshCw },
-    { name: "Laporan", href: "/laporan", icon: PieChart },
-    { name: "Statistik", href: "/statistik", icon: BarChart3 },
-    { name: "Pengaturan", href: "/pengaturan", icon: Settings },
+const navGroups = [
+    {
+        name: "Analisis & Laporan",
+        items: [
+            { name: "Statistik", href: "/statistik", icon: BarChart3 },
+            { name: "Laporan", href: "/laporan", icon: PieChart },
+            { name: "YoY", href: "/laporan/comparison", icon: TrendingUp },
+            { name: "Heatmap", href: "/statistik/heatmap", icon: Calendar },
+        ]
+    },
+    {
+        name: "Perencanaan",
+        items: [
+            { name: "Cicilan", href: "/cicilan", icon: CreditCard },
+            { name: "Recurring", href: "/recurring", icon: RefreshCw },
+            { name: "Kalender", href: "/kalender", icon: Calendar },
+            { name: "Template Bank", href: "/template-akun", icon: Shield },
+            { name: "Template Cepat", href: "/template", icon: FileText },
+        ]
+    }
 ]
 
 const debugMenuItems = [
@@ -104,7 +117,7 @@ export function BottomNav() {
 
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between px-4 pb-4 border-b">
-                    <h3 className="text-lg font-semibold">Menu</h3>
+                    <h3 className="text-lg font-semibold">Menu Utama</h3>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -115,33 +128,51 @@ export function BottomNav() {
                 </div>
 
                 {/* Menu Items */}
-                <div className="p-4 pb-8 max-h-[70vh] overflow-y-auto">
-                    <div className="grid grid-cols-3 gap-3">
-                        {allMenuItems.map((item) => {
-                            const isActive = pathname === item.href
-                            const Icon = item.icon
-                            return (
-                                <Link
-                                    key={item.name}
-                                    href={item.href}
-                                    onClick={() => setIsDrawerOpen(false)}
-                                    className={cn(
-                                        "flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all",
-                                        isActive
-                                            ? "bg-primary text-primary-foreground"
-                                            : "bg-muted/50 hover:bg-muted text-foreground"
-                                    )}
-                                >
-                                    <Icon className="w-6 h-6" />
-                                    <span className="text-xs font-medium">{item.name}</span>
-                                </Link>
-                            )
-                        })}
-                    </div>
+                <div className="p-4 pb-8 max-h-[70vh] overflow-y-auto space-y-6">
+                    {navGroups.map((group) => (
+                        <div key={group.name} className="space-y-3">
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">{group.name}</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                {group.items.map((item) => {
+                                    const isActive = pathname === item.href
+                                    const Icon = item.icon
+                                    return (
+                                        <Link
+                                            key={item.name}
+                                            href={item.href}
+                                            onClick={() => setIsDrawerOpen(false)}
+                                            className={cn(
+                                                "flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all border",
+                                                isActive
+                                                    ? "bg-primary text-primary-foreground border-primary"
+                                                    : "bg-card hover:bg-muted text-foreground border-border"
+                                            )}
+                                        >
+                                            <Icon className="w-5 h-5" />
+                                            <span className="text-[10px] font-medium text-center">{item.name}</span>
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Quick Access to Settings */}
+                    <Link
+                        href="/pengaturan"
+                        onClick={() => setIsDrawerOpen(false)}
+                        className="flex items-center justify-between p-4 rounded-xl bg-muted/50 border border-border"
+                    >
+                        <div className="flex items-center gap-3">
+                            <Settings className="w-5 h-5 text-muted-foreground" />
+                            <span className="font-medium">Pengaturan</span>
+                        </div>
+                        <Zap className="w-4 h-4 text-muted-foreground" />
+                    </Link>
 
                     {/* Debug Tools Section */}
-                    <div className="mt-4 pt-4 border-t">
-                        <p className="text-xs text-muted-foreground mb-2 font-semibold">Developer Tools</p>
+                    <div className="pt-4 border-t">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1 mb-3">Developer Tools</p>
                         <div className="grid grid-cols-2 gap-2">
                             {debugMenuItems.map((item) => {
                                 const Icon = item.icon
@@ -150,7 +181,7 @@ export function BottomNav() {
                                         key={item.name}
                                         href={item.href}
                                         onClick={() => setIsDrawerOpen(false)}
-                                        className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20"
+                                        className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
                                     >
                                         <Icon className="w-4 h-4" />
                                         <span className="text-xs font-medium">{item.name}</span>
@@ -162,8 +193,8 @@ export function BottomNav() {
 
                     {/* Quick Info */}
                     <div className="mt-6 p-4 bg-muted/30 rounded-xl">
-                        <p className="text-xs text-muted-foreground text-center">
-                            Dompetku v0.5.0 • Double-Entry Bookkeeping
+                        <p className="text-[10px] text-muted-foreground text-center">
+                            Dompetku v0.7.1 • Personal Finance Pro
                         </p>
                     </div>
                 </div>

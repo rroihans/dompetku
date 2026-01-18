@@ -136,6 +136,10 @@
     - **Heatmap Insights:** Enhanced logic with "Daily Average", "Zero Spending", "Highest Day", and "Normal Pattern" detection. Lowered threshold for weekend spike.
     - **YoY Mobile Layout:** Improved chart responsiveness (responsive container + hidden axis) and table horizontal scroll.
     - **UI Colors:** Softer insight colors (Pastel Amber/Emerald/Blue) for better readability.
+- **Navigation Reorganization:**
+    - **Sidebar Grouping:** Menu dikelompokkan menjadi kategori Utama, Analisis & Laporan, dan Perencanaan untuk akses yang lebih terstruktur.
+    - **Mobile Bottom Nav:** Drawer menu diperbarui dengan tampilan grup kategori yang konsisten dengan Sidebar.
+    - **Aksesibilitas:** Menambahkan link langsung ke fitur Perbandingan YoY dan Spending Heatmap di menu utama.
 
 ### v0.7.0 (2026-01-18)
 - **Analytics & Advanced Features (Sprint 3):**
