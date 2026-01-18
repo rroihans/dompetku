@@ -10,6 +10,7 @@ import { DebugMenu } from "@/components/layout/debug-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { LiveClock } from "@/components/layout/live-clock";
 import { Toaster } from "sonner";
+import { FAB } from "@/components/ui/fab";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -65,10 +66,10 @@ export default function RootLayout({
             </main>
           </div>
           <BottomNav />
+          <FAB />
           <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>
   );
 }
-

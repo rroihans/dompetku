@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { AddTransactionForm } from "@/components/forms/add-transaction-form"
 import { TransaksiActions } from "@/components/transaksi/transaksi-actions"
-import { TransaksiFilter } from "@/components/transaksi/transaksi-filter"
+import { AdvancedFilterPanel } from "@/components/transaksi/advanced-filter-panel"
 import { getTransaksi } from "@/app/actions/transaksi"
 import { formatRupiah } from "@/lib/format"
 import Link from "next/link"
@@ -19,7 +19,7 @@ interface PageProps {
     searchParams: Promise<{
         page?: string
         search?: string
-        kategori?: string
+        kategori?: string | string[]
         tipe?: string
         dateFrom?: string
         dateTo?: string
@@ -27,7 +27,8 @@ interface PageProps {
         maxNominal?: string
         sort?: string
         sortDir?: string
-        akunId?: string // Tambahkan akunId
+        akunId?: string | string[]
+        complexFilter?: string
     }>
 }
 
@@ -47,13 +48,14 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
         maxNominal: params.maxNominal ? Number(params.maxNominal) : undefined,
         sort: params.sort,
         sortDir: params.sortDir,
-        akunId: currentAkunId, // Pass akunId ke action
+        akunId: params.akunId, 
+        complexFilter: params.complexFilter
     })
     const transactions = result.data
     const { pagination } = result
 
-    // Tampilkan kolom Saldo jika sedang memfilter per akun
-    const showSaldoColumn = Boolean(currentAkunId && (params.sort === "tanggal" || !params.sort))
+    // Tampilkan kolom Saldo jika sedang memfilter per akun (single)
+    const showSaldoColumn = Boolean(currentAkunId && !Array.isArray(currentAkunId) && (params.sort === "tanggal" || !params.sort))
 
     return (
         <div className="space-y-6">
@@ -67,17 +69,7 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
                 <AddTransactionForm />
             </div>
 
-            <TransaksiFilter
-                currentSearch={params.search}
-                currentKategori={params.kategori}
-                currentTipe={params.tipe}
-                currentDateFrom={params.dateFrom}
-                currentDateTo={params.dateTo}
-                currentMinNominal={params.minNominal}
-                currentMaxNominal={params.maxNominal}
-                currentSort={params.sort}
-                currentSortDir={params.sortDir}
-            />
+            <AdvancedFilterPanel />
 
             <Card>
                 <CardContent className="p-0">
@@ -99,7 +91,7 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
                             <tbody className="divide-y">
                                 {transactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                                             Belum ada transaksi tercatat.
                                         </td>
                                     </tr>
@@ -227,7 +219,7 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
                     </span>
                     <div className="flex items-center gap-2">
                         {currentPage > 1 ? (
-                            <Link href={`/transaksi?page=${currentPage - 1}${params.search ? `&search=${params.search}` : ''}${params.kategori ? `&kategori=${params.kategori}` : ''}${params.tipe ? `&tipe=${params.tipe}` : ''}${params.akunId ? `&akunId=${params.akunId}` : ''}`}>
+                            <Link href={`/transaksi?page=${currentPage - 1}${params.search ? `&search=${params.search}` : ''}`}>
                                 <Button variant="outline" size="sm" className="gap-1">
                                     <ChevronLeft className="w-4 h-4" /> Sebelumnya
                                 </Button>
@@ -241,7 +233,7 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
                             {pagination.page} / {pagination.totalPages}
                         </span>
                         {currentPage < pagination.totalPages ? (
-                            <Link href={`/transaksi?page=${currentPage + 1}${params.search ? `&search=${params.search}` : ''}${params.kategori ? `&kategori=${params.kategori}` : ''}${params.tipe ? `&tipe=${params.tipe}` : ''}${params.akunId ? `&akunId=${params.akunId}` : ''}`}>
+                            <Link href={`/transaksi?page=${currentPage + 1}${params.search ? `&search=${params.search}` : ''}`}>
                                 <Button variant="outline" size="sm" className="gap-1">
                                     Berikutnya <ChevronRight className="w-4 h-4" />
                                 </Button>

@@ -24,6 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { payCreditCardBill } from "@/app/actions/credit-card-payment"
 import { getAkun } from "@/app/actions/akun"
 import { cn } from "@/lib/utils"
@@ -75,7 +76,8 @@ export function PaymentDialog({
         formState: { errors, isValid },
         reset
     } = useForm<PaymentFormValues>({
-        resolver: zodResolver(paymentSchema),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(paymentSchema) as any,
         defaultValues: {
             amount: defaultAmount,
             sourceId: "",
@@ -93,9 +95,6 @@ export function PaymentDialog({
             setValue("type", defaultType)
             // Load accounts
             getAkun().then((akuns) => {
-                // Filter: NOT the current CC, and only payment sources (Bank, Wallet, Cash)
-                // Actually user CAN pay CC with another CC (balance transfer)? Usually treated as Cash Advance.
-                // Let's allow BANK, E_WALLET, CASH.
                 const sources = akuns.filter((a: any) => 
                     ["BANK", "E_WALLET", "CASH"].includes(a.tipe) && a.id !== akunId
                 )
@@ -107,15 +106,7 @@ export function PaymentDialog({
     async function onSubmit(values: PaymentFormValues) {
         setLoading(true)
         try {
-            // Client-side min validation check for custom amount
-            // Wait, allow user to pay LESS than minimum? Spec says "Custom Amount... (validasi >= minimum payment)"
-            // But if full payment < minimum (rare edge case), we use logic in server action.
-            // Here, visually warn.
-            
             if (values.amount < minAmount && values.type === "CUSTOM") {
-                // We could block here, or let server handle.
-                // Spec: "Validation: Amount >= minimum"
-                // Let's block if significantly lower
                 if (values.amount < minAmount) { // Strict
                      toast.error(`Pembayaran minimal Rp ${formatRupiahDecimal(minAmount)}`)
                      setLoading(false)
@@ -174,13 +165,6 @@ export function PaymentDialog({
                                 className="cursor-pointer"
                                 onClick={() => {
                                     setValue("type", "FULL")
-                                    // We need to know Full Amount value? 
-                                    // Ideally passed in props? 
-                                    // For now, if user clicked "Full" initially, defaultAmount is Full.
-                                    // If user changes manually, we might lose the reference to "Full".
-                                    // Limitation: If switching back to Full inside dialog, we might not know the exact Full amount if it wasn't passed explicitly as `fullPaymentAmount`.
-                                    // But usually user selects type BEFORE dialog. 
-                                    // Let's ignore switching type inside dialog for exact amounts, assume input is what matters.
                                 }}
                             >
                                 Full

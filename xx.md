@@ -1,817 +1,1569 @@
-# 📋 PRODUCTION-READY ALIGNMENT PLAN - COMPREHENSIVE
+I'll create a detailed Sprint 3-4 summary following the same comprehensive format as Sprint 1-2.
 
 ---
 
-## 🎯 **EXECUTIVE SUMMARY**
-
-**Tujuan:** Mensinkronkan seluruh fitur aplikasi Dompetku v0.5.0 agar production-ready dengan data integrity 100%, UX seamless, dan zero inconsistencies.
-
-**Scope:** 
-- 6 Major synchronization issues identified
-- 15 Implementation tasks across 3 priority tiers
-- 1 New feature request (Real-time clock in top bar)
-
-**Estimated Total Effort:** 26.5 hours
-- TIER 1 (Critical): 8 hours
-- TIER 2 (High Priority): 13 hours  
-- TIER 3 (Nice-to-Have): 4.5 hours
-- New Feature (Clock): 1 hour
+# 📋 Sprint Summary (3-4) - Dompetku Analytics & UX Enhancement
 
 ---
 
-## 🔴 **TIER 1: CRITICAL FIXES** (Must fix before production)
+## 📊 **SPRINT 3: Analytics & Export** (Week 5-6)
 
-### **ISSUE #1: Net Worth Double Counting** 🚨 BLOCKER
-
-**Problem:**
-```
-Current behavior:
-1. Credit card debt counted from Akun.saldoSekarang: -Rp 5.000.000 ✅
-2. Same debt counted again from RencanaCicilan: Rp 3.000.000 ❌
-3. Total hutang shown: Rp 8.000.000 (INCORRECT!)
-
-Expected behavior:
-- Total hutang should be: Rp 5.000.000
-- Installments are PART OF credit card debt, not separate
-```
-
-**Root Cause:**
-- File: `src/app/actions/networth.ts`
-- Function: `calculateCurrentNetWorth()`
-- Lines: ~50-65 (where cicilan loop adds to totalHutang)
-
-**Impact:**
-- Net worth calculation completely wrong
-- Dashboard shows incorrect financial position
-- User cannot trust the numbers
-
-**Solution Plan:**
-
-**Step 1:** Remove installment debt aggregation from net worth calculation
-- Location: `src/app/actions/networth.ts` → `calculateCurrentNetWorth()`
-- Change: Delete the loop that sums `RencanaCicilan` debt
-- Reason: Installment debt already reflected in credit card `saldoSekarang`
-
-**Step 2:** Update dashboard stats to show breakdown correctly
-- Location: `src/app/page.tsx` (Dashboard)
-- Change: Separate display for:
-  - "Total Hutang Kartu Kredit" (from saldoSekarang)
-  - "Dibayar via Cicilan" (informational only, not added to total)
-
-**Step 3:** Add clarification in cicilan page
-- Location: `src/app/cicilan/page.tsx`
-- Change: Add info box:
-  ```
-  💡 Info: Cicilan adalah metode pembayaran hutang kartu kredit.
-  Total hutang sudah termasuk dalam saldo kartu kredit Anda.
-  ```
-
-**Testing:**
-1. Create credit card with -Rp 5M debt
-2. Convert Rp 3M to 3-month installment
-3. Check net worth → should show total hutang = Rp 5M (not Rp 8M)
-4. Check dashboard → breakdown should be clear
-
-**Estimated Time:** 2 hours
-- Code changes: 1 hour
-- Testing: 30 minutes
-- Documentation: 30 minutes
+### **Objective**: 
+Berikan user tools untuk deep dive analysis dan data portability. Transform raw financial data menjadi actionable insights.
 
 ---
 
-### **ISSUE #2: Admin Fee Disconnected Between Pages** 🚨 HIGH
+### **📌 Deliverable 1: Year-over-Year Comparison** ⭐ CRITICAL
 
-**Problem:**
+#### **Problem Statement**:
+User tidak bisa jawab pertanyaan: "Apakah tahun ini saya lebih boros dari tahun lalu?" Tidak ada visibility untuk trend jangka panjang. Dashboard hanya menampilkan 6 bulan terakhir, tidak ada historical comparison.
+
+#### **What We'll Build**:
+
+**A. YoY Comparison Dashboard**
+
+Location: `/laporan` page dengan tab baru "Perbandingan Tahunan"
+
+**UI Layout**:
 ```
-User journey BROKEN:
-1. User creates bank account with biayaAdminAktif=true ✅
-2. System auto-creates recurring transaction ✅
-3. User sees "Automasi Aktif" badge in /akun/[id] ✅
-4. User clicks badge → NOTHING HAPPENS ❌
-5. User navigates to /recurring → sees "[Auto] Biaya Admin..." ✅
-6. User deletes recurring → akun.biayaAdminAktif NOT updated ❌
-7. Data inconsistency: akun says "active" but no recurring exists ❌
-```
-
-**Root Cause:**
-- No bidirectional navigation between pages
-- No sync logic when recurring transaction deleted
-- User cannot understand the connection
-
-**Impact:**
-- Confusing UX
-- Data integrity risk (settings out of sync)
-- Support burden (users asking "why is it not working?")
-
-**Solution Plan:**
-
-**Part A: Add Navigation Links**
-
-**Step 1:** Update account detail page
-- File: `src/app/akun/[id]/page.tsx`
-- Location: After account info cards, before transaction history
-- Add new section: "Automasi Aktif"
-  - Show: Pola tagihan, nominal, next billing date
-  - Action: Button "Lihat di Recurring" → `/recurring?highlight=${akun.id}`
-  - Style: Use info card with blue/primary accent
-
-**Step 2:** Update recurring page with highlight support
-- File: `src/app/recurring/page.tsx`
-- Change: Accept `searchParams.highlight` (akun ID)
-- UI Effect: If recurring.akunId matches highlight → apply pulse animation + ring border
-- Duration: 3 seconds then fade out
-
-**Step 3:** Add back-navigation from recurring
-- File: Same as Step 2
-- Change: For auto-generated recurring (`isAutoGenerated=true`)
-- Add: Card footer with button "Lihat Pengaturan Akun" → `/akun/${item.akunId}`
-- Icon: ArrowLeft icon
-
-**Part B: Sync Delete Actions**
-
-**Step 4:** Update admin fee delete action
-- File: `src/app/actions/admin-fee.ts` → `deleteAdminFee()`
-- Change: Inside transaction, add step to update Akun:
-  ```
-  await tx.akun.update({
-    where: { id: existing.akunId },
-    data: { 
-      biayaAdminAktif: false,
-      biayaAdminNominal: null,
-      biayaAdminPola: null,
-      biayaAdminTanggal: null
-    }
-  });
-  ```
-- Add: Revalidate `/akun/${akunId}` in addition to `/recurring`
-
-**Step 5:** Prevent manual deletion of auto-generated recurring
-- File: `src/components/recurring/recurring-actions.tsx`
-- Change: If `recurring.isAutoGenerated === true`:
-  - Disable delete button
-  - Show tooltip: "Biaya admin otomatis hanya bisa dihapus dari pengaturan akun"
-  - Keep toggle (enable/disable) functional
-
-**Part C: Visual Indicators**
-
-**Step 6:** Add badge to recurring cards
-- File: `src/app/recurring/page.tsx`
-- Change: For auto-generated recurring, add badge:
-  - Text: "Automasi Bank"
-  - Color: Blue/primary
-  - Icon: Zap or Sparkles
-
-**Testing:**
-1. Create bank account with admin fee enabled
-2. Navigate to /akun/[id] → click "Lihat di Recurring"
-3. Verify: Lands on /recurring with correct card highlighted
-4. Click "Lihat Pengaturan Akun" → back to account detail
-5. Try to delete auto-generated recurring → should be blocked
-6. Delete admin fee from account settings → verify recurring also deleted
-
-**Estimated Time:** 4 hours
-- Part A (Navigation): 1.5 hours
-- Part B (Sync logic): 1.5 hours  
-- Part C (UI polish): 30 minutes
-- Testing: 30 minutes
-
----
-
-### **ISSUE #3: Database Integrity Check Missing** 🚨 MEDIUM-HIGH
-
-**Problem:**
-- No automated check for orphaned records
-- No validation that foreign keys are valid
-- Possible scenarios:
-  - Recurring transaction exists but akunId deleted
-  - Cicilan exists but credit card deleted
-  - Admin fee exists but no recurring link
-
-**Impact:**
-- Crashes when trying to display orphaned data
-- Data corruption accumulates over time
-
-**Solution Plan:**
-
-**Step 1:** Create integrity check script
-- File: NEW `scripts/check-integrity.ts`
-- Functions:
-  1. `checkOrphanedRecurring()` - recurring without valid akunId
-  2. `checkOrphanedCicilan()` - cicilan without valid credit card
-  3. `checkOrphanedAdminFees()` - admin fees without akun or recurring
-  4. `checkMismatchedSettings()` - akun.biayaAdminAktif=true but no recurring
-- Output: Report with list of issues + suggested fixes
-
-**Step 2:** Add cleanup function
-- File: Same script
-- Function: `autoFixIntegrity(dryRun: boolean)`
-- Actions:
-  - Delete orphaned records (after user confirmation)
-  - Sync mismatched settings (akun ↔ recurring)
-  - Log all changes to LogSistem
-
-**Step 3:** Add manual trigger in settings
-- File: `src/app/pengaturan/page.tsx`
-- Location: Under "Database" section (existing)
-- Button: "Periksa Integritas Database"
-- Dialog: Show report with option to auto-fix
-
-**Step 4:** Optional: Add to cron job
-- File: `src/app/api/cron/weekly/route.ts` (NEW)
-- Schedule: Every Sunday 2 AM
-- Action: Run integrity check (dry run)
-- Alert: Send log if issues found
-
-**Testing:**
-1. Manually create orphaned data (delete akun but keep recurring)
-2. Run integrity check → should detect issue
-3. Run auto-fix → should clean up
-4. Verify: No crashes, data consistent
-
-**Estimated Time:** 2 hours
-- Script development: 1 hour
-- UI integration: 30 minutes
-- Testing: 30 minutes
-
----
-
-## 🟠 **TIER 2: HIGH PRIORITY IMPROVEMENTS** (Should fix for great UX)
-
-### **ISSUE #4: Budget Does Not Consider Recurring Transactions** 🟠 HIGH
-
-**Problem:**
-```
-User flow:
-1. User sets budget "Hiburan": Rp 500.000/month
-2. User has recurring "Netflix": Rp 200.000/month (kategori: Hiburan)
-3. Budget page shows: 0% used (Rp 500.000 remaining) ❌
-4. Mid-month: Netflix auto-charges
-5. User surprised: "Why only Rp 300.000 left? I haven't spent anything!"
+┌─────────────────────────────────────────────────────────┐
+│ 📊 Perbandingan Tahunan                                 │
+│ [2025 ▼] vs [2026 ▼]                                   │
+├─────────────────────────────────────────────────────────┤
+│ RINGKASAN PERUBAHAN                                     │
+├─────────────────────────────────────────────────────────┤
+│ Total Pengeluaran                                       │
+│ 2025: Rp 62.400.000  →  2026: Rp 57.600.000           │
+│ Perubahan: -Rp 4.800.000 (-7.7%) ✅ LEBIH HEMAT        │
+├─────────────────────────────────────────────────────────┤
+│ Total Pemasukan                                         │
+│ 2025: Rp 180.000.000  →  2026: Rp 192.000.000         │
+│ Perubahan: +Rp 12.000.000 (+6.7%) ✅ NAIK              │
+├─────────────────────────────────────────────────────────┤
+│ Savings Rate                                            │
+│ 2025: 65.3%  →  2026: 70.0%                           │
+│ Perubahan: +4.7% ✅ MENINGKAT                          │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Impact:**
-- Budget tracking misleading
-- User cannot plan spending effectively
-- Defeats purpose of budgeting
+**B. Category Breakdown Comparison**
 
-**Solution Plan:**
+**Table View**:
+```
+┌──────────────┬─────────────┬─────────────┬────────────┬──────────┐
+│ Kategori     │ 2025        │ 2026        │ Perubahan  │ Trend    │
+├──────────────┼─────────────┼─────────────┼────────────┼──────────┤
+│ Makan        │ 24.000.000  │ 21.600.000  │ -2.4M (-10%)│ ✅ Hemat │
+│ Transport    │ 6.000.000   │ 8.700.000   │ +2.7M (+45%)│ ⚠️ Naik  │
+│ Belanja      │ 18.000.000  │ 16.200.000  │ -1.8M (-10%)│ ✅ Hemat │
+│ Cicilan      │ 12.000.000  │ 9.600.000   │ -2.4M (-20%)│ ✅ Turun │
+│ Entertain    │ 2.400.000   │ 1.500.000   │ -0.9M (-38%)│ ✅ Hemat │
+└──────────────┴─────────────┴─────────────┴────────────┴──────────┘
 
-**Step 1:** Add projected spending calculation
-- File: `src/app/actions/anggaran.ts` → `getBudgetWithRealization()`
-- Change: Query active recurring transactions for the month
-- Logic:
-  ```
-  For each budget category:
-    1. Get actual spending from transactions (current logic) ✅
-    2. ADD: Get recurring that will trigger this month
-    3. Calculate: projectedSpending = actual + recurring
-    4. Show both numbers in UI
-  ```
+📊 Insight: Pengeluaran Transport naik signifikan 45% 
+    (Rp 6M → Rp 8.7M). Penyebab utama: Harga BBM naik 30% 
+    dan frekuensi pulang kampung bertambah.
+```
 
-**Step 2:** Update budget UI to show breakdown
-- File: `src/app/anggaran/page.tsx`
-- Change: Each budget card shows:
-  ```
-  Current format:
-  [Progress bar: 40%]
-  Terpakai: Rp 200.000 dari Rp 500.000
+**C. Visual Charts**
+
+**1. Side-by-Side Bar Chart** (Monthly Comparison):
+```
+       2025 vs 2026 - Monthly Expenses
+    
+12M ┤        ██                    ▓▓
+10M ┤        ██        ██          ▓▓
+ 8M ┤  ██    ██    ██  ██    ██    ▓▓
+ 6M ┤  ██    ██    ██  ██    ██    ▓▓    ▓▓
+ 4M ┤  ██    ██    ██  ██    ██    ▓▓    ▓▓
+ 2M ┤  ██    ██    ██  ██    ██    ▓▓    ▓▓
+ 0  ┴────────────────────────────────────────
+     Jan  Feb  Mar  Apr  May  Jun  Jul  Aug
+     
+    ██ 2025    ▓▓ 2026
+```
+
+**2. Overlay Line Chart** (Trend Comparison):
+```
+    Spending Trend: 2025 vs 2026
+    
+10M ┤     •─────•           
+ 8M ┤   •─┘     └─•─────•    ○─────○
+ 6M ┤ •─┘             └─•  ○─┘     └─○
+ 4M ┤○                   •○
+    ├─────────────────────────────────
+     J F M A M J J A S O N D
+     
+    • 2025    ○ 2026
+```
+
+**D. Automated Insights Generation**
+
+System auto-generate insights berdasarkan data analysis:
+
+**Algorithm**:
+```typescript
+function generateYoYInsights(data2025, data2026) {
+  const insights = []
   
-  New format:
-  [Progress bar: 40% solid + 20% striped]
-  Terpakai: Rp 200.000
-  Terjadwal (recurring): Rp 100.000
-  Tersisa: Rp 200.000 dari Rp 500.000
-  ```
+  // 1. Overall spending trend
+  const totalChange = (data2026.total - data2025.total) / data2025.total * 100
+  if (Math.abs(totalChange) > 5) {
+    insights.push({
+      type: totalChange < 0 ? 'positive' : 'warning',
+      title: totalChange < 0 ? 'Pengeluaran Turun' : 'Pengeluaran Naik',
+      message: `Total pengeluaran ${totalChange < 0 ? 'turun' : 'naik'} ${Math.abs(totalChange).toFixed(1)}% dari tahun lalu`,
+      impact: 'high'
+    })
+  }
+  
+  // 2. Biggest category changes (>20% change)
+  for (const category in data2026.categories) {
+    const change = calculateCategoryChange(category, data2025, data2026)
+    if (Math.abs(change) > 20) {
+      insights.push({
+        type: change > 0 ? 'warning' : 'positive',
+        title: `${category}: ${change > 0 ? 'Naik' : 'Turun'} Signifikan`,
+        message: `Pengeluaran ${category} ${change > 0 ? 'naik' : 'turun'} ${Math.abs(change).toFixed(1)}%`,
+        impact: 'medium'
+      })
+    }
+  }
+  
+  // 3. Savings rate improvement
+  const savingsChange = data2026.savingsRate - data2025.savingsRate
+  if (Math.abs(savingsChange) > 3) {
+    insights.push({
+      type: savingsChange > 0 ? 'positive' : 'warning',
+      title: savingsChange > 0 ? 'Savings Rate Meningkat' : 'Savings Rate Menurun',
+      message: `Porsi tabungan ${savingsChange > 0 ? 'naik' : 'turun'} ${Math.abs(savingsChange).toFixed(1)}%`,
+      impact: 'high'
+    })
+  }
+  
+  // 4. Monthly pattern analysis
+  const mostExpensiveMonth2025 = findMaxMonth(data2025)
+  const mostExpensiveMonth2026 = findMaxMonth(data2026)
+  if (mostExpensiveMonth2025 !== mostExpensiveMonth2026) {
+    insights.push({
+      type: 'info',
+      title: 'Perubahan Pola Belanja',
+      message: `Bulan paling boros berubah dari ${mostExpensiveMonth2025} ke ${mostExpensiveMonth2026}`,
+      impact: 'low'
+    })
+  }
+  
+  return insights.sort((a, b) => {
+    const priority = { high: 0, medium: 1, low: 2 }
+    return priority[a.impact] - priority[b.impact]
+  })
+}
+```
 
-**Step 3:** Add color coding
-- Green bar: Actual spending
-- Orange striped: Projected (recurring)
-- Total: solid + striped = total projected
+**Insight Display**:
+```
+┌─────────────────────────────────────────────────────────┐
+│ 💡 INSIGHT OTOMATIS (3 Teratas)                         │
+├─────────────────────────────────────────────────────────┤
+│ ✅ Pengeluaran Turun 7.7%                               │
+│    Total pengeluaran tahun ini lebih hemat Rp 4.8M dari │
+│    tahun lalu. Kategori terbesar: Makan (-10%)         │
+│                                                         │
+│ ⚠️ Transport Naik Signifikan 45%                        │
+│    Pengeluaran transport naik Rp 2.7M. Pertimbangkan   │
+│    carpooling atau transportasi publik.                │
+│                                                         │
+│ ✅ Savings Rate Meningkat 4.7%                          │
+│    Porsi tabungan meningkat dari 65.3% → 70.0%.        │
+│    Target ideal (>30%) sudah terlampaui!               │
+└─────────────────────────────────────────────────────────┘
+```
 
-**Step 4:** Add filter toggle
-- Location: Top of budget page
-- Options:
-  - "Tampilkan: Realisasi Saja" (current behavior)
-  - "Tampilkan: Realisasi + Recurring" (new default)
+#### **User Journey**:
+```
+1. User buka /laporan
+2. Klik tab "Perbandingan Tahunan"
+3. Default: 2025 vs 2026 (current year vs previous)
+4. Lihat summary cards (pengeluaran, pemasukan, savings)
+5. Scroll ke category breakdown table
+6. Sort by "Perubahan" descending → Lihat Transport +45%
+7. Klik "Transport" → Drill down ke detail transaksi
+8. Review 3 insight otomatis di bawah
+9. Klik "Export Comparison" → Download Excel
+```
 
-**Testing:**
-1. Create budget Rp 500k for "Hiburan"
-2. Add recurring "Netflix" Rp 200k (kategori: Hiburan)
-3. Add manual transaction Rp 100k (kategori: Hiburan)
-4. Check budget page:
-   - Should show: 100k spent (green) + 200k scheduled (orange) = 300k total
-   - Remaining: 200k
+#### **Technical Requirements**:
+- Server action: `getYearOverYearComparison(year1, year2)`
+- Aggregate transaksi per tahun, per bulan, per kategori
+- Calculate percentage changes
+- Generate insights dengan AI-like logic
+- Support year selector (2020-2030)
+- Cache results (1 day TTL untuk historical data)
+- Export format: Excel with 2 sheets (Summary + Detail)
 
-**Estimated Time:** 3 hours
-- Backend logic: 1.5 hours
-- UI implementation: 1 hour
-- Testing: 30 minutes
+#### **Success Criteria**:
+✅ Comparison loads < 2 detik untuk 2 tahun data (1000+ transaksi)
+✅ Insights accurate (manual spot-check pada 10 accounts)
+✅ User bisa compare any 2 years (not limited to current vs previous)
+✅ Charts responsive (desktop: side-by-side, mobile: stacked)
+✅ Export Excel formatted dengan conditional coloring
+✅ 60%+ monthly active users view YoY comparison
 
 ---
 
-### **ISSUE #5: Calendar Is Read-Only (No Actions)** 🟠 MEDIUM
+### **📌 Deliverable 2: Excel/CSV Export** ⭐ CRITICAL
 
-**Problem:**
-- Calendar shows events (cicilan, recurring, transaksi)
-- User clicks event → sees detail dialog
-- Dialog only shows info, no action buttons
-- User must navigate to other pages to take action
+#### **Problem Statement**:
+Hanya ada JSON backup export yang sulit dibaca. User mau analyze di Excel/Google Sheets untuk:
+- Share ke accountant/tax advisor
+- Custom pivot tables & charts
+- Merge dengan data external (salary records, investment returns)
+- Archive untuk keperluan audit
 
-**Impact:**
-- Extra clicks required
-- Interrupted workflow
-- Calendar feels like "just a display"
+#### **What We'll Build**:
 
-**Solution Plan:**
+**A. Multi-Format Export System**
 
-**Step 1:** Add event click handler
-- File: `src/components/calendar/financial-calendar.tsx`
-- Change: Existing onClick already opens dialog ✅
-- Enhance: Pass full event data to dialog
+**Export Button Placement**:
+```
+Location 1: Transaksi Page (/transaksi)
+[📥 Export] dropdown:
+  • Excel (.xlsx) - Recommended
+  • CSV (.csv) - For Google Sheets
+  • JSON (.json) - For developers
+  
+Location 2: Laporan Page (/laporan)
+[📥 Export Laporan] dropdown:
+  • Excel Ringkasan Bulanan
+  • Excel Perbandingan Tahunan
+  • PDF Statement (future)
 
-**Step 2:** Create action buttons based on event type
-- File: Same component, dialog section
-- Logic:
-  ```
-  If event.type === 'cicilan':
-    - Button: "Bayar Cicilan" (primary)
-    - Button: "Lihat Detail" (secondary) → /cicilan
+Location 3: Budget Page (/anggaran)
+[📥 Export Budget] dropdown:
+  • Excel Budget Report
+  • CSV Budget vs Realisasi
+```
+
+**B. Transaction Export (Excel Format)**
+
+**Sheet 1: "Transactions"**
+```
+┌──────┬─────────────────┬──────────┬──────────┬─────────┬──────────┬──────────┬─────────┬──────────────┐
+│ No   │ Date            │ Desc     │ Category │ Amount  │ Type     │ From     │ To      │ Balance After│
+├──────┼─────────────────┼──────────┼──────────┼─────────┼──────────┼──────────┼─────────┼──────────────┤
+│ 1    │ 2026-01-18      │ Makan    │ Makan    │ 25,000  │ Expense  │ Gopay    │ [EXP]   │ 100,000      │
+│ 2    │ 2026-01-17      │ Gaji     │ Salary   │15,000,000│ Income  │ [INC]    │ BCA     │ 15,125,000   │
+│ 3    │ 2026-01-15      │ Grab     │ Transport│ 45,000  │ Expense  │ Gopay    │ [EXP]   │ 125,000      │
+└──────┴─────────────────┴──────────┴──────────┴─────────┴──────────┴──────────┴─────────┴──────────────┘
+
+Features:
+• Currency format: Rp #,##0 (Indonesian style)
+• Date format: YYYY-MM-DD (sortable)
+• Conditional formatting: Red for expenses, Green for income
+• Frozen header row
+• Auto-filter enabled
+• Column widths optimized
+```
+
+**Sheet 2: "Summary"**
+```
+┌─────────────────────────────────────────────┐
+│ RINGKASAN KEUANGAN                          │
+│ Period: Jan 2026                            │
+├─────────────────────────────────────────────┤
+│ Total Pemasukan       │ Rp  15,000,000      │
+│ Total Pengeluaran     │ Rp  -4,850,000      │
+│ Selisih              │ Rp  10,150,000      │
+│ Savings Rate         │        67.7%        │
+├─────────────────────────────────────────────┤
+│ TOP 5 PENGELUARAN                           │
+│ 1. Makan & Minum     │ Rp   1,250,000      │
+│ 2. Transport         │ Rp     680,000      │
+│ 3. Belanja           │ Rp     550,000      │
+│ 4. Cicilan           │ Rp     500,000      │
+│ 5. Entertainment     │ Rp     320,000      │
+└─────────────────────────────────────────────┘
+
+Features:
+• Pre-calculated formulas (SUM, COUNT, AVERAGE)
+• Pie chart: Pengeluaran per kategori
+• Bar chart: Trend 30 hari
+```
+
+**Sheet 3: "Pivot Ready"**
+```
+Same data as Sheet 1, but optimized for pivot table:
+• No merged cells
+• Flat structure (no subtotals)
+• Date parsed to Year, Month, Day columns
+• Category hierarchy: Main Category | Sub Category
+• Account Type column added
+```
+
+**C. Budget Export (Excel Format)**
+
+**Sheet 1: "Budget Overview"**
+```
+┌──────────────┬──────────────┬──────────────┬──────────────┬────────────┬──────────┐
+│ Kategori     │ Budget       │ Realisasi    │ Sisa         │ % Used     │ Status   │
+├──────────────┼──────────────┼──────────────┼──────────────┼────────────┼──────────┤
+│ Makan        │  2,000,000   │  1,250,000   │    750,000   │    62.5%   │ ✅ Aman  │
+│ Transport    │    800,000   │    680,000   │    120,000   │    85.0%   │ ⚠️ Hampir│
+│ Belanja      │  1,500,000   │  1,620,000   │   -120,000   │   108.0%   │ ❌ Over  │
+│ Entertainment│    500,000   │    320,000   │    180,000   │    64.0%   │ ✅ Aman  │
+└──────────────┴──────────────┴──────────────┴──────────────┴────────────┴──────────┘
+
+Conditional Formatting:
+• Status "✅ Aman" → Green background
+• Status "⚠️ Hampir" → Yellow background (80-100%)
+• Status "❌ Over" → Red background (>100%)
+• Progress bar in "% Used" column
+```
+
+**Sheet 2: "Daily Breakdown"**
+```
+┌──────┬──────────────┬──────────────┬──────────────┬──────────────┐
+│ Tgl  │ Makan        │ Transport    │ Belanja      │ Total Harian │
+├──────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ 1    │     50,000   │     25,000   │          0   │     75,000   │
+│ 2    │     35,000   │     45,000   │     120,000  │    200,000   │
+│ 3    │     42,000   │          0   │      85,000  │    127,000   │
+│ ...  │         ...  │         ...  │         ...  │         ...  │
+│ 31   │     38,000   │     32,000   │      95,000  │    165,000   │
+├──────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ Total│  1,250,000   │    680,000   │  1,620,000   │  3,550,000   │
+└──────┴──────────────┴──────────────┴──────────────┴──────────────┘
+
+Sparklines for each category (mini trend chart in cell)
+```
+
+**D. Export Customization Dialog**
+
+Before export, show dialog:
+```
+┌─────────────────────────────────────────────────┐
+│ 📥 Export Transaksi                             │
+├─────────────────────────────────────────────────┤
+│ Format:                                         │
+│ ○ Excel (.xlsx) - Recommended                  │
+│ ○ CSV (.csv) - For Google Sheets               │
+│ ○ JSON (.json) - For developers                │
+├─────────────────────────────────────────────────┤
+│ Date Range:                                     │
+│ From: [01/01/2026 📅]  To: [31/01/2026 📅]     │
+│ Quick: [This Month] [Last 3 Months] [This Year]│
+├─────────────────────────────────────────────────┤
+│ Columns to Include:                             │
+│ ☑ Date           ☑ Description                 │
+│ ☑ Category       ☑ Amount                      │
+│ ☑ Type           ☑ From Account                │
+│ ☑ To Account     ☐ Balance After (slow)        │
+│ ☐ Notes          ☐ Created At                  │
+├─────────────────────────────────────────────────┤
+│ Advanced Options:                               │
+│ ☑ Include Summary Sheet                        │
+│ ☑ Include Charts                               │
+│ ☑ Group by Category                            │
+│ ☐ Split by Month (separate sheets)             │
+├─────────────────────────────────────────────────┤
+│ [Cancel]              [Export (1,234 records)] │
+└─────────────────────────────────────────────────┘
+```
+
+**E. CSV Format (Google Sheets Optimized)**
+
+```csv
+Date,Description,Category,Amount,Type,From,To,Notes
+2026-01-18,Makan siang,Makan,25000,Expense,Gopay,[EXPENSE] Makan,
+2026-01-17,Gaji Januari,Salary,15000000,Income,[INCOME] Salary,BCA,Transfer gaji bulanan
+2026-01-15,Grab ke kantor,Transport,45000,Expense,Gopay,[EXPENSE] Transport,
+```
+
+Features:
+- UTF-8 encoding (support Indonesian characters)
+- Comma delimiter (standard)
+- Quoted strings (handle commas in description)
+- No formulas (plain values only)
+- Header row included
+
+**F. JSON Format (Developer/API Use)**
+
+```json
+{
+  "export_metadata": {
+    "generated_at": "2026-01-18T10:30:00Z",
+    "date_range": {
+      "from": "2026-01-01",
+      "to": "2026-01-31"
+    },
+    "total_records": 1234,
+    "filters": {
+      "categories": ["Makan", "Transport"],
+      "min_amount": 0,
+      "max_amount": 1000000
+    }
+  },
+  "summary": {
+    "total_income": 15000000,
+    "total_expense": 4850000,
+    "net": 10150000,
+    "savings_rate": 0.677
+  },
+  "transactions": [
+    {
+      "id": "clx1y2z3a",
+      "date": "2026-01-18",
+      "description": "Makan siang",
+      "amount": 25000,
+      "type": "EXPENSE",
+      "category": "Makan",
+      "from_account": {
+        "id": "clx1234",
+        "name": "Gopay",
+        "type": "E_WALLET"
+      },
+      "to_account": {
+        "id": "clx5678",
+        "name": "[EXPENSE] Makan",
+        "type": "EXPENSE"
+      },
+      "notes": null,
+      "created_at": "2026-01-18T12:30:00Z"
+    }
+  ]
+}
+```
+
+#### **User Journey**:
+```
+1. User buka /transaksi
+2. Apply filters: Jan 2026, Category: Makan & Transport
+3. Klik "Export" button
+4. Dialog muncul dengan options
+5. Select: Excel format
+6. Date range: Keep current (Jan 2026)
+7. Uncheck: "Balance After" (karena slow untuk 1000+ records)
+8. Check: "Include Charts"
+9. Klik "Export (234 records)"
+10. File downloading... (2-3 sec for 234 records)
+11. "transaksi_jan2026_234records.xlsx" downloaded
+12. Open di Excel → Lihat 3 sheets + charts
+13. Create custom pivot table → Analyze patterns
+```
+
+#### **Technical Requirements**:
+- Library: `exceljs` untuk Excel generation (sudah dipakai di XLSX skill)
+- Server action: `exportTransactions(filters, options)`
+- Background job untuk large exports (>5000 records)
+  - Queue system (future: BullMQ)
+  - Email notification dengan download link
+- File size limit: 10MB (~ 50,000 records)
+- Cache export files (1 hour TTL)
+- Cleanup old exports (delete after 24 hours)
+
+#### **Success Criteria**:
+✅ Export < 3 detik untuk 1000 records (Excel)
+✅ Export < 1 detik untuk 1000 records (CSV)
+✅ Excel file readable di Excel 2016+ dan Google Sheets
+✅ Charts render correctly di Excel
+✅ CSV import-able ke Google Sheets tanpa error
+✅ 40%+ users export data minimal 1x per bulan
+✅ No file corruption (test dengan 10,000+ records)
+
+---
+
+### **📌 Deliverable 3: Spending Heatmap** ⭐ MEDIUM
+
+#### **Problem Statement**:
+User tidak sadar pola spending habits mereka:
+- "Kenapa tiap akhir minggu dompet habis?"
+- "Hari apa saya paling boros?"
+- "Apakah ada pattern spending berdasarkan gajian?"
+
+Tidak ada visual representation untuk daily spending patterns.
+
+#### **What We'll Build**:
+
+**A. Calendar Heatmap Visualization**
+
+Location: Dashboard section atau `/statistik/heatmap`
+
+**Desktop View** (Full Month):
+```
+                 JANUARI 2026
     
-  If event.type === 'recurring':
-    - Button: "Edit" → /recurring with highlight
-    - Button: "Skip Bulan Ini" (warning) → disable recurring for 1 month
-    
-  If event.type === 'transaksi':
-    - Button: "Edit" → /transaksi with edit modal
-    - Button: "Duplikat" → pre-fill form with same data
-    - Button: "Hapus" (destructive)
-  ```
+    Mon Tue Wed Thu Fri Sat Sun
+    ═══════════════════════════════
+W1          1   2   3   4   5
+            🟢  🟢  🟡  🔴  🔴
+            50k 75k 180k 450k 520k
 
-**Step 3:** Implement actions
-- For cicilan: Call `bayarCicilan()` action
-- For recurring: Call `toggleRecurringTransaction()` or update
-- For transaksi: Call `updateTransaksi()` or `deleteTransaksi()`
-- All: Show toast notification on success
-- All: Update calendar without page reload (optimistic UI)
+W2  6   7   8   9  10  11  12
+    🟢  🟢  🟡  🟢  🟢  🔴  🔴
+    30k 85k 120k 95k 110k 380k 425k
 
-**Step 4:** Add "Skip Month" functionality for recurring
-- File: NEW `src/app/actions/recurring.ts` → `skipRecurringForMonth()`
-- Logic:
-  ```
-  1. Check if terakhirDieksekusi is this month → prevent skip
-  2. Set custom field: skipMonths = [YYYY-MM]
-  3. Update executeRecurringTransactions() to check skipMonths
-  ```
+W3  13  14  15  16  17  18  19
+    🟢  🟡  🟡  🟢  🟢  🔴  🔴
+    60k 150k 135k 80k 105k 340k 410k
 
-**Step 5:** Add visual feedback
-- After action: Update event appearance
-  - Paid cicilan: Change color to green + checkmark icon
-  - Skipped recurring: Change to gray + crossed icon
-  - Deleted transaction: Remove from calendar
+W4  20  21  22  23  24  25  26
+    🟢  🟢  🟡  🟢  🔴  🔴  🔴
+    45k 90k 180k 100k 850k 650k 580k
 
-**Testing:**
-1. Click cicilan event → "Bayar Cicilan" → verify transaction created
-2. Click recurring → "Skip Bulan Ini" → verify not executed
-3. Click past transaction → "Duplikat" → verify form pre-filled
-4. Check calendar updates immediately (no refresh needed)
+W5  27  28  29  30  31
+    🟢  🟢  🟡  🟢  🟡
+    55k 70k 145k 95k 175k
 
-**Estimated Time:** 4 hours
-- Dialog UI: 1 hour
-- Action implementations: 2 hours
-- Optimistic UI updates: 30 minutes
-- Testing: 30 minutes
+Color Scale:
+🟢 Low (0-100k)
+🟡 Medium (100k-300k)
+🟠 High (300k-500k)
+🔴 Very High (>500k)
+```
 
----
+**Mobile View** (Swipeable Weeks):
+```
+┌─────────────────────────────────────┐
+│ Week 2 (6-12 Jan)            [<][>] │
+├─────────────────────────────────────┤
+│ Mon  Tue  Wed  Thu  Fri  Sat  Sun   │
+│  6    7    8    9   10   11   12    │
+│ 🟢   🟢   🟡   🟢   🟢   🔴   🔴     │
+│ 30k  85k  120k 95k  110k 380k 425k  │
+├─────────────────────────────────────┤
+│ 💰 Total Week: Rp 1.245.000         │
+│ 📊 Average: Rp 177.857/day          │
+│ 🔝 Peak: Sabtu (Rp 425k)            │
+└─────────────────────────────────────┘
 
-### **ISSUE #6: No Notification System** 🟠 MEDIUM
+[Swipe left/right untuk pindah minggu]
+```
 
-**Problem:**
-- No alerts when budget almost exceeded
-- No reminder before cicilan due date
-- No notification when recurring fails
-- User must manually check dashboard
+**B. Hover Tooltip (Desktop)**
 
-**Impact:**
-- User misses important financial events
-- Late payments possible
-- Budget overruns not prevented
+Hover pada cell tanggal → Tooltip muncul:
+```
+┌──────────────────────────────────┐
+│ Sabtu, 11 Januari 2026           │
+├──────────────────────────────────┤
+│ Total Pengeluaran: Rp 380.000    │
+├──────────────────────────────────┤
+│ Top 3 Transaksi:                 │
+│ 1. Makan malam resto - Rp 150k   │
+│ 2. Nonton bioskop    - Rp 120k   │
+│ 3. Grab pulang       - Rp  65k   │
+├──────────────────────────────────┤
+│ Kategori Terbesar: Entertainment │
+│ [Lihat Semua Transaksi →]       │
+└──────────────────────────────────┘
+```
 
-**Solution Plan:**
+**C. Filters & Options**
 
-**Step 1:** Create notification system foundation
-- File: NEW `src/app/actions/notifications.ts`
-- Model: Add to Prisma schema (optional, can use LogSistem)
-  ```prisma
-  model Notification {
-    id String @id @default(cuid())
-    userId String // for future multi-user
-    type String // BUDGET_WARNING, CICILAN_DUE, RECURRING_FAILED
-    title String
-    message String
-    severity String // INFO, WARNING, ERROR
-    read Boolean @default(false)
-    actionUrl String? // link to relevant page
-    createdAt DateTime @default(now())
+**Filter Panel**:
+```
+┌─────────────────────────────────────────────┐
+│ 📅 Period: [Januari 2026 ▼]                 │
+│                                             │
+│ 🎯 Filter by Category:                      │
+│ ☐ All Categories                            │
+│ ☑ Makan & Minum                             │
+│ ☑ Transport                                 │
+│ ☐ Belanja                                   │
+│ ☐ Entertainment                             │
+│                                             │
+│ 💰 Amount Range:                            │
+│ Min: [0        ] Max: [1,000,000]          │
+│                                             │
+│ 📊 View Mode:                               │
+│ ○ Total Spending (default)                 │
+│ ○ Transaction Count                         │
+│ ○ Average per Transaction                  │
+│                                             │
+│ [Reset Filters] [Apply]                     │
+└─────────────────────────────────────────────┘
+```
+
+**D. Pattern Analysis Insights**
+
+Auto-generated insights berdasarkan heatmap data:
+
+**Algorithm**:
+```typescript
+function analyzeSpendingPattern(heatmapData) {
+  const insights = []
+  
+  // 1. Weekend vs Weekday
+  const weekendAvg = calculateAverage(heatmapData.weekends)
+  const weekdayAvg = calculateAverage(heatmapData.weekdays)
+  const weekendIncrease = ((weekendAvg - weekdayAvg) / weekdayAvg) * 100
+  
+  if (weekendIncrease > 50) {
+    insights.push({
+      icon: '📊',
+      title: 'Weekend Spending Spike',
+      message: `Pengeluaran weekend ${weekendIncrease.toFixed(0)}% lebih tinggi (Rp ${weekendAvg.toLocaleString()} vs Rp ${weekdayAvg.toLocaleString()})`,
+      suggestion: 'Pertimbangkan meal prep atau aktivitas hemat di weekend',
+      severity: 'warning'
+    })
   }
-  ```
-
-**Step 2:** Add notification triggers
-
-**Trigger A: Budget Warning (80% threshold)**
-- Location: `src/app/actions/anggaran.ts` → after realization calculation
-- Condition: If persentase >= 80 AND persentase < 100
-- Action: Create notification with title "⚠️ Anggaran [Kategori] Hampir Habis"
-
-**Trigger B: Cicilan Due Soon (3 days before)**
-- Location: `src/app/api/cron/daily/route.ts`
-- Condition: Check all active cicilan where tanggalJatuhTempo - today <= 3
-- Action: Create notification "💳 Cicilan [Product] Jatuh Tempo dalam [N] Hari"
-
-**Trigger C: Recurring Execution Failed**
-- Location: `src/app/actions/recurring.ts` → executeRecurringTransactions()
-- Condition: If transaction fails (catch block)
-- Action: Create notification "❌ Transaksi Berulang [Name] Gagal Dieksekusi"
-
-**Step 3:** Add notification center UI
-- File: `src/components/layout/notification-bell.tsx` (NEW)
-- Location: Top bar, between Privacy and Theme toggle
-- UI: Bell icon with badge (unread count)
-- Dropdown: List of recent notifications (max 10)
-- Actions: Mark as read, clear all, view all
-
-**Step 4:** Add notification page
-- File: `src/app/notifications/page.tsx` (NEW)
-- Show: All notifications, grouped by date
-- Filter: By type, by read/unread
-- Actions: Bulk mark as read, bulk delete
-
-**Step 5:** Add settings to control notifications
-- File: `src/app/pengaturan/page.tsx`
-- Section: "Notifikasi"
-- Options:
-  - Enable/disable budget warnings
-  - Enable/disable cicilan reminders
-  - Enable/disable recurring alerts
-  - Set budget warning threshold (default 80%)
-
-**Testing:**
-1. Set budget with 85% realization → should create warning notification
-2. Create cicilan with due date 2 days from now → should create reminder
-3. Force recurring to fail → should create error notification
-4. Check notification bell → badge shows count
-5. Click notification → redirects to relevant page
-
-**Estimated Time:** 6 hours
-- Database model + actions: 2 hours
-- UI components: 2 hours
-- Triggers implementation: 1.5 hours
-- Settings integration: 30 minutes
-
----
-
-## 🟡 **TIER 3: NICE-TO-HAVE** (Future enhancements)
-
-### **ISSUE #7: Net Worth Snapshot Not Automated** 🟡 LOW
-
-**Problem:**
-- `saveNetWorthSnapshot()` called manually after transactions
-- If user forgets, trend chart has gaps
-- No daily automatic snapshot
-
-**Solution Plan:**
-
-**Step 1:** Create daily cron job
-- File: NEW `src/app/api/cron/daily/route.ts`
-- Schedule: Every day at 00:00 (midnight)
-- Action: Call `saveNetWorthSnapshot()`
-- Log: Record success/failure to LogSistem
-
-**Step 2:** Configure Vercel Cron (or alternative)
-- File: `vercel.json`
-- Add cron configuration:
-  ```json
-  {
-    "crons": [
-      {
-        "path": "/api/cron/daily",
-        "schedule": "0 0 * * *"
-      }
-    ]
+  
+  // 2. Paycheck Day Pattern
+  const paycheckDay = 25 // Assumed, could be user setting
+  const paycheckSpending = getSpendingOnDay(heatmapData, paycheckDay)
+  const monthAvg = calculateMonthlyAverage(heatmapData)
+  
+  if (paycheckSpending > monthAvg * 3) {
+    insights.push({
+      icon: '💸',
+      title: 'Paycheck Day Splurge',
+      message: `Pengeluaran tanggal gajian (${paycheckDay}) 3x lipat rata-rata harian (Rp ${paycheckSpending.toLocaleString()})`,
+      suggestion: 'Hindari impulse buying setelah gajian. Tunggu 48 jam sebelum belanja besar.',
+      severity: 'warning'
+    })
   }
-  ```
-
-**Step 3:** Add manual trigger button
-- File: `src/app/pengaturan/page.tsx`
-- Location: Under "Net Worth Tracking" section
-- Button: "Simpan Snapshot Sekarang"
-- Shows: Last snapshot date/time
-
-**Step 4:** Add health check
-- File: `src/app/pengaturan/page.tsx`
-- Show: Days since last snapshot
-- Warning: If > 3 days, show alert "Snapshot terakhir [N] hari lalu"
-
-**Estimated Time:** 2 hours
-- Cron setup: 45 minutes
-- Manual trigger UI: 30 minutes
-- Health check: 30 minutes
-- Testing: 15 minutes
-
----
-
-### **ISSUE #8: Template Naming Confusion** 🟡 LOW
-
-**Problem:**
-- "AccountTemplate" vs "TemplateTransaksi" naming inconsistent
-- Users might not understand difference
-- Code also uses different patterns
-
-**Solution Plan:**
-
-**Option A: Rename Database Models** (Breaking change)
-- NOT RECOMMENDED (requires migration)
-
-**Option B: Improve UI Labels Only** (Non-breaking) ✅
-- Keep database models as-is
-- Update all UI labels for clarity
-
-**Implementation:**
-
-**Step 1:** Update page titles
-- File: `src/app/template-akun/page.tsx`
-  - Old: "Template Akun"
-  - New: "Template Pengaturan Bank"
-  - Description: "Konfigurasi biaya admin dan bunga untuk akun bank/e-wallet"
-
-- File: `src/app/template/page.tsx`
-  - Old: "Template Transaksi"
-  - New: "Template Transaksi Cepat"
-  - Description: "Simpan transaksi yang sering dilakukan untuk quick-add"
-
-**Step 2:** Update navigation labels
-- File: `src/components/layout/sidebar.tsx`
-  - "Template Bank" → /template-akun
-  - "Template Transaksi" → /template
-
-**Step 3:** Add info boxes to clarify difference
-- Both pages: Add info card at top explaining use case
-- Example:
-  ```
-  💡 Perbedaan Template:
-  - Template Bank: Untuk mengatur automasi biaya admin & bunga
-  - Template Transaksi: Untuk quick-add transaksi yang sering dilakukan
-  ```
-
-**Estimated Time:** 30 minutes
-
----
-
-### **ISSUE #9: No Export/Import for Specific Data** 🟡 LOW
-
-**Problem:**
-- Current backup exports EVERYTHING
-- User cannot export only budgets, or only templates
-- Useful for: Sharing budget plan, backing up templates only
-
-**Solution Plan:**
-
-**Step 1:** Add selective export options
-- File: `src/app/pengaturan/page.tsx`
-- Location: Under existing "Backup & Restore"
-- Options:
-  - Export All (existing)
-  - Export Budgets Only
-  - Export Templates Only
-  - Export Recurring Only
-  - Custom (checkboxes for each data type)
-
-**Step 2:** Implement selective export actions
-- File: `src/app/actions/backup.ts`
-- New function: `exportSelective(options: string[])`
-- Options array: ['budgets', 'templates', 'recurring', etc.]
-
-**Step 3:** Add import with merge options
-- Current: Import replaces existing (skip if exists)
-- New: Options on import:
-  - Replace existing (current behavior)
-  - Merge (keep both, rename duplicates)
-  - Skip duplicates (current behavior)
-
-**Estimated Time:** 2 hours
-
----
-
-## 🆕 **NEW FEATURE REQUEST: Real-Time Clock in Top Bar**
-
-### **Requirement:**
-
-Add live clock display showing:
-- Date: "Jumat, 16 Januari 2026"
-- Time: "14:23:45 WIB"
-- Updates every second
-- Location: Top bar, left side (before debug menu)
-
-**Solution Plan:**
-
-**Step 1:** Create Clock component
-- File: NEW `src/components/layout/live-clock.tsx`
-- Type: Client component (needs useState, useEffect)
-- State: `currentTime` (Date object)
-- Effect: setInterval to update every 1000ms
-- Cleanup: clearInterval on unmount
-
-**Step 2:** Format display
-- Date format: Use `toLocaleDateString('id-ID')` with options:
-  ```typescript
-  {
-    weekday: 'long',  // Senin, Selasa, etc.
-    year: 'numeric',  // 2026
-    month: 'long',    // Januari, Februari, etc.
-    day: 'numeric'    // 1, 2, 3, etc.
+  
+  // 3. Most Consistent Day
+  const consistencyScore = calculateConsistency(heatmapData)
+  const mostConsistent = Object.keys(consistencyScore).reduce((a, b) => 
+    consistencyScore[a] < consistencyScore[b] ? a : b
+  )
+  
+  insights.push({
+    icon: '✅',
+    title: 'Consistent Spending',
+    message: `${mostConsistent} adalah hari paling konsisten (variance rendah)`,
+    suggestion: 'Good pattern! Pertahankan kebiasaan ini.',
+    severity: 'positive'
+  })
+  
+  // 4. Danger Zone Days (>500k)
+  const dangerDays = heatmapData.filter(d => d.total > 500000)
+  if (dangerDays.length > 5) {
+    insights.push({
+      icon: '⚠️',
+      title: 'Frequent High-Spending Days',
+      message: `${dangerDays.length} hari dengan pengeluaran >Rp 500k`,
+      suggestion: 'Review transaksi besar. Apakah bisa dihindari atau dijadwalkan lebih baik?',
+      severity: 'critical'
+    })
   }
-  ```
-- Time format: Use `toLocaleTimeString('id-ID')` with options:
-  ```typescript
-  {
-    hour: '2-digit',   // 14
-    minute: '2-digit', // 23
-    second: '2-digit', // 45
-    hour12: false,     // 24-hour format
-    timeZone: 'Asia/Jakarta' // WIB
+  
+  return insights
+}
+```
+
+**Insight Display**:
+```
+┌─────────────────────────────────────────────────────┐
+│ 💡 PATTERN INSIGHTS                                 │
+├─────────────────────────────────────────────────────┤
+│ 📊 Weekend Spending Spike                           │
+│    Pengeluaran weekend 68% lebih tinggi             │
+│    (Rp 405k vs Rp 241k). Pertimbangkan meal prep   │
+│    atau aktivitas hemat di weekend.                 │
+│                                           [Detail →]│
+├─────────────────────────────────────────────────────┤
+│ 💸 Paycheck Day Splurge                             │
+│    Pengeluaran tanggal 25 (gajian) 3x lipat        │
+│    rata-rata harian (Rp 850k). Tunggu 48 jam       │
+│    sebelum belanja besar untuk avoid impulse buy.  │
+│                                           [Detail →]│
+├─────────────────────────────────────────────────────┤
+│ ✅ Consistent Spending                              │
+│    Selasa adalah hari paling konsisten. Good!      │
+│                                           [Detail →]│
+└─────────────────────────────────────────────────────┘
+```
+
+**E. Drill-down Feature**
+
+Klik pada cell tanggal → Modal detail:
+```
+┌─────────────────────────────────────────────┐
+│ 📅 Detail: Sabtu, 11 Januari 2026           │
+│ Total: Rp 380.000 (7 transaksi)             │
+├─────────────────────────────────────────────┤
+│ BREAKDOWN BY CATEGORY                       │
+│                                             │
+│ Entertainment    Rp 270.000 (71%) ████████  │
+│ Makan & Minum    Rp  85.000 (22%) ███       │
+│ Transport        Rp  25.000  (7%) █         │
+├─────────────────────────────────────────────┤
+│ TRANSAKSI                                   │
+│                                             │
+│ 🍿 Nonton bioskop XXI     Rp 120.000  20:00│
+│ 🎮 Top-up Steam           Rp 150.000  15:30│
+│ 🍔 Dinner Burger King     Rp  85.000  19:15│
+│ 🚗 Grab ke mall           Rp  25.000  14:45│
+│ ... +3 lainnya                              │
+│                                             │
+│ [Lihat Semua Transaksi] [Export Hari Ini]  │
+└─────────────────────────────────────────────┘
+```
+
+#### **User Journey**:
+```
+1. User buka Dashboard atau /statistik/heatmap
+2. Lihat heatmap bulan ini (Januari 2026)
+3. Notice: Weekend cells mostly red/orange
+4. Hover Sabtu 11 Jan → Tooltip: Rp 380k, top: Nonton + Gaming
+5. Klik cell → Modal detail muncul
+6. Review 7 transaksi hari itu
+7. Scroll ke insight: "Weekend Spending Spike 68%"
+8. Filter: Show only "Makan" category
+9. Heatmap update → Pattern berbeda (weekday peak saat lunch hour)
+10. Switch view mode: "Transaction Count"
+11. Heatmap show: Jumat paling banyak transaksi (8-10 kali)
+12. Screenshot heatmap → Share ke partner/accountant
+```
+
+#### **Technical Requirements**:
+- Chart library: `recharts` (sudah ada) atau custom D3.js
+- Server action: `getSpendingHeatmap(month, year, filters)`
+- Aggregate transaksi per hari
+- Calculate daily totals, averages, counts
+- Cache heatmap data (1 hour TTL untuk current month)
+- Responsive: Desktop (calendar grid), Mobile (week cards)
+- Color scale calculation: Quartile-based atau fixed thresholds (user preference)
+
+#### **Success Criteria**:
+✅ Heatmap loads < 1 detik untuk 1 bulan data
+✅ Hover tooltip appears < 100ms
+✅ Drill-down modal opens < 200ms
+✅ Pattern insights accurate (verified manually untuk 5+ users)
+✅ Mobile swipe gesture smooth (60fps)
+✅ Color-blind friendly palette (optional toggle)
+✅ 30%+ engagement (users interact dengan heatmap > 3x per session)
+
+---
+
+### **📌 Deliverable 4: Advanced Filters & Search** ⭐ MEDIUM
+
+#### **Problem Statement**:
+Filter transaksi saat ini terbatas:
+- Hanya bisa filter 1 kategori, 1 akun, 1 date range
+- Tidak bisa complex queries: "Transaksi >500rb di kategori Makan bulan lalu"
+- Tidak bisa save filter untuk dipakai lagi
+- Tidak ada quick filters (This Month, Last 3 Months, YTD)
+
+#### **What We'll Build**:
+
+**A. Advanced Filter Panel**
+
+Location: `/transaksi` page (collapsible sidebar atau top panel)
+
+**UI Layout**:
+```
+┌─────────────────────────────────────────────────────┐
+│ 🔍 ADVANCED FILTERS                    [Reset All]  │
+├─────────────────────────────────────────────────────┤
+│ 📅 Date Range                                       │
+│ Quick: [This Month] [Last 3M] [YTD] [Custom...]    │
+│ From: [2026-01-01 📅]  To: [2026-01-31 📅]         │
+├─────────────────────────────────────────────────────┤
+│ 💰 Amount                                           │
+│ Min: [0        ]  Max: [1,000,000]                 │
+│ Quick: [<50k] [50k-200k] [200k-1M] [>1M]           │
+├─────────────────────────────────────────────────────┤
+│ 🎯 Category (Multi-select)                         │
+│ ☑ Makan & Minum    ☐ Entertainment                │
+│ ☑ Transport        ☐ Cicilan                      │
+│ ☐ Belanja          ☐ Healthcare                   │
+│ [Select All] [Clear]                               │
+├─────────────────────────────────────────────────────┤
+│ 🏦 Account (Multi-select)                          │
+│ ☑ BCA Tahapan      ☐ CIMB Niaga CC                │
+│ ☑ Gopay            ☐ Tunai                        │
+│ [Select All] [Clear]                               │
+├─────────────────────────────────────────────────────┤
+│ 🔄 Transaction Type                                │
+│ ○ All              ○ Income Only                   │
+│ ○ Expense Only     ○ Transfer Only                │
+├─────────────────────────────────────────────────────┤
+│ 📝 Advanced Options                                │
+│ ☐ Has Notes                                        │
+│ ☐ Created by Recurring                             │
+│ ☐ Linked to Installment                           │
+│ ☐ Payment Transaction                              │
+├─────────────────────────────────────────────────────┤
+│ [Save as Preset...]  [Apply Filters]               │
+└─────────────────────────────────────────────────────┘
+```
+
+**B. Filter Logic Builder** (Advanced Mode)
+
+For power users who need AND/OR logic:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🔬 FILTER BUILDER (Advanced)          [Switch to Simple]│
+├─────────────────────────────────────────────────────┤
+│ Rule Group 1: [AND ▼]                               │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ Amount [Greater Than ▼] [500,000]       [❌]   │ │
+│ │ [AND ▼]                                         │ │
+│ │ Category [In ▼] [Makan, Transport]      [❌]   │ │
+│ │ [Add Rule +]                                    │ │
+│ └─────────────────────────────────────────────────┘ │
+│                                                     │
+│ [OR ▼]                                              │
+│                                                     │
+│ Rule Group 2: [AND ▼]                               │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ Date [Between ▼] [2026-01-01] and [2026-01-07] │ │
+│ │ [AND ▼]                                         │ │
+│ │ Type [Equals ▼] [Income]                [❌]   │ │
+│ │ [Add Rule +]                                    │ │
+│ └─────────────────────────────────────────────────┘ │
+│                                                     │
+│ [Add Group +]                                       │
+│                                                     │
+│ Preview SQL (Read-only):                            │
+│ WHERE (amount > 500000 AND category IN             │
+│        ('Makan','Transport'))                       │
+│    OR (date BETWEEN '2026-01-01' AND '2026-01-07'  │
+│        AND type = 'Income')                        │
+│                                                     │
+│ [Apply Complex Filter]                              │
+└─────────────────────────────────────────────────────┘
+```
+
+**C. Saved Filter Presets**
+
+User bisa save kombinasi filter untuk dipakai lagi:
+
+**Preset Management UI**:
+```
+┌─────────────────────────────────────────────────────┐
+│ 📌 SAVED PRESETS                          [+ New]   │
+├─────────────────────────────────────────────────────┤
+│ ⭐ Large Expenses                          [Apply]  │
+│    Amount > 1M, Type: Expense                       │
+│    Last used: 2 days ago            [Edit] [Delete]│
+├─────────────────────────────────────────────────────┤
+│ 🍔 Dining Out                              [Apply]  │
+│    Category: Makan, Amount > 50k                    │
+│    Last used: Yesterday             [Edit] [Delete]│
+├─────────────────────────────────────────────────────┤
+│ 💰 Monthly Salary                          [Apply]  │
+│    Category: Gaji, Type: Income                     │
+│    Last used: 18 Jan 2026           [Edit] [Delete]│
+├─────────────────────────────────────────────────────┤
+│ 🎮 Entertainment Spending                  [Apply]  │
+│    Category: Entertainment, Date: This Month        │
+│    Last used: Never                 [Edit] [Delete]│
+└─────────────────────────────────────────────────────┘
+```
+
+**Save Preset Dialog**:
+```
+┌─────────────────────────────────────────┐
+│ 💾 Save Current Filter as Preset        │
+├─────────────────────────────────────────┤
+│ Preset Name:                            │
+│ [Weekend Splurges            ]          │
+│                                         │
+│ Icon (Optional):                        │
+│ 🛍️  [Choose Emoji]                      │
+│                                         │
+│ Description:                            │
+│ [Transaksi >200k di weekend  ]          │
+│ [untuk review impulse buying ]          │
+│                                         │
+│ Current Filter Summary:                 │
+│ • Amount > 200,000                      │
+│ • Day of Week: Saturday, Sunday         │
+│ • Categories: All                       │
+│ • Date Range: This Month                │
+│                                         │
+│ [Cancel]  [Save Preset]                 │
+└─────────────────────────────────────────┘
+```
+
+**D. Active Filter Chips**
+
+Show active filters sebagai chips di atas transaction table:
+
+```
+Active Filters (3):
+┌──────┐ ┌──────────────┐ ┌─────────────┐
+│ Makan│×│ Amount >500k │×│ This Month  │×
+└──────┘ └──────────────┘ └─────────────┘
+
+[Clear All]   Results: 47 transactions
+```
+
+Click "×" pada chip → Remove filter tersebut
+Click "Clear All" → Reset semua filter
+
+**E. URL Params Sync** (Shareable Filtered Views)
+
+Filter state disimpan di URL params agar bisa di-share:
+
+```
+Before Filter:
+/transaksi
+
+After Filter:
+/transaksi?category=Makan,Transport&minAmount=500000&dateFrom=2026-01-01&dateTo=2026-01-31
+
+User bisa:
+1. Copy URL
+2. Share ke accountant/partner
+3. Bookmark filtered view
+4. Browser back button works (filter state preserved)
+```
+
+**F. Smart Filter Suggestions**
+
+Based on user behavior, suggest relevant filters:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 💡 SUGGESTED FILTERS                                │
+├─────────────────────────────────────────────────────┤
+│ 📊 Most Used This Month                             │
+│ • Large Expenses (used 8x) ...................[Apply]│
+│ • Dining Out (used 5x) .......................[Apply]│
+├─────────────────────────────────────────────────────┤
+│ 🎯 Based on Your Activity                           │
+│ • Last 7 Days Expenses .....................[Apply] │
+│ • CIMB CC Transactions (you reviewed this) ..[Apply] │
+├─────────────────────────────────────────────────────┤
+│ 📅 Quick Date Ranges                                │
+│ • Today ...................................... [Apply]│
+│ • Yesterday .................................. [Apply]│
+│ • This Week .................................. [Apply]│
+│ • Last Week .................................. [Apply]│
+│ • This Month ................................. [Apply]│
+│ • Last Month ................................. [Apply]│
+│ • This Quarter ............................... [Apply]│
+│ • This Year .................................. [Apply]│
+└─────────────────────────────────────────────────────┘
+```
+
+#### **User Journey**:
+```
+1. User buka /transaksi
+2. Klik "Advanced Filters" (panel expand)
+3. Set filters:
+   - Amount: Min 500,000
+   - Category: Makan, Transport (multi-select)
+   - Date: This Month (quick select)
+4. Active filter chips muncul: "Makan", "Amount >500k", "This Month"
+5. Results update: 47 transactions
+6. User satisfied → Klik "Save as Preset"
+7. Dialog muncul
+8. Input name: "Large Dining/Transport"
+9. Choose icon: 🍔
+10. Save → Preset added to list
+11. Next time: Klik preset "Large Dining/Transport" → Filters applied instantly
+12. Copy URL → Share ke partner untuk review
+13. Partner open URL → Same filtered view
+```
+
+#### **Technical Requirements**:
+- Client state management: Use URL params (Next.js router)
+- Server action: `getTransaksi(filters)` (already exists, extend)
+- Filter parsing: `parseFilterParams(searchParams)`
+- Preset storage: Database table `FilterPreset` atau localStorage
+- Query builder: Prisma `where` clause generation
+- Validation: Zod schema untuk filter inputs
+- Performance: Index database columns used in filters
+
+**Database Schema untuk Presets**:
+```typescript
+model FilterPreset {
+  id          String   @id @default(cuid())
+  userId      String   // Future: Multi-user support
+  name        String
+  icon        String?
+  filters     String   // JSON: { category: [...], amount: {...} }
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  
+  @@index([userId, lastUsedAt])
+}
+```
+
+#### **Success Criteria**:
+✅ Filter panel loads < 200ms
+✅ Apply filter updates results < 500ms (for 1000+ transactions)
+✅ Support saving up to 10 presets per user
+✅ URL sync works (back button preserves filter state)
+✅ Complex filter builder supports 3-level nesting (Group → Rule → Condition)
+✅ 25%+ users create at least 1 saved preset
+✅ Shareable URLs work across sessions/devices
+
+---
+
+### **🎯 Sprint 3 Success Metrics**:
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| YoY comparison usage | 60%+ MAU | Analytics: View YoY page |
+| Excel export adoption | 40%+ users/month | Track export action |
+| Heatmap engagement | 3+ clicks/session | Measure hover, click, drill-down |
+| Saved filter creation | 25%+ users | Count FilterPreset records |
+| Advanced filter usage | 35%+ sessions | Track "Apply Filters" action |
+| Export file quality | 95%+ success rate | Monitor download errors |
+
+---
+
+## 🎨 **SPRINT 4: UX Polish & Engagement** (Week 7-8)
+
+### **Objective**: 
+Make the app delightful to use, reduce friction, increase retention. Transform from functional tool to enjoyable daily companion.
+
+---
+
+### **📌 Deliverable 1: Interactive Onboarding Flow** ⭐ CRITICAL
+
+#### **Problem Statement**:
+New user masuk dashboard kosong, tidak tahu harus mulai dari mana:
+- Abandonment rate 65% di first session
+- 40% users tidak pernah create transaksi pertama
+- Tidak ada guidance tentang best practices
+- Fitur-fitur powerful (cicilan, budget, recurring) tidak pernah digunakan karena tidak aware
+
+#### **What We'll Build**:
+
+**A. 5-Step Wizard** (Progressive, Skippable, Resumable)
+
+**Step 1: Welcome Screen** (15 seconds)
+```
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│              👋 Selamat Datang!                     │
+│                                                     │
+│         Mari kita mulai perjalanan keuangan         │
+│         yang lebih terorganisir dalam 2 menit       │
+│                                                     │
+│              [Illustration: Wallet]                 │
+│                                                     │
+│              [Mulai Setup →]                        │
+│              [Skip - Jelajahi Sendiri]              │
+│                                                     │
+│              Progress: ○○○○○ (0/5)                  │
+└─────────────────────────────────────────────────────┘
+```
+
+**Step 2: Add First Account** (45 seconds)
+```
+┌─────────────────────────────────────────────────────┐
+│ 🏦 Tambahkan Akun Pertama (1/5)         [Skip Step]│
+├─────────────────────────────────────────────────────┤
+│ Pilih atau buat akun untuk mulai mencatat          │
+│                                                     │
+│ QUICK TEMPLATES (Tap to Add):                      │
+│ ┌─────────┬─────────┬─────────┬─────────┐          │
+│ │🏦 BCA   │💳 Gopay │💵 Tunai │➕ Custom│          │
+│ │Tahapan │         │         │         │          │
+│ └─────────┴─────────┴─────────┴─────────┘          │
+│                                                     │
+│ atau                                                │
+│                                                     │
+│ CREATE CUSTOM:                                      │
+│ Nama Akun: [___________________________]            │
+│ Tipe:      [Bank ▼]                                │
+│ Saldo Awal:[___________] (opsional, bisa 0)        │
+│                                                     │
+│ 💡 Tip: Pilih akun yang paling sering digunakan    │
+│                                                     │
+│ [← Back]              [Lanjut (0/1 akun) →]        │
+│ Progress: ●○○○○ (1/5)                               │
+└─────────────────────────────────────────────────────┘
+
+Behavior:
+- Klik "BCA Tahapan" → Auto-create account "BCA Tahapan", tipe BANK, saldo 0
+- Lanjut button disabled until 1 account created
+- Skip button → Jump to Step 5 (Done)
+```
+
+**Step 3: First Transaction** (60 seconds)
+```
+┌─────────────────────────────────────────────────────┐
+│ 💸 Coba Catat Transaksi (2/5)           [Skip Step]│
+├─────────────────────────────────────────────────────┤
+│ Mari catat transaksi pertama untuk mencoba sistem  │
+│                                                     │
+│ QUICK EXAMPLES (Tap to Use):                       │
+│ ┌─────────────────┬─────────────────┐              │
+│ │🍜 Makan Siang   │🚗 Grab ke Kantor│              │
+│ │   Rp 25.000     │   Rp 45.000     │              │
+│ └─────────────────┴─────────────────┘              │
+│                                                     │
+│ atau CREATE YOUR OWN:                              │
+│                                                     │
+│ Deskripsi: [Makan siang warteg    ]                │
+│ Nominal:   [25,000                ]                │
+│ Kategori:  [Makan & Minum ▼]                       │
+│ Akun:      [BCA Tahapan ▼]                         │
+│ Tanggal:   [Hari ini ▼]                            │
+│                                                     │
+│ [Preview Transaction]                               │
+│ ┌───────────────────────────────────────────────┐  │
+│ │ BCA Tahapan: -Rp 25.000                       │  │
+│ │ Balance: Rp 0 → -Rp 25.000                    │  │
+│ │ (Transaksi pengeluaran)                       │  │
+│ └───────────────────────────────────────────────┘  │
+│                                                     │
+│ 💡 Tip: Jangan khawatir, ini cuma latihan!         │
+│    Data bisa dihapus nanti.                        │
+│                                                     │
+│ [← Back]              [Simpan & Lanjut →]          │
+│ Progress: ●●○○○ (2/5)                               │
+└─────────────────────────────────────────────────────┘
+```
+
+**Step 4: Set Budget (Optional)** (45 seconds)
+```
+┌─────────────────────────────────────────────────────┐
+│ 🎯 Atur Budget Bulanan (3/5)            [Skip Step]│
+├─────────────────────────────────────────────────────┤
+│ Kontrol pengeluaran dengan set batas budget        │
+│                                                     │
+│ QUICK BUDGET (Based on average Indonesian):        │
+│ ┌─────────────────────────────────────────────┐    │
+│ │ Makan & Minum:  [2,000,000] (30% gaji)     │    │
+│ │ Transport:      [  800,000] (12% gaji)     │    │
+│ │ Belanja:        [1,500,000] (23% gaji)     │    │
+│ │ Entertainment:  [  500,000]  (8% gaji)     │    │
+│ │ Lainnya:        [1,200,000] (18% gaji)     │    │
+│ │ ───────────────────────────────────────────│    │
+│ │ Total:          [6,000,000]                │    │
+│ └─────────────────────────────────────────────┘    │
+│                                                     │
+│ 💡 Tip: Ini hanya contoh, bisa diubah kapan saja   │
+│                                                     │
+│ [Use Default] [Customize] [Skip - Atur Nanti]      │
+│                                                     │
+│ [← Back]              [Lanjut →]                    │
+│ Progress: ●●●○○ (3/5)                               │
+└─────────────────────────────────────────────────────┘
+```
+
+**Step 5: Explore Features** (30 seconds)
+```
+┌─────────────────────────────────────────────────────┐
+│ 🎉 Setup Selesai! (4/5)                             │
+├─────────────────────────────────────────────────────┤
+│ Selamat! Akun Anda siap digunakan.                 │
+│                                                     │
+│ APA YANG BISA DILAKUKAN:                           │
+│                                                     │
+│ ✅ Catat Pemasukan & Pengeluaran                    │
+│    Track setiap rupiah masuk dan keluar            │
+│                                                     │
+│ 💸 Transfer Antar Akun                              │
+│    Pindahkan uang dari BCA ke Gopay, dll           │
+│                                                     │
+│ 💳 Kelola Cicilan Kartu Kredit                      │
+│    Auto-generate tagihan bulanan, no telat bayar   │
+│                                                     │
+│ 📊 Lihat Laporan & Analytics                        │
+│    Trend 6 bulan, YoY comparison, spending heatmap │
+│                                                     │
+│ 🔄 Transaksi Berulang Otomatis                      │
+│    Set gaji, tagihan, langganan untuk auto-add     │
+│                                                     │
+│ [Mulai Mencatat →]                                  │
+│ [Watch Video Tutorial (2 min)]                      │
+│                                                     │
+│ Progress: ●●●●○ (4/5)                               │
+└─────────────────────────────────────────────────────┘
+```
+
+**Step 6: Optional - Sample Data** (15 seconds)
+```
+┌─────────────────────────────────────────────────────┐
+│ 🎲 Mau Coba dengan Data Contoh? (5/5)              │
+├─────────────────────────────────────────────────────┤
+│ Kami bisa generate data contoh untuk eksplorasi    │
+│                                                     │
+│ Data yang akan dibuat:                              │
+│ • 50 transaksi (mix income & expense)               │
+│ • 3 akun (BCA, Gopay, CIMB CC)                      │
+│ • 1 cicilan aktif (iPhone 15)                       │
+│ • Budget untuk 5 kategori                           │
+│ • 2 recurring transactions                          │
+│                                                     │
+│ 💡 Berguna untuk:                                   │
+│ - Explore fitur tanpa input manual                 │
+│ - Lihat tampilan dashboard dengan data             │
+│ - Test export, filter, analytics                   │
+│                                                     │
+│ ⚠️ Data bisa dihapus kapan saja di Settings        │
+│                                                     │
+│ [Ya, Generate Sample Data]                          │
+│ [Tidak, Mulai Kosong]                               │
+│                                                     │
+│ Progress: ●●●●● (5/5)                               │
+└─────────────────────────────────────────────────────┘
+```
+
+**B. Resume Capability**
+
+User bisa exit di tengah wizard → Data disimpan:
+
+```typescript
+interface OnboardingProgress {
+  userId: string
+  currentStep: number
+  completedSteps: number[]
+  data: {
+    accounts?: Array<{ name: string, type: string }>
+    transactions?: Array<{ desc: string, amount: number }>
+    budgets?: Record<string, number>
   }
-  ```
-- Add " WIB" suffix manually
+  createdAt: Date
+  lastModified: Date
+}
 
-**Step 3:** Responsive design
-- Desktop: Show full format
-  ```
-  📅 Jumat, 16 Januari 2026 | 🕐 14:23:45 WIB
-  ```
-- Mobile (<768px): Show compact format
-  ```
-  📅 16 Jan 2026 | 🕐 14:23 WIB
-  ```
-  (Hide seconds on mobile to save space)
+// Save to localStorage or database
+function saveOnboardingProgress(progress: OnboardingProgress) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('onboarding_progress', JSON.stringify(progress))
+  }
+}
 
-**Step 4:** Add to layout
-- File: `src/app/layout.tsx`
-- Location: Inside `<header>`, left side
-- Order:
-  ```
-  [LiveClock] [Spacer] [DebugMenu] [PrivacyToggle] [ThemeToggle]
-  ```
+// Resume on return
+function loadOnboardingProgress(): OnboardingProgress | null {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('onboarding_progress')
+    return stored ? JSON.parse(stored) : null
+  }
+  return null
+}
+```
 
-**Step 5:** Styling
-- Font: Monospace for time (consistent width)
-- Color: text-muted-foreground (not too prominent)
-- Size: text-sm (small, non-distracting)
-- Hover: Slightly brighter (text-foreground)
-- Separator: Vertical line or bullet between date/time
+Resume UI:
+```
+┌─────────────────────────────────────────────┐
+│ 👋 Selamat Datang Kembali!                  │
+├─────────────────────────────────────────────┤
+│ Anda sebelumnya menyelesaikan:              │
+│ ●●○○○ (2/5 steps)                           │
+│                                             │
+│ [Lanjutkan Setup]                           │
+│ [Mulai dari Awal]                           │
+│ [Skip - Jelajahi Dashboard]                │
+└─────────────────────────────────────────────┘
+```
 
-**Step 6:** Accessibility
-- Add `aria-live="polite"` for screen readers
-- Add `role="timer"`
-- Announce time every minute (not every second to avoid spam)
+**C. Tooltips & Help Hints**
 
-**Step 7:** Performance optimization
-- Use `useCallback` for date formatting
-- Memoize formatted strings if expensive
-- Consider using `requestAnimationFrame` instead of setInterval for smoother updates
+During wizard, show contextual help:
 
-**Step 8:** Optional enhancements
-- Click to copy timestamp
-- Tooltip showing "Server time" vs "Your time" (if different timezone)
-- Toggle between WIB/WITA/WIT based on user location
+```
+[Input Field: Saldo Awal]
+┌─────────────────────────────────┐
+│ ℹ️ Apa itu Saldo Awal?          │
+├─────────────────────────────────┤
+│ Saldo yang ada di akun Anda    │
+│ saat ini. Contoh:               │
+│                                 │
+│ • BCA: Rp 5.000.000             │
+│ • Gopay: Rp 125.000             │
+│ • Tunai: Rp 450.000             │
+│                                 │
+│ Boleh kosong (Rp 0) jika akun  │
+│ baru atau mau mulai dari nol.  │
+│                                 │
+│ [Got it]                        │
+└─────────────────────────────────┘
+```
 
-**Testing:**
-1. Desktop view: Verify full format displays
-2. Mobile view: Verify compact format
-3. Wait 1 minute: Verify time updates correctly
-4. Check timezone: Should show WIB (Asia/Jakarta)
-5. Screen reader: Verify announcements not too frequent
+**D. Completion Celebration**
 
-**Estimated Time:** 1 hour
-- Component development: 30 minutes
-- Layout integration: 15 minutes
-- Responsive styling: 10 minutes
-- Testing: 5 minutes
+After Step 5:
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│              🎉 CONGRATULATIONS! 🎉          │
+│                                             │
+│         Setup Complete! You're Ready.       │
+│                                             │
+│         [Confetti Animation]                │
+│                                             │
+│         What You've Achieved:               │
+│         ✅ 1 Account Created                 │
+│         ✅ 1 Transaction Logged              │
+│         ✅ Budget Set for 5 Categories       │
+│                                             │
+│         [Start Using Dompetku →]            │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+#### **User Journey**:
+```
+1. New user sign up / first login
+2. Wizard auto-shows (modal overlay)
+3. Read welcome → Click "Mulai Setup"
+4. Step 1: Click "BCA Tahapan" template → Account created
+5. Step 2: Click "Makan Siang Rp 25k" example → Transaction created
+6. Step 3: Click "Use Default" budget → Budget saved
+7. Step 4: Review features → Click "Mulai Mencatat"
+8. Step 5: Skip sample data (mau real data)
+9. Confetti animation → Click "Start Using"
+10. Dashboard loads dengan 1 account, 1 transaction, 5 budgets
+11. Feels familiar (tidak kosong), confident to continue
+```
+
+#### **Technical Requirements**:
+- Wizard component: Stepper with progress bar
+- State management: Zustand atau Context API
+- Persistence: localStorage (client-side) + database (server-side backup)
+- Animation: Framer Motion untuk smooth transitions
+- Server actions:
+  - `createOnboardingSampleData(userId)`
+  - `saveOnboardingProgress(userId, progress)`
+  - `getOnboardingProgress(userId)`
+- Analytics tracking:
+  - Step completion rates
+  - Time spent per step
+  - Skip rates
+  - Completion rate
+
+#### **Success Criteria**:
+✅ Wizard shown to 100% new users (first login)
+✅ Completion rate 70%+ (from start to finish)
+✅ Average completion time < 3 minutes
+✅ Skip rate < 20% (most users complete wizard)
+✅ Sample data acceptance rate 40%+ (if offered)
+✅ User retention +25% (week 1 to week 4)
+✅ First transaction creation rate 80%+ (vs 40% before)
 
 ---
 
-## 📊 **COMPREHENSIVE EFFORT SUMMARY**
+### **📌 Deliverable 2: Floating Action Button (FAB) with Quick Actions** ⭐ HIGH
 
-| Priority | Tasks | Total Time | Status |
-|----------|-------|------------|--------|
-| **TIER 1** (Critical) | 3 issues | 8 hours | 🔴 Must fix |
-| **TIER 2** (High) | 3 issues | 13 hours | 🟠 Should fix |
-| **TIER 3** (Nice-to-have) | 3 issues | 4.5 hours | 🟡 Can defer |
-| **New Feature** (Clock) | 1 feature | 1 hour | 🆕 Requested |
-| **TOTAL** | 10 items | **26.5 hours** | 🎯 Full alignment |
+#### **Problem Statement**:
+Common actions require too many clicks:
+- Add transaction: Dashboard → /transaksi → Click add → Fill form (4 steps)
+- Transfer: Dashboard → /akun → Select account → Transfer tab (3 steps)
+- Bayar cicilan: Dashboard → /cicilan → Find installment → Pay (3 steps)
 
----
+Mobile UX especially painful (thumb reach).
 
-## 🗓️ **RECOMMENDED IMPLEMENTATION SCHEDULE**
+#### **What We'll Build**:
 
-### **Sprint 1: Critical Fixes** (Week 1)
+**A. FAB Component** (Fixed Position)
+
+**Desktop Position**: Bottom-right corner (above bottom nav if exists)
+**Mobile Position**: Bottom-right corner (thumb-friendly zone)
+
+**Closed State**:
 ```
-Monday (4h):    Issue #1 - Net worth double counting
-Tuesday (4h):   Issue #2 - Admin fee sync (Part A+B)
-Wednesday (2h): Issue #3 - Integrity check
-Thursday (2h):  Testing TIER 1, bug fixes
-Friday (1h):    New feature - Real-time clock
-```
-
-### **Sprint 2: UX Improvements** (Week 2)
-```
-Monday (3h):    Issue #4 - Budget recurring integration
-Tuesday (4h):   Issue #5 - Calendar actions
-Wednesday (6h): Issue #6 - Notification system (Day 1)
-Thursday (3h):  Issue #6 - Notification system (Day 2)
-Friday (2h):    Testing TIER 2, polish
+┌──────┐
+│  ➕  │  ← FAB Button (56x56px, primary color)
+└──────┘
+    ↑
+ Shadow
 ```
 
-### **Sprint 3: Final Polish** (Week 3)
+**Opened State (Radial Menu)**:
 ```
-Monday (2h):    Issue #7 - Automated snapshots
-Tuesday (2h):   Issue #8 - Template naming + Issue #9 - Selective export
-Wednesday (2h): Comprehensive testing (all tiers)
-Thursday (2h):  Documentation updates
-Friday (2h):    Production deployment preparation
+        [💸 Transfer]
+              ↑
+    [🎯 Budget] ← → [💳 Cicilan]
+              ↓
+           [➕ Main]
+              ↓
+    [🔄 Recurring] ← → [🏦 Akun]
+              ↓
+        [💰 Transaksi]
 ```
 
----
+Animation: Radial expand from center (300ms ease-out)
 
-## ✅ **PRODUCTION-READY CRITERIA**
+**B. Quick Actions (6 Primary)**
 
-Application will be considered production-ready when:
+**1. Transaksi Baru** (Most Common)
+```
+Icon: 💰
+Action: Open add transaction form (modal or slide-up sheet)
+Shortcut: T
+```
 
-### **Data Integrity** ✅
-- [ ] No double counting in any calculation
-- [ ] All foreign keys properly enforced
-- [ ] Orphaned records automatically detected
-- [ ] Data consistency checks pass 100%
+**2. Transfer Antar Akun**
+```
+Icon: 💸
+Action: Open transfer form
+Shortcut: F
+```
 
-### **Feature Synchronization** ✅
-- [ ] Admin fee synced between /akun ↔ /recurring
-- [ ] Budget considers recurring transactions
-- [ ] Calendar has actionable items
-- [ ] Net worth tracking accurate
-- [ ] All cross-feature navigation works
+**3. Bayar Cicilan**
+```
+Icon: 💳
+Action: Open installment payment selector
+Shortcut: P
+```
 
-### **User Experience** ✅
-- [ ] Zero dead-ends (every page has clear next action)
-- [ ] No confusing states (settings match reality)
-- [ ] Important events have notifications
-- [ ] Mobile responsive (all screen sizes)
-- [ ] Real-time clock for context
+**4. Set Budget**
+```
+Icon: 🎯
+Action: Navigate to /anggaran with add form open
+Shortcut: B
+```
 
-### **Performance** ✅
-- [ ] All pages load <500ms (local dev)
-- [ ] No N+1 queries
-- [ ] Database properly indexed
-- [ ] Optimistic UI updates where appropriate
+**5. Recurring Baru**
+```
+Icon: 🔄
+Action: Open recurring transaction form
+Shortcut: R
+```
 
-### **Testing** ✅
-- [ ] All TIER 1 tests pass
-- [ ] Integration tests cover cross-feature flows
-- [ ] No console errors
-- [ ] Accessibility score >90
+**6. Tambah Akun**
+```
+Icon: 🏦
+Action: Open add account form
+Shortcut: A
+```
 
-### **Documentation** ✅
-- [ ] User guide updated with new features
-- [ ] Developer docs reflect current architecture
-- [ ] Changelog complete
-- [ ] Known issues documented
+**C. Smart Suggestions** (Context-Aware)
 
----
+Show relevant actions based on context:
 
-## 🎯 **SUCCESS METRICS**
+**Example 1**: Tanggal gajian (25 setiap bulan)
+```
+FAB badge: 💡 (notification dot)
 
-**Before Alignment:**
-- Net worth accuracy: ❌ Incorrect (double counting)
-- Cross-feature navigation: 3/10 pages connected
-- User confusion points: 6 identified issues
-- Production readiness: 70%
+Open menu → Top action highlighted:
+┌────────────────────────────────┐
+│ 💡 SUGGESTED                   │
+│ 💰 Catat Gaji Bulanan          │
+│    (Hari gajian nih!)          │
+│                                │
+│ [Quick Add: Rp 15.000.000 →]  │
+└────────────────────────────────┘
+```
 
-**After Alignment:**
-- Net worth accuracy: ✅ 100% correct
-- Cross-feature navigation: 10/10 pages connected
-- User confusion points: 0 unresolved issues
-- Production readiness: 95%+ ✅
+**Example 2**: Tanggal jatuh tempo cicilan (15 setiap bulan)
+```
+FAB badge: ⚠️
 
----
+Open menu → Top action highlighted:
+┌────────────────────────────────┐
+│ ⚠️ REMINDER                     │
+│ 💳 Bayar Cicilan iPhone        │
+│    Due today! (Rp 1.000.000)   │
+│                                │
+│ [Pay Now →]                    │
+└────────────────────────────────┘
+```
 
-## 📝 **NOTES FOR IMPLEMENTATION AI AGENT**
+**D. Recent Actions** (Last 3 Used)
 
-1. **Follow order strictly:** TIER 1 → TIER 2 → TIER 3 → New Feature
-2. **Test after each issue:** Don't accumulate untested code
-3. **Use transactions:** Any multi-step database operation needs Prisma transaction
-4. **Revalidate paths:** Always call `revalidatePath()` after data changes
-5. **Log everything:** Use `logSistem()` for debugging production issues
-6. **Mobile-first:** Test on mobile viewport for every UI change
-7. **Accessibility:** Add proper ARIA labels and keyboard navigation
-8. **Error handling:** Every action needs try-catch with user-friendly messages
-9. **Type safety:** No `any` types, use proper TypeScript interfaces
-10. **Code review:** Each task should be reviewable separately (atomic commits)
+Bottom of radial menu or modal:
+```
+Recently Used:
+┌───────────┬───────────┬───────────┐
+│🍔 Makan   │🚗 Grab    │💸 Transfer│
+│2 min ago  │1 hour ago │Yesterday  │
+└───────────┴───────────┴───────────┘
+
+Tap to repeat with same details
+(amount editable before submit)
+```
+
+**E. Customization** (Settings)
+
+User bisa customize FAB menu:
+
+```
+/pengaturan/quick-actions
+
+┌─────────────────────────────────────────────┐
+│ ⚙️ CUSTOMIZE QUICK ACTIONS                  │
+├─────────────────────────────────────────────┤
+│ Choose up to 6 favorite actions:            │
+│                                             │
+│ ☑ Transaksi Baru (💰)         [Default]    │
+│ ☑ Transfer (💸)               [Default]    │
+│ ☑ Bayar Cicilan (💳)          [Default]    │
+│ ☐ Export Excel (📥)                        │
+│ ☐ Scan Receipt (📸)           [Premium]    │
+│ ☑ Set Budget (🎯)                          │
+│ ☑ Recurring (🔄)                           │
+│ ☑ Tambah Akun (🏦)                         │
+│                                             │
+│ FAB Position:                               │
+│ ○ Bottom Right (default)                   │
+│ ○ Bottom Left                              │
+│                                             │
+│ Show Recent Actions: ☑ Yes  ☐ No           │
+│ Show Smart Suggestions: ☑ Yes  ☐ No        │
+│                                             │
+│ [Reset to Default]  [Save Changes]          │
+└─────────────────────────────────────────────┘
+```
+
+**F. Mobile-Specific Features**
+
+**Swipe Gesture** (Optional):
+- Swipe up from FAB → Expand menu
+- Swipe down → Close menu
+- Tap outside → Close menu
+
+**Bottom Sheet Modal** (Alternative to Radial):
+```
+[Swipe down to close]
+┌─────────────────────────────────────────────┐
+│                   ─                         │
+│                                             │
+│ ⚡ QUICK ACTIONS                            │
+├─────────────────────────────────────────────┤
+│ 💰 Tambah Transaksi                         │
+│ 💸 Transfer Antar Akun                      │
+│ 💳 Bayar Cicilan                            │
+│ 🎯 Set Budget                               │
+│ 🔄 Recurring Baru                           │
+│ 🏦 Tambah Akun                              │
+├─────────────────────────────────────────────┤
+│ 📌 RECENT                                   │
+│ 🍔 Makan Siang (Rp 25k)       [Repeat]     │
+│ 🚗 Grab (Rp 45k)              [Repeat]     │
+└─────────────────────────────────────────────┘
+```
+
+#### **User Journey**:
+```
+Mobile User:
+1. Sedang scroll dashboard
+2. Ingin catat "Beli kopi Rp 35k"
+3. Tap FAB (kanan bawah)
+4. Bottom sheet slide up
+5. Tap "Tambah Transaksi"
+6. Form modal muncul (pre-filled dengan default akun)
+7. Input: Deskripsi "Kopi", Nominal "35000"
+8. Auto-suggest kategori: "Makan & Minum"
+9. Submit (1 tap)
+10. Success toast
+11. Sheet dismiss
+12. Dashboard update dengan transaction baru
+
+Total: 3 taps + 2 inputs (vs 4 navigation steps before)
+```
+
+#### **Technical Requirements**:
+- Component: Reusable `<FAB>` with customizable actions
+- Animation: Framer Motion untuk radial expand/collapse
+- Z-index: Above all content, below modals (z-index: 900)
+- Touch target: Min 56x56px (Material Design spec)
+- Keyboard shortcuts: Global shortcuts (Cmd+T, Cmd+F, etc)
+- State management: Zustand untuk FAB open/close state
+- Persistence: Save customization to UserPreference table
+
+#### **Success Criteria**:
+✅ FAB visible on all pages (except modals, full-screen views)
+✅ Touch target accessible (right thumb reach on mobile)
+✅ Animation smooth (60fps)
+✅ Quick action execution < 2 seconds (from FAB tap to form submit)
+✅ 40%+ of transactions created via FAB (vs navigation menu)
+✅ Customization adoption 20%+ (users who modify default actions)
 
 ---

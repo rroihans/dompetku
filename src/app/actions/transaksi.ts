@@ -10,6 +10,7 @@ import { ErrorMessages } from "@/lib/constants/error-messages"
 import { TransaksiSchema } from "@/lib/validations/transaksi"
 import { ServerActionResult } from "@/types"
 import { checkBudgetAlert } from "@/lib/budget-alert"
+import { buildPrismaQuery, RuleGroup } from "@/lib/query-builder"
 
 // Untuk pagination - 25 item per halaman untuk tampilan lebih lengkap
 const PAGE_SIZE = 25
@@ -37,7 +38,7 @@ async function checkLargeTransactionNotification(deskripsi: string, nominal: num
 interface TransaksiFilter {
     page?: number
     search?: string
-    kategori?: string
+    kategori?: string | string[]
     tipe?: string // "expense" | "income"
     dateFrom?: string
     dateTo?: string
@@ -45,7 +46,8 @@ interface TransaksiFilter {
     maxNominal?: number
     sort?: string // "tanggal" | "nominal" | "kategori"
     sortDir?: string // "asc" | "desc"
-    akunId?: string // Tambahkan filter akunId
+    akunId?: string | string[] // Tambahkan filter akunId
+    complexFilter?: string // JSON string
 }
 
 export async function getTransaksi(filters: TransaksiFilter = {}) {
@@ -60,7 +62,8 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         maxNominal,
         sort = "tanggal",
         sortDir = "desc",
-        akunId
+        akunId,
+        complexFilter
     } = filters
 
     try {
@@ -70,25 +73,41 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         const where: any = {}
 
         if (akunId) {
-            where.OR = [
-                { debitAkunId: akunId },
-                { kreditAkunId: akunId }
-            ]
+            const akuns = Array.isArray(akunId) ? akunId : [akunId];
+            if (akuns.length > 0) {
+                where.OR = [
+                    { debitAkunId: { in: akuns } },
+                    { kreditAkunId: { in: akuns } }
+                ]
+            }
         }
 
         if (search) {
-            where.OR = [
+            const searchClause = [
                 { deskripsi: { contains: search } },
                 { kategori: { contains: search } },
                 { catatan: { contains: search } },
                 // Support search by akun name
                 { debitAkun: { nama: { contains: search } } },
                 { kreditAkun: { nama: { contains: search } } },
-            ]
+            ];
+            
+            if (where.OR) {
+                where.AND = [
+                    ...(where.AND || []),
+                    { OR: searchClause }
+                ]
+            } else {
+                where.OR = searchClause;
+            }
         }
 
         if (kategori) {
-            where.kategori = kategori
+            if (Array.isArray(kategori)) {
+                if (kategori.length > 0) where.kategori = { in: kategori }
+            } else {
+                where.kategori = kategori
+            }
         }
 
         if (tipe === "expense") {
@@ -121,6 +140,25 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
             }
             if (maxNominal !== undefined && maxNominal > 0) {
                 where.nominal.lte = BigInt(Money.fromFloat(maxNominal))
+            }
+        }
+
+        // Complex Filter (Logic Builder)
+        if (complexFilter) {
+            try {
+                const group = JSON.parse(complexFilter) as RuleGroup;
+                const prismaQuery = buildPrismaQuery(group);
+                
+                if (Object.keys(prismaQuery).length > 0) {
+                    if (where.AND) {
+                        if (!Array.isArray(where.AND)) where.AND = [where.AND];
+                        where.AND.push(prismaQuery);
+                    } else {
+                        where.AND = [prismaQuery];
+                    }
+                }
+            } catch (e) {
+                console.error("Invalid complex filter JSON", e);
             }
         }
 
@@ -158,7 +196,8 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
              _nominalBigInt: tx.nominal
         }))
 
-        if (akunId && sort === "tanggal") {
+        // Only calculate running balance if filtering by SINGLE account and sorted by date
+        if (akunId && !Array.isArray(akunId) && sort === "tanggal") {
             // Ambil saldo saat ini dari akun tersebut (BigInt)
             const akun = await prisma.akun.findUnique({
                 where: { id: akunId },

@@ -88,7 +88,8 @@ export function AddTransactionForm() {
         reset,
         formState: { errors, isValid },
     } = useForm<FormValues>({
-        resolver: zodResolver(formSchema),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(formSchema) as any,
         mode: "onChange",
         defaultValues: {
             nominal: 0,

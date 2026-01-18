@@ -130,6 +130,14 @@
 
 ## Riwayat Versi
 
+### v0.7.0 (2026-01-18)
+- **Analytics & Advanced Features (Sprint 3):**
+    - **Year-over-Year Comparison:** Dashboard perbandingan tahunan, tabel breakdown kategori, visualisasi grafik bar/line, dan automated AI insights.
+    - **Spending Heatmap:** Visualisasi kalender pengeluaran harian (Grid Desktop / Swipe Mobile) dengan deteksi pola spending (Weekend Spike, Paycheck Splurge).
+    - **Advanced Filters:** Filter multi-kategori/akun, range tanggal custom, dan preset filter yang bisa disimpan.
+    - **Logic Builder:** Filter kompleks dengan logika AND/OR bersarang.
+    - **Floating Action Button (FAB):** Akses cepat (Quick Actions) ke fitur utama dari seluruh halaman.
+
 ### v0.6.0 (2026-01-18)
 - **Critical Fixes & Foundation (Sprint 1):**
     - **Balance Verification Tool:**

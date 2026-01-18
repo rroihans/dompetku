@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
-import { formatCurrency } from "@/lib/utils" // Assuming this exists or I'll implement inline
+import { formatRupiah } from "@/lib/format"
 
 export function BalanceVerificationClient() {
     const [loading, setLoading] = useState(false)
@@ -75,9 +75,6 @@ export function BalanceVerificationClient() {
         }
     }
 
-    // Helper formatter
-    const fmt = (val: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(val)
-
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg bg-card">
@@ -119,10 +116,10 @@ export function BalanceVerificationClient() {
                                         {err.nama}
                                         <div className="text-xs text-muted-foreground">{err.tipe}</div>
                                     </TableCell>
-                                    <TableCell>{fmt(err.expected)}</TableCell>
-                                    <TableCell>{fmt(err.actual)}</TableCell>
+                                    <TableCell>{formatRupiah(err.expected)}</TableCell>
+                                    <TableCell>{formatRupiah(err.actual)}</TableCell>
                                     <TableCell className="text-red-600 font-bold">
-                                        {fmt(err.difference)}
+                                        {formatRupiah(err.difference)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button 
@@ -155,21 +152,21 @@ export function BalanceVerificationClient() {
                                 <div className="space-y-1">
                                     <span className="text-muted-foreground">Expected Balance</span>
                                     <div className="font-mono font-medium text-green-600 bg-green-50 p-2 rounded">
-                                        {fmt(selectedError.expected)}
+                                        {formatRupiah(selectedError.expected)}
                                     </div>
                                     <p className="text-xs text-muted-foreground">Based on transactions</p>
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-muted-foreground">Actual Balance</span>
                                     <div className="font-mono font-medium text-red-600 bg-red-50 p-2 rounded">
-                                        {fmt(selectedError.actual)}
+                                        {formatRupiah(selectedError.actual)}
                                     </div>
                                     <p className="text-xs text-muted-foreground">Database record</p>
                                 </div>
                             </div>
 
                             <div className="p-3 bg-muted rounded-md text-sm">
-                                <span className="font-semibold block mb-1">Difference: {fmt(selectedError.difference)}</span>
+                                <span className="font-semibold block mb-1">Difference: {formatRupiah(selectedError.difference)}</span>
                                 <p className="text-muted-foreground">
                                     {selectedError.difference > 0 
                                         ? "Saldo tercatat lebih RENDAH dari seharusnya." 
