@@ -138,6 +138,15 @@ export function AddTransactionForm() {
                 setOpen(false)
                 reset()
                 toast.success("Transaksi berhasil disimpan")
+                
+                // Show budget alert if any
+                if (res.alert && res.alert.level !== "SAFE") {
+                     if (res.alert.level === "CRITICAL" || res.alert.level === "DANGER") {
+                         toast.error(res.alert.message, { duration: 5000 })
+                     } else {
+                         toast.warning(res.alert.message, { duration: 5000 })
+                     }
+                }
             } else {
                 toast.error(res.error || "Gagal menyimpan transaksi")
             }

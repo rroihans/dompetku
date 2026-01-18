@@ -313,3 +313,60 @@ export async function getAvailableBudgetMonths() {
         return { success: false, data: [] }
     }
 }
+
+/**
+ * Get categories that are near or over budget for the current month.
+ */
+export async function getOverBudgetCategories() {
+    try {
+        const now = new Date()
+        const bulan = now.getMonth() + 1
+        const tahun = now.getFullYear()
+
+        const budgets = await prisma.budget.findMany({
+            where: { bulan, tahun }
+        })
+
+        if (budgets.length === 0) return { success: true, data: [] }
+        
+        const startDate = new Date(tahun, bulan - 1, 1)
+        const endDate = new Date(tahun, bulan, 0, 23, 59, 59)
+
+        const usage = await prisma.transaksi.groupBy({
+            by: ['kategori'],
+            where: {
+                tanggal: { gte: startDate, lte: endDate },
+                debitAkun: { tipe: "EXPENSE" }
+            },
+            _sum: { nominal: true }
+        })
+
+        const usageMap = new Map(usage.map(u => [u.kategori, Money.toFloat(Number(u._sum.nominal || 0))]))
+
+        const alerts = budgets.map(b => {
+            const used = usageMap.get(b.kategori) || 0
+            const percentage = (used / b.nominal) * 100
+            
+            let status = "SAFE"
+            if (percentage >= 120) status = "CRITICAL"
+            else if (percentage >= 100) status = "DANGER"
+            else if (percentage >= 80) status = "WARNING"
+
+            return {
+                kategori: b.kategori,
+                limit: b.nominal,
+                used,
+                percentage,
+                overAmount: used - b.nominal,
+                status
+            }
+        }).filter(b => b.status !== "SAFE")
+          .sort((a, b) => b.percentage - a.percentage)
+
+        return { success: true, data: alerts }
+
+    } catch (error) {
+        console.error("Failed to get over budget categories", error)
+        return { success: false, data: [] }
+    }
+}

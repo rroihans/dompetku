@@ -32,6 +32,7 @@ import { AssetCompositionChart } from "@/components/charts/asset-composition-cha
 import { DrilldownPieChart } from "@/components/charts/drilldown-pie-chart"
 import { NetWorthChart } from "@/components/charts/net-worth-chart"
 import { AdminFeeReminder } from "@/components/charts/admin-fee-reminder"
+import { BudgetBanner } from "@/components/dashboard/budget-banner"
 
 export default async function Dashboard() {
   // Auto-prune logs > 30 hari
@@ -111,6 +112,9 @@ export default async function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Budget Banner */}
+      <BudgetBanner />
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

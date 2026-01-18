@@ -9,64 +9,13 @@ import { Money } from "@/lib/money"
 import { ErrorMessages } from "@/lib/constants/error-messages"
 import { TransaksiSchema } from "@/lib/validations/transaksi"
 import { ServerActionResult } from "@/types"
+import { checkBudgetAlert } from "@/lib/budget-alert"
 
 // Untuk pagination - 25 item per halaman untuk tampilan lebih lengkap
 const PAGE_SIZE = 25
 
 // Tipe akun user
 const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
-
-/**
- * Helper to check budget and create notification if needed
- */
-async function checkBudgetNotification(kategori: string, tanggal: Date) {
-    try {
-        const bulan = tanggal.getMonth() + 1
-        const tahun = tanggal.getFullYear()
-
-        const budget = await prisma.budget.findFirst({
-            where: { kategori, bulan, tahun }
-        })
-
-        if (!budget) return
-
-        // Get total realization for this category
-        const startDate = new Date(tahun, bulan - 1, 1)
-        const endDate = new Date(tahun, bulan, 0, 23, 59, 59)
-
-        const result = await prisma.transaksi.aggregate({
-            where: {
-                kategori,
-                tanggal: { gte: startDate, lte: endDate },
-                debitAkun: { tipe: "EXPENSE" }
-            },
-            _sum: { nominal: true }
-        })
-
-        const realization = Money.toFloat(Number(result._sum.nominal || 0))
-        const percentage = (realization / budget.nominal) * 100
-
-        if (percentage >= 100) {
-            await createNotification({
-                type: "BUDGET_WARNING",
-                title: "❌ Anggaran Terlampaui",
-                message: `Pengeluaran kategori ${kategori} telah melebihi anggaran (Rp ${budget.nominal.toLocaleString('id-ID')}).`,
-                severity: "ERROR",
-                actionUrl: "/anggaran"
-            })
-        } else if (percentage >= 80) {
-            await createNotification({
-                type: "BUDGET_WARNING",
-                title: "⚠️ Anggaran Hampir Habis",
-                message: `Pengeluaran kategori ${kategori} sudah mencapai ${Math.round(percentage)}% dari anggaran.`,
-                severity: "WARNING",
-                actionUrl: "/anggaran"
-            })
-        }
-    } catch (error) {
-        console.error("Failed to check budget notification", error)
-    }
-}
 
 /**
  * Helper to check large transactions
@@ -388,7 +337,8 @@ export async function createTransaksiSimple(data: SimpleTransaksiData): Promise<
         await logSistem("INFO", "TRANSAKSI", `Transaksi baru dicatat: ${result.deskripsi}`)
         
         // Trigger non-blocking checks
-        void checkBudgetNotification(data.kategori, data.tanggal || new Date())
+        const alertResult = await checkBudgetAlert(data.kategori, data.tanggal || new Date())
+        
         void checkLargeTransactionNotification(data.deskripsi || data.kategori, data.nominal)
         
         // Trigger background snapshot (non-blocking)
@@ -403,7 +353,7 @@ export async function createTransaksiSimple(data: SimpleTransaksiData): Promise<
             nominal: Money.toFloat(Number(result.nominal))
         }
 
-        return { success: true, data: mappedResult }
+        return { success: true, data: mappedResult, alert: alertResult }
     } catch (error) {
         await logSistem("ERROR", "TRANSAKSI", "Gagal mencatat transaksi", (error as Error).stack)
         return { success: false, error: ErrorMessages.GENERAL_ERROR }
@@ -475,8 +425,9 @@ export async function createTransaksi(data: {
 
         await logSistem("INFO", "TRANSAKSI", `Transaksi baru dicatat: ${result.deskripsi}`)
         
-        // Trigger non-blocking checks
-        void checkBudgetNotification(data.kategori, data.tanggal || new Date())
+        // Trigger checks
+        const alertResult = await checkBudgetAlert(data.kategori, data.tanggal || new Date())
+        
         void checkLargeTransactionNotification(data.deskripsi || data.kategori, data.nominal)
         
         // Trigger background snapshot (non-blocking)
@@ -491,7 +442,7 @@ export async function createTransaksi(data: {
             nominal: Money.toFloat(Number(result.nominal))
         }
 
-        return { success: true, data: mappedResult }
+        return { success: true, data: mappedResult, alert: alertResult }
     } catch (error) {
         await logSistem("ERROR", "TRANSAKSI", "Gagal mencatat transaksi", (error as Error).stack)
         return { success: false, error: ErrorMessages.GENERAL_ERROR }
