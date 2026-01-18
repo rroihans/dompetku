@@ -11,10 +11,13 @@ export const TransaksiSchema = z.object({
     
     deskripsi: z.string()
         .max(200, "Deskripsi maksimal 200 karakter")
-        .optional(), // Deskripsi optional di beberapa form
+        .optional()
+        .or(z.literal('')), // Allow empty string
     
     tanggal: z.coerce.date()
-        .max(new Date(new Date().setHours(23, 59, 59, 999)), "Tanggal tidak boleh lebih dari hari ini"),
+        .refine((date) => date <= new Date(new Date().setHours(23, 59, 59, 999)), { 
+            message: "Tanggal tidak boleh di masa depan" 
+        }),
     
     akunId: z.string().cuid("ID akun tidak valid").optional(),
     debitAkunId: z.string().cuid().optional(),
