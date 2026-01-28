@@ -194,7 +194,7 @@ export function BottomNav() {
                     {/* Quick Info */}
                     <div className="mt-6 p-4 bg-muted/30 rounded-xl">
                         <p className="text-[10px] text-muted-foreground text-center">
-                            Dompetku v0.7.1 • Personal Finance Pro
+                            Dompetku v0.8.1 PWA • Personal Finance Pro
                         </p>
                     </div>
                 </div>
