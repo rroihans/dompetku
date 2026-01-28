@@ -23,7 +23,7 @@ import {
     X
 } from "lucide-react"
 import Link from "next/link"
-import { processMonthlyAdminFees, processMonthlyInterest } from "@/app/actions/recurring-admin"
+import { processMonthlyAdminFees, processMonthlyInterest } from "@/lib/db/recurring-repo"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -225,11 +225,11 @@ export function FinancialAutomationCard({ lastLogs, onProcessComplete }: Financi
                         </Button>
                     </div>
 
-                    <Link href="/template-akun" className="block">
+                    <Link href="/template-admin-dan-bunga-bank" className="block">
                         <Button variant="secondary" className="w-full justify-between group">
                             <div className="flex items-center gap-2">
                                 <LayoutGrid className="w-4 h-4" />
-                                <span>Kelola Template Akun</span>
+                                <span>Template Admin dan Bunga Bank</span>
                             </div>
                             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </Button>

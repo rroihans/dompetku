@@ -11,12 +11,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { 
-    Plus, 
-    Trash2, 
-    Info, 
-    Calendar as CalendarIcon, 
-    Calculator, 
+import {
+    Plus,
+    Trash2,
+    Info,
+    Calendar as CalendarIcon,
+    Calculator,
     RefreshCcw,
     CheckCircle2,
     XCircle
@@ -29,6 +29,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { AccountTemplateDTO as AccountTemplateData } from "@/lib/db/templates-repo"
 
 // --- PatternBuilderUI ---
 interface PatternBuilderUIProps {
@@ -103,8 +104,8 @@ export function PatternBuilderUI({ pola, tanggal, onPolaChange, onTanggalChange 
                 <div className="mt-2 text-[10px] text-muted-foreground flex gap-1 items-start">
                     <Info className="w-3 h-3 mt-0.5 shrink-0" />
                     <span>
-                        {pola === "MANUAL" 
-                            ? "Pola manual tidak akan menggenerate transaksi otomatis." 
+                        {pola === "MANUAL"
+                            ? "Pola manual tidak akan menggenerate transaksi otomatis."
                             : "Estimasi tanggal berdasarkan aturan pola yang dipilih."}
                     </span>
                 </div>
@@ -167,8 +168,8 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground">Min. Saldo</Label>
-                                        <Input 
-                                            type="number" 
+                                        <Input
+                                            type="number"
                                             className="h-8 text-sm"
                                             value={tier.min_saldo}
                                             onChange={(e) => handleUpdateTier(idx, 'min_saldo', parseFloat(e.target.value) || 0)}
@@ -176,8 +177,8 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground">Max. Saldo</Label>
-                                        <Input 
-                                            type="number" 
+                                        <Input
+                                            type="number"
                                             className="h-8 text-sm"
                                             placeholder="Infinity"
                                             value={tier.max_saldo || ""}
@@ -189,8 +190,8 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                                     <div className="flex-1 space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground">Bunga (% p.a.)</Label>
                                         <div className="relative">
-                                            <Input 
-                                                type="number" 
+                                            <Input
+                                                type="number"
                                                 step="0.01"
                                                 className="h-8 text-sm pr-6"
                                                 value={tier.bunga_pa}
@@ -199,10 +200,10 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                                         </div>
                                     </div>
-                                    <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="icon" 
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
                                         className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                                         onClick={() => handleRemoveTier(idx)}
                                     >
@@ -214,7 +215,7 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                     ))}
                 </div>
             )}
-            
+
             {/* Visual Range Indicator */}
             {tiers.length > 0 && (
                 <div className="mt-4 space-y-2">
@@ -223,11 +224,11 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                         {tiers.map((tier, i) => {
                             const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-indigo-500', 'bg-violet-500', 'bg-purple-500']
                             return (
-                                <div 
-                                    key={i} 
+                                <div
+                                    key={i}
                                     className={cn(colors[i % colors.length], "h-full border-r last:border-0 border-white/20")}
                                     style={{ flex: 1 }}
-                                    title={`Tier ${i+1}: ${tier.bunga_pa}%`}
+                                    title={`Tier ${i + 1}: ${tier.bunga_pa}%`}
                                 />
                             )
                         })}
@@ -241,7 +242,7 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
 // --- InterestCalculator ---
 export function InterestCalculator({ tiers }: { tiers: TierBunga[] }) {
     const [testSaldo, setTestSaldo] = useState<string>("10000000")
-    
+
     const calculation = useMemo(() => {
         const saldoNum = parseFloat(testSaldo) || 0
         const ratePa = getApplicableInterestRate(saldoNum, tiers)
@@ -263,10 +264,10 @@ export function InterestCalculator({ tiers }: { tiers: TierBunga[] }) {
                 <Calculator className="w-4 h-4 text-primary" />
                 Simulasi Bunga Bulanan
             </div>
-            
+
             <div className="space-y-2">
                 <Label htmlFor="simulasi-saldo" className="text-xs">Saldo Simulasi (Rp)</Label>
-                <Input 
+                <Input
                     id="simulasi-saldo"
                     type="number"
                     value={testSaldo}
@@ -304,12 +305,7 @@ export function InterestCalculator({ tiers }: { tiers: TierBunga[] }) {
 
 // --- ComparisonTable ---
 interface ComparisonTableProps {
-    template: {
-        biayaAdmin: number | null;
-        polaTagihan: string;
-        tanggalTagihan: number | null;
-        bungaTier: string | null;
-    } | null;
+    template: AccountTemplateData | null;
     current: {
         biayaAdminNominal: number | null;
         biayaAdminPola: string | null;

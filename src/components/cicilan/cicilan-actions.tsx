@@ -39,7 +39,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { bayarCicilan, pelunasanDipercepat, updateCicilan, deleteCicilan } from "@/app/actions/cicilan"
+import { bayarCicilan, pelunasanDipercepat, updateCicilan, deleteCicilan } from "@/lib/db/cicilan-repo"
 import { formatRupiah } from "@/lib/format"
 
 interface CicilanActionsProps {
@@ -55,9 +55,10 @@ interface CicilanActionsProps {
         bungaPersen: number
         status: string
     }
+    onRefresh?: () => void
 }
 
-export function CicilanActions({ cicilan }: CicilanActionsProps) {
+export function CicilanActions({ cicilan, onRefresh }: CicilanActionsProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -83,7 +84,8 @@ export function CicilanActions({ cicilan }: CicilanActionsProps) {
             const res = await bayarCicilan(cicilan.id)
             if (res.success) {
                 setBayarOpen(false)
-                router.refresh()
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal membayar cicilan")
             }
@@ -101,7 +103,8 @@ export function CicilanActions({ cicilan }: CicilanActionsProps) {
             const res = await pelunasanDipercepat(cicilan.id)
             if (res.success) {
                 setLunasOpen(false)
-                router.refresh()
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal pelunasan dipercepat")
             }
@@ -123,7 +126,8 @@ export function CicilanActions({ cicilan }: CicilanActionsProps) {
             })
             if (res.success) {
                 setEditOpen(false)
-                router.refresh()
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal memperbarui cicilan")
             }
@@ -141,7 +145,8 @@ export function CicilanActions({ cicilan }: CicilanActionsProps) {
             const res = await deleteCicilan(cicilan.id)
             if (res.success) {
                 setDeleteOpen(false)
-                router.refresh()
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal menghapus cicilan")
             }

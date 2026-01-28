@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { quickDebugAdminFee } from "@/app/actions/debug-quick"
+import { quickDebugAdminFee } from "@/lib/db/debug-repo"
 import { ArrowLeft, RefreshCw } from "lucide-react"
 import Link from "next/link"
 

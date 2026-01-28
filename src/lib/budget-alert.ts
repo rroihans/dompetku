@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma"
-import { createNotification } from "@/app/actions/notifications"
+import { createNotification } from "@/lib/db/notifications-repo"
 import { Money } from "@/lib/money"
 
 export type AlertLevel = "SAFE" | "WARNING" | "DANGER" | "CRITICAL"
@@ -15,7 +15,7 @@ export interface BudgetAlertResult {
  * Returns the alert status for immediate UI feedback.
  */
 export async function checkBudgetAlert(
-    kategori: string, 
+    kategori: string,
     tanggal: Date
 ): Promise<BudgetAlertResult> {
     try {
@@ -78,7 +78,7 @@ export async function checkBudgetAlert(
                 severity,
                 actionUrl: "/anggaran"
             })
-            
+
             return { level, percentage, message }
         }
 

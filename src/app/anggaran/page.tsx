@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -7,30 +9,98 @@ import {
     AlertTriangle,
     CheckCircle2,
     TrendingUp,
-    Copy
+    Copy,
+    RefreshCw
 } from "lucide-react"
-import { getBudgetWithRealization, getAvailableCategories, copyBudgetFromPreviousMonth } from "@/app/actions/anggaran"
+import { getBudgetWithRealization, getAvailableCategories, copyBudgetFromPreviousMonth } from "@/lib/db/budget-repo"
 import { formatRupiah } from "@/lib/format"
 import { AddBudgetForm } from "@/components/forms/add-budget-form"
 import { BudgetActions } from "@/components/anggaran/budget-actions"
 import { BudgetChart } from "@/components/charts/budget-chart"
 import Link from "next/link"
-import { redirect } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
+import { toast } from "sonner"
 
 const BULAN_LABEL = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ]
 
-interface AnggaranPageProps {
-    searchParams: Promise<{ bulan?: string; tahun?: string }>
+export default function AnggaranPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Memuat anggaran...</div>}>
+            <AnggaranContent />
+        </Suspense>
+    )
 }
 
-export default async function AnggaranPage({ searchParams }: AnggaranPageProps) {
-    const params = await searchParams
+function AnggaranContent() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+
     const now = new Date()
-    const bulan = params.bulan ? parseInt(params.bulan) : now.getMonth() + 1
-    const tahun = params.tahun ? parseInt(params.tahun) : now.getFullYear()
+    const currentMonth = now.getMonth() + 1
+    const currentYear = now.getFullYear()
+
+    // Validasi parameter bulan/tahun
+    const paramBulan = searchParams.get("bulan") ? parseInt(searchParams.get("bulan")!) : currentMonth
+    const paramTahun = searchParams.get("tahun") ? parseInt(searchParams.get("tahun")!) : currentYear
+
+    const bulan = isNaN(paramBulan) ? currentMonth : paramBulan
+    const tahun = isNaN(paramTahun) ? currentYear : paramTahun
+
+    const [data, setData] = useState<any>(null)
+    const [categories, setCategories] = useState<string[]>([])
+    const [loading, setLoading] = useState(true)
+    const [copying, setCopying] = useState(false)
+
+    async function loadData() {
+        setLoading(true)
+        try {
+            const [budgetResult, categoriesResult] = await Promise.all([
+                getBudgetWithRealization(bulan, tahun),
+                getAvailableCategories()
+            ])
+
+            if (budgetResult.success) {
+                setData(budgetResult.data)
+            }
+            if (categoriesResult.success) {
+                setCategories(categoriesResult.data || [])
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error("Gagal memuat anggaran")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        loadData()
+    }, [bulan, tahun])
+
+    async function handleCopyBudget() {
+        setCopying(true)
+        try {
+            const res = await copyBudgetFromPreviousMonth(bulan, tahun)
+            if (res.success) {
+                toast.success(`Berhasil menyalin ${res.copied} kategori anggaran`)
+                loadData()
+            } else {
+                toast.error(res.error || "Gagal menyalin anggaran")
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Terjadi kesalahan")
+        } finally {
+            setCopying(false)
+        }
+    }
+
+    const handleRefresh = () => {
+        loadData()
+    }
 
     // Hitung bulan sebelum dan sesudah
     let prevBulan = bulan - 1
@@ -47,26 +117,32 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
         nextTahun = tahun + 1
     }
 
-    const [budgetResult, categoriesResult] = await Promise.all([
-        getBudgetWithRealization(bulan, tahun),
-        getAvailableCategories()
-    ])
+    if (loading && !data) {
+        return <div className="p-8 text-center">Memuat anggaran...</div>
+    }
 
-    const data = budgetResult.data
-    const categories = categoriesResult.data || []
+    // Default safe objects if data is null
+    const safeData = data || {
+        budgets: [],
+        unbudgeted: [],
+        totalBudget: 0,
+        totalRealisasi: 0,
+        totalProyeksi: 0,
+        sisaHari: 0
+    }
 
     // Hitung statistik
-    const totalBudget = data.totalBudget
-    const totalRealisasi = data.totalRealisasi
-    const totalProyeksi = data.totalProyeksi || 0
+    const totalBudget = safeData.totalBudget
+    const totalRealisasi = safeData.totalRealisasi
+    const totalProyeksi = safeData.totalProyeksi || 0
     const totalPrediksi = totalRealisasi + totalProyeksi
     const sisaTotal = totalBudget - totalPrediksi
     const persentaseTotal = totalBudget > 0 ? Math.round((totalRealisasi / totalBudget) * 100) : 0
     const persentasePrediksiTotal = totalBudget > 0 ? Math.round((totalPrediksi / totalBudget) * 100) : 0
 
     // Kategori yang melebihi budget (berdasarkan prediksi total)
-    const overBudget = data.budgets.filter((b: any) => (b.persentaseProyeksi || 0) > 100)
-    const nearLimit = data.budgets.filter((b: any) => (b.persentaseProyeksi || 0) >= 80 && (b.persentaseProyeksi || 0) <= 100)
+    const overBudget = safeData.budgets.filter((b: any) => (b.persentaseProyeksi || 0) > 100)
+    const nearLimit = safeData.budgets.filter((b: any) => (b.persentaseProyeksi || 0) >= 80 && (b.persentaseProyeksi || 0) <= 100)
 
     return (
         <div className="space-y-6">
@@ -78,7 +154,7 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                         Kontrol pengeluaran dengan batas anggaran per kategori.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <Link href={`/anggaran?bulan=${prevBulan}&tahun=${prevTahun}`}>
                         <Button variant="outline" size="icon">
                             <ChevronLeft className="h-4 w-4" />
@@ -92,7 +168,12 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </Link>
-                    <AddBudgetForm categories={categories} bulan={bulan} tahun={tahun} />
+                    <AddBudgetForm
+                        categories={categories}
+                        bulan={bulan}
+                        tahun={tahun}
+                        onRefresh={handleRefresh}
+                    />
                 </div>
             </div>
 
@@ -108,7 +189,7 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                     <CardContent>
                         <div className="text-2xl font-bold" data-private="true">{formatRupiah(totalBudget)}</div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {data.budgets.length} kategori
+                            {safeData.budgets.length} kategori
                         </p>
                     </CardContent>
                 </Card>
@@ -202,20 +283,23 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
             )}
 
             {/* Budget Chart Visualization */}
-            {data.budgets.length > 0 && (
+            {safeData.budgets.length > 0 && (
                 <BudgetChart
-                    budgets={data.budgets}
-                    unbudgeted={data.unbudgeted}
+                    budgets={safeData.budgets}
+                    unbudgeted={safeData.unbudgeted}
                     totalBudget={totalBudget}
                     totalRealisasi={totalRealisasi}
                 />
             )}
 
             {/* Daftar Budget */}
-            {data.budgets.length > 0 ? (
+            {safeData.budgets.length > 0 ? (
                 <div className="grid gap-4">
-                    <h3 className="text-lg font-semibold">Detail per Kategori</h3>
-                    {data.budgets.map((budget: any) => {
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Detail per Kategori</h3>
+                    </div>
+
+                    {safeData.budgets.map((budget: any) => {
                         const isOver = (budget.persentaseProyeksi || 0) > 100
                         const isNear = (budget.persentaseProyeksi || 0) >= 80 && (budget.persentaseProyeksi || 0) <= 100
                         const realOver = (budget.persentase || 0) > 100
@@ -251,10 +335,10 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                                                     {budget.persentaseProyeksi || 0}% (inc. terjadwal)
                                                 </p>
                                             </div>
-                                            <BudgetActions budget={budget} />
+                                            <BudgetActions budget={budget} onRefresh={handleRefresh} />
                                         </div>
                                     </div>
-                                    
+
                                     <div className="w-full bg-secondary h-3 rounded-full overflow-hidden relative">
                                         {/* Proyeksi Layer */}
                                         {(budget.proyeksi || 0) > 0 && (
@@ -278,15 +362,15 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                                                     {formatRupiah(budget.sisa)}
                                                 </span>
                                             </span>
-                                            {budget.sisa > 0 && (data.sisaHari ?? 0) > 0 && (
+                                            {budget.sisa > 0 && (safeData.sisaHari ?? 0) > 0 && (
                                                 <span className="text-[10px] italic">
                                                     Saran harian: <span data-private="true">{formatRupiah(budget.saranHarian)}</span>
                                                 </span>
                                             )}
                                         </div>
                                         <div className="text-right">
-                                            {(data.sisaHari ?? 0) > 0 ? (
-                                                <span>{data.sisaHari} hari lagi</span>
+                                            {(safeData.sisaHari ?? 0) > 0 ? (
+                                                <span>{safeData.sisaHari} hari lagi</span>
                                             ) : (
                                                 <span>Bulan berakhir</span>
                                             )}
@@ -305,22 +389,37 @@ export default async function AnggaranPage({ searchParams }: AnggaranPageProps) 
                         <p className="text-muted-foreground text-center mb-4 max-w-md">
                             Buat anggaran untuk mengontrol pengeluaran bulanan Anda per kategori.
                         </p>
-                        <div className="flex gap-2">
-                            <AddBudgetForm categories={categories} bulan={bulan} tahun={tahun} />
+                        <div className="flex flex-col gap-2 w-full max-w-xs items-center">
+                            <AddBudgetForm
+                                categories={categories}
+                                bulan={bulan}
+                                tahun={tahun}
+                                onRefresh={handleRefresh}
+                            />
+
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2 mt-2"
+                                onClick={handleCopyBudget}
+                                disabled={copying}
+                            >
+                                {copying ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                                Salin dari Bulan Lalu
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
             )}
 
             {/* Pengeluaran tanpa budget */}
-            {data.unbudgeted.length > 0 && (
+            {safeData.unbudgeted.length > 0 && (
                 <div className="grid gap-4">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-amber-500" />
                         Pengeluaran Tanpa Anggaran
                     </h3>
                     <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                        {data.unbudgeted.map((item: any) => (
+                        {safeData.unbudgeted.map((item: any) => (
                             <Card key={item.kategori} className="border-l-4 border-l-amber-500">
                                 <CardContent className="pt-4 flex justify-between items-center">
                                     <div>

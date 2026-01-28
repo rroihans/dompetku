@@ -22,7 +22,7 @@ import {
     DollarSign,
     Palette
 } from "lucide-react"
-import { updateAkun } from "@/app/actions/akun"
+import { updateAkun } from "@/lib/db"
 import { toast } from "sonner"
 
 const PRESET_COLORS = [
@@ -35,16 +35,16 @@ interface EditAccountFormProps {
         id: string
         nama: string
         tipe: string
-        warna: string | null
+        warna?: string | null
         limitKredit: number | null
         // Credit Card fields
-        isSyariah: boolean | null
-        billingDate: number | null
-        dueDate: number | null
-        minPaymentFixed: number | null
-        minPaymentPercent: number | null
-        minInstallmentAmount: number | null
-        useDecimalFormat: boolean
+        isSyariah?: boolean | null
+        billingDate?: number | null
+        dueDate?: number | null
+        minPaymentFixed?: number | null
+        minPaymentPercent?: number | null
+        minInstallmentAmount?: number | null
+        useDecimalFormat?: boolean
     }
 }
 
@@ -56,16 +56,16 @@ export function EditAccountForm({ akun }: EditAccountFormProps) {
     // Basic fields
     const [nama, setNama] = useState(akun.nama)
     const [warna, setWarna] = useState(akun.warna || PRESET_COLORS[0])
-    const [limitKredit, setLimitKredit] = useState<number | null>(akun.limitKredit)
+    const [limitKredit, setLimitKredit] = useState<number | null>(akun.limitKredit ?? null)
 
     // Credit Card fields
     const isCreditCard = akun.tipe === "CREDIT_CARD"
     const [isSyariah, setIsSyariah] = useState(akun.isSyariah ?? false)
-    const [billingDate, setBillingDate] = useState<number | null>(akun.billingDate)
-    const [dueDate, setDueDate] = useState<number | null>(akun.dueDate)
-    const [minPaymentFixed, setMinPaymentFixed] = useState<number | null>(akun.minPaymentFixed)
-    const [minPaymentPercent, setMinPaymentPercent] = useState<number | null>(akun.minPaymentPercent)
-    const [minInstallmentAmount, setMinInstallmentAmount] = useState<number | null>(akun.minInstallmentAmount)
+    const [billingDate, setBillingDate] = useState<number | null>(akun.billingDate ?? null)
+    const [dueDate, setDueDate] = useState<number | null>(akun.dueDate ?? null)
+    const [minPaymentFixed, setMinPaymentFixed] = useState<number | null>(akun.minPaymentFixed ?? null)
+    const [minPaymentPercent, setMinPaymentPercent] = useState<number | null>(akun.minPaymentPercent ?? null)
+    const [minInstallmentAmount, setMinInstallmentAmount] = useState<number | null>(akun.minInstallmentAmount ?? null)
     const [useDecimalFormat, setUseDecimalFormat] = useState(akun.useDecimalFormat || false)
 
     const handleSave = async () => {

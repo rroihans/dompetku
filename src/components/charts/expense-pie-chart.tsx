@@ -21,7 +21,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { ArrowLeft, Calendar, Loader2 } from "lucide-react"
-import { getCategoryDetail } from "@/app/actions/analytics"
+import { getCategoryDetail } from "@/lib/db/analytics-repo"
 
 interface PengeluaranPerKategori {
     kategori: string
@@ -233,57 +233,57 @@ export function ExpensePieChart({ data }: ExpensePieChartProps) {
                                             <Calendar className="w-3.5 h-3.5" />
                                             Trend Mingguan
                                         </p>
-                                                                            <div className="h-[140px] w-full">
-                                                                                <ResponsiveContainer width="100%" height="100%">
-                                                                                    <BarChart data={detailData.weeklyBreakdown}>
-                                                                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                                                                                        <XAxis
-                                                                                            dataKey="minggu"
-                                                                                            tick={{ fontSize: 9 }}
-                                                                                            axisLine={false}
-                                                                                            tickLine={false}
-                                                                                        />
-                                                                                        <YAxis
-                                                                                            tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(0)}jt` : v >= 1000 ? `${(v / 1000).toFixed(0)}rb` : v}
-                                                                                            tick={{ fontSize: 9 }}
-                                                                                            width={35}
-                                                                                            axisLine={false}
-                                                                                            tickLine={false}
-                                                                                        />
-                                                                                        <Tooltip
-                                                                                            formatter={(v) => formatRupiah(v as number)}
-                                                                                            labelStyle={{ fontSize: '10px' }}
-                                                                                            contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
-                                                                                        />
-                                                                                        <Bar dataKey="nominal" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                                                                                    </BarChart>
-                                                                                </ResponsiveContainer>
-                                                </div>
-                                            </div>
+                                        <div className="h-[140px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={detailData.weeklyBreakdown}>
+                                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="minggu"
+                                                        tick={{ fontSize: 9 }}
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                    />
+                                                    <YAxis
+                                                        tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(0)}jt` : v >= 1000 ? `${(v / 1000).toFixed(0)}rb` : v}
+                                                        tick={{ fontSize: 9 }}
+                                                        width={35}
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                    />
+                                                    <Tooltip
+                                                        formatter={(v) => formatRupiah(v as number)}
+                                                        labelStyle={{ fontSize: '10px' }}
+                                                        contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+                                                    />
+                                                    <Bar dataKey="nominal" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
 
-                                            {/* Recent Transactions List */}
-                                            <div className="space-y-3">
-                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Daftar Transaksi</p>
-                                                <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
-                                                    {detailData.transaksi.length === 0 ? (
-                                                        <p className="text-center py-4 text-sm text-muted-foreground">Tidak ada transaksi detail.</p>
-                                                    ) : (
-                                                        detailData.transaksi.map((tx: any) => (
-                                                            <div key={tx.id} className="flex items-center justify-between p-2.5 bg-muted/20 border rounded-lg hover:bg-muted/40 transition-colors">
-                                                                <div className="min-w-0 flex-1 mr-2">
-                                                                    <p className="text-sm font-medium truncate">{tx.deskripsi}</p>
-                                                                    <p className="text-[10px] text-muted-foreground">
-                                                                        {new Date(tx.tanggal).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })} • {tx.akun}
-                                                                    </p>
-                                                                </div>
-                                                                <p className="text-sm font-bold text-red-500 whitespace-nowrap" data-private="true">
-                                                                    -{formatRupiah(tx.nominal)}
-                                                                </p>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
+                                    {/* Recent Transactions List */}
+                                    <div className="space-y-3">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Daftar Transaksi</p>
+                                        <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {detailData.transaksi.length === 0 ? (
+                                                <p className="text-center py-4 text-sm text-muted-foreground">Tidak ada transaksi detail.</p>
+                                            ) : (
+                                                detailData.transaksi.map((tx: any) => (
+                                                    <div key={tx.id} className="flex items-center justify-between p-2.5 bg-muted/20 border rounded-lg hover:bg-muted/40 transition-colors">
+                                                        <div className="min-w-0 flex-1 mr-2">
+                                                            <p className="text-sm font-medium truncate">{tx.deskripsi}</p>
+                                                            <p className="text-[10px] text-muted-foreground">
+                                                                {new Date(tx.tanggal).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })} • {tx.akun}
+                                                            </p>
+                                                        </div>
+                                                        <p className="text-sm font-bold text-red-500 whitespace-nowrap" data-private="true">
+                                                            -{formatRupiah(tx.nominal)}
+                                                        </p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="text-center py-12 text-muted-foreground italic">

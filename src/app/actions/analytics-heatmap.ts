@@ -23,6 +23,8 @@ export async function getSpendingHeatmap(month: number, year: number) {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
         const today = new Date();
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
 
         const transactions = await prisma.transaksi.findMany({
             where: {
@@ -81,9 +83,8 @@ export async function getSpendingHeatmap(month: number, year: number) {
                 intensity
             });
 
-            // Count zero spending (only for passed days)
-            const currentDate = new Date(dateStr);
-            if (data.total === 0 && currentDate < today) {
+            // Count zero spending for the WHOLE month to match visual calendar
+            if (data.total === 0) {
                 zeroSpendingDays++;
             }
         }
@@ -91,13 +92,13 @@ export async function getSpendingHeatmap(month: number, year: number) {
         // 2. Pattern Analysis
         const insights: PatternInsight[] = [];
         const monthTotal = heatmap.reduce((sum, d) => sum + d.total, 0);
-        // Average based on days PASSED or total days?
-        // Usually total days passed if current month, or total days if past month.
-        let daysPassed = daysInMonth;
+        
+        // Calculate average based on days that have passed OR all days if the month is over
+        let daysForAverage = daysInMonth;
         if (year === today.getFullYear() && month === (today.getMonth() + 1)) {
-            daysPassed = today.getDate();
+            daysForAverage = today.getDate();
         }
-        const dailyAverage = daysPassed > 0 ? monthTotal / daysPassed : 0;
+        const dailyAverage = daysForAverage > 0 ? monthTotal / daysForAverage : 0;
 
         // A. Daily Average (Always show)
         insights.push({
@@ -110,7 +111,7 @@ export async function getSpendingHeatmap(month: number, year: number) {
         if (zeroSpendingDays > 0) {
             insights.push({
                 title: "Zero Spending Days",
-                message: `Hebat! Ada ${zeroSpendingDays} hari tanpa pengeluaran sama sekali bulan ini.`,
+                message: `Ada ${zeroSpendingDays} hari tanpa pengeluaran tercatat di kalender bulan ini.`,
                 severity: "positive"
             });
         }
@@ -121,7 +122,7 @@ export async function getSpendingHeatmap(month: number, year: number) {
             insights.push({
                 title: "Pengeluaran Tertinggi",
                 message: `Puncak pengeluaran terjadi pada tanggal ${maxDateObj.getDate()} sebesar ${formatRupiah(maxTotal)}.`,
-                severity: "warning" // Neutral/Warning depending on amount? warning is safer for visibility
+                severity: "warning"
             });
         }
         
@@ -144,7 +145,6 @@ export async function getSpendingHeatmap(month: number, year: number) {
         const weekdayAvg = weekdayCount > 0 ? weekdaySum / weekdayCount : 0;
         const weekendAvg = weekendCount > 0 ? weekendSum / weekendCount : 0;
 
-        // Threshold lowered to 1.3 (30%)
         if (weekendAvg > weekdayAvg * 1.3 && weekdayAvg > 0) {
             const increase = ((weekendAvg - weekdayAvg) / weekdayAvg) * 100;
             insights.push({
@@ -153,27 +153,6 @@ export async function getSpendingHeatmap(month: number, year: number) {
                 severity: "warning"
             });
         }
-
-        // Paycheck Splurge (Assume 25th)
-        const payday = heatmap.find(d => d.date.endsWith("-25"));
-        
-        if (payday && payday.total > dailyAverage * 3) {
-            insights.push({
-                title: "Paycheck Day Splurge",
-                message: "Pengeluaran tanggal 25 sangat tinggi (3x rata-rata). Hindari belanja impulsif saat gajian.",
-                severity: "warning"
-            });
-        }
-
-        // D. Normal Pattern Fallback
-        // If only "Daily Average" exists (length 1), add Normal Pattern
-        // Or if no warning/positive insights.
-        // Zero Spending is "positive", Highest is "warning".
-        // If we strictly follow spec "If truly no specific patterns", but we always add Average, Zero, Highest.
-        // So "Specific Patterns" refers to anomalies like Weekend/Paycheck.
-        // But users said "tidak ada insight apapun". Now we populate it with Average, Zero, Highest.
-        // So fallback might not be needed if we always have those.
-        // Let's keep it robust.
 
         if (insights.length === 1) {
              insights.push({

@@ -5,9 +5,8 @@ import { logSistem } from "@/lib/logger"
 import { revalidatePath } from "next/cache"
 import { Money } from "@/lib/money"
 import { CreditCardSettingsSchema } from "@/lib/validations/credit-card"
-
-// Tipe akun yang ditampilkan ke user (bukan internal)
-const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
+import { USER_ACCOUNT_TYPES, mapAccountToFloat, mapTransaksiToFloat, revalidateCommonPaths } from "@/lib/account-helpers"
+import { mapAccountToDTO, mapAccountsToDTO } from "@/lib/account-dto"
 
 // Untuk pagination
 const PAGE_SIZE = 8
@@ -20,7 +19,7 @@ export async function getAkunUser(page: number = 1) {
         const [akuns, total] = await Promise.all([
             prisma.akun.findMany({
                 where: {
-                    tipe: { in: USER_ACCOUNT_TYPES }
+                    tipe: { in: [...USER_ACCOUNT_TYPES] }
                 },
                 orderBy: { createdAt: "desc" },
                 skip,
@@ -28,17 +27,12 @@ export async function getAkunUser(page: number = 1) {
             }),
             prisma.akun.count({
                 where: {
-                    tipe: { in: USER_ACCOUNT_TYPES }
+                    tipe: { in: [...USER_ACCOUNT_TYPES] }
                 }
             }),
         ])
 
-        const dataMapped = akuns.map(akun => ({
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-        }))
+        const dataMapped = akuns.map(mapAccountToFloat)
 
         return {
             data: dataMapped,
@@ -60,17 +54,12 @@ export async function getAkun() {
     try {
         const akuns = await prisma.akun.findMany({
             where: {
-                tipe: { in: USER_ACCOUNT_TYPES }
+                tipe: { in: [...USER_ACCOUNT_TYPES] }
             },
             orderBy: { createdAt: "desc" },
         })
 
-        return akuns.map(akun => ({
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-        }))
+        return mapAccountsToDTO(akuns)
     } catch (error) {
         await logSistem("ERROR", "AKUN", "Gagal mengambil data akun", (error as Error).stack)
         throw new Error("Gagal mengambil data akun")
@@ -114,21 +103,21 @@ export async function createAkun(data: {
 
         // Validasi Credit Card Settings
         if (data.tipe === "CREDIT_CARD") {
-             const ccValidation = CreditCardSettingsSchema.partial().safeParse({
-                 billingDate: data.billingDate,
-                 dueDate: data.dueDate,
-                 minPaymentPercent: data.minPaymentPercent,
-                 minPaymentFixed: data.minPaymentFixed,
-                 minInstallmentAmount: data.minInstallmentAmount,
-                 limitKredit: data.limitKredit,
-                 useDecimalFormat: data.useDecimalFormat,
-                 isSyariah: data.isSyariah
-             })
-             
-             if (!ccValidation.success) {
-                 const errorMessages = ccValidation.error.flatten().fieldErrors;
-                 return { success: false, error: Object.values(errorMessages).flat()[0] || "Data Kartu Kredit tidak valid" }
-             }
+            const ccValidation = CreditCardSettingsSchema.partial().safeParse({
+                billingDate: data.billingDate,
+                dueDate: data.dueDate,
+                minPaymentPercent: data.minPaymentPercent,
+                minPaymentFixed: data.minPaymentFixed,
+                minInstallmentAmount: data.minInstallmentAmount,
+                limitKredit: data.limitKredit,
+                useDecimalFormat: data.useDecimalFormat,
+                isSyariah: data.isSyariah
+            })
+
+            if (!ccValidation.success) {
+                const errorMessages = ccValidation.error.flatten().fieldErrors;
+                return { success: false, error: Object.values(errorMessages).flat()[0] || "Data Kartu Kredit tidak valid" }
+            }
         }
 
         const saldoAwalInt = BigInt(Money.fromFloat(data.saldoAwal))
@@ -153,18 +142,9 @@ export async function createAkun(data: {
         })
 
         await logSistem("INFO", "AKUN", `Akun baru dibuat: ${akun.nama}`)
-        revalidatePath("/akun")
-        revalidatePath("/")
-        
-        // Map back to float for return
-        const mappedAkun = {
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-        }
-        
-        return { success: true, data: mappedAkun }
+        revalidateCommonPaths()
+
+        return { success: true, data: mapAccountToFloat(akun) }
     } catch (error) {
         await logSistem("ERROR", "AKUN", "Gagal membuat akun baru", (error as Error).stack)
         return { success: false, error: "Gagal membuat akun baru" }
@@ -210,25 +190,25 @@ export async function updateAkun(id: string, data: {
                 return { success: false, error: `Akun dengan nama "${data.nama}" sudah ada` }
             }
         }
-        
+
         // Validate CC Settings if type is CC or if we are updating CC fields
         // Since we might not change type here, check if fields are present.
         if (data.billingDate || data.dueDate || data.minPaymentPercent || data.minPaymentFixed) {
-             const ccValidation = CreditCardSettingsSchema.partial().safeParse({
-                 billingDate: data.billingDate,
-                 dueDate: data.dueDate,
-                 minPaymentPercent: data.minPaymentPercent,
-                 minPaymentFixed: data.minPaymentFixed,
-                 minInstallmentAmount: data.minInstallmentAmount,
-                 limitKredit: data.limitKredit,
-                 useDecimalFormat: data.useDecimalFormat,
-                 isSyariah: data.isSyariah
-             })
-             
-             if (!ccValidation.success) {
-                 const errorMessages = ccValidation.error.flatten().fieldErrors;
-                 return { success: false, error: Object.values(errorMessages).flat()[0] || "Data Kartu Kredit tidak valid" }
-             }
+            const ccValidation = CreditCardSettingsSchema.partial().safeParse({
+                billingDate: data.billingDate,
+                dueDate: data.dueDate,
+                minPaymentPercent: data.minPaymentPercent,
+                minPaymentFixed: data.minPaymentFixed,
+                minInstallmentAmount: data.minInstallmentAmount,
+                limitKredit: data.limitKredit,
+                useDecimalFormat: data.useDecimalFormat,
+                isSyariah: data.isSyariah
+            })
+
+            if (!ccValidation.success) {
+                const errorMessages = ccValidation.error.flatten().fieldErrors;
+                return { success: false, error: Object.values(errorMessages).flat()[0] || "Data Kartu Kredit tidak valid" }
+            }
         }
 
 
@@ -251,18 +231,10 @@ export async function updateAkun(id: string, data: {
         })
 
         await logSistem("INFO", "AKUN", `Akun diperbarui: ${akun.nama}`)
-        revalidatePath("/akun")
+        revalidateCommonPaths()
         revalidatePath(`/akun/${id}`)
-        revalidatePath("/")
-        
-        const mappedAkun = {
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-        }
 
-        return { success: true, data: mappedAkun }
+        return { success: true, data: mapAccountToFloat(akun) }
     } catch (error) {
         await logSistem("ERROR", "AKUN", "Gagal memperbarui akun", (error as Error).stack)
         return { success: false, error: "Gagal memperbarui akun" }
@@ -312,15 +284,8 @@ export async function updateAkunSettings(id: string, settings: {
 
         await logSistem("INFO", "AKUN", `Pengaturan akun "${updated.nama}" diperbarui`)
         revalidatePath(`/akun/${id}`)
-        
-         const mappedAkun = {
-            ...updated,
-            saldoSekarang: Money.toFloat(Number(updated.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(updated.saldoAwal)),
-            limitKredit: updated.limitKredit ? Money.toFloat(Number(updated.limitKredit)) : null,
-        }
-        
-        return { success: true, data: mappedAkun }
+
+        return { success: true, data: mapAccountToFloat(updated) }
     } catch (error) {
         await logSistem("ERROR", "AKUN", `Gagal memperbarui pengaturan akun ${id}`, (error as Error).stack)
         return { success: false, error: "Gagal memperbarui pengaturan" }
@@ -351,8 +316,7 @@ export async function deleteAkun(id: string) {
         })
 
         await logSistem("INFO", "AKUN", `Akun dihapus: ${akun.nama}`)
-        revalidatePath("/akun")
-        revalidatePath("/")
+        revalidateCommonPaths()
         return { success: true }
     } catch (error) {
         await logSistem("ERROR", "AKUN", "Gagal menghapus akun", (error as Error).stack)
@@ -366,16 +330,8 @@ export async function getAkunById(id: string) {
             where: { id }
         })
         if (!akun) return null
-        
-        return {
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-            setoranAwal: akun.setoranAwal ? Money.toFloat(Number(akun.setoranAwal)) : null,
-            minPaymentFixed: akun.minPaymentFixed ? Money.toFloat(Number(akun.minPaymentFixed)) : null,
-            minInstallmentAmount: akun.minInstallmentAmount ? Money.toFloat(Number(akun.minInstallmentAmount)) : null,
-        }
+
+        return mapAccountToFloat(akun)
     } catch (error) {
         await logSistem("ERROR", "AKUN", "Gagal mengambil detail akun", (error as Error).stack)
         return null
@@ -409,12 +365,9 @@ export async function getAkunDetail(id: string, days: number = 30) {
                 kreditAkun: { select: { nama: true, tipe: true } }
             }
         })
-        
+
         // Map recent transactions
-        const recentMapped = recentTransactions.map(tx => ({
-            ...tx,
-            nominal: Money.toFloat(Number(tx.nominal))
-        }))
+        const recentMapped = recentTransactions.map(mapTransaksiToFloat)
 
         // 3. Kalkulasi Trend Saldo Akun ini
         const [pastDebit, pastKredit] = await Promise.all([
@@ -430,12 +383,12 @@ export async function getAkunDetail(id: string, days: number = 30) {
 
         // Calculate running balance using BigInt (Source of Truth: Int)
         let runningBalanceInt = akun.saldoAwal // BigInt
-        
+
         const debitSum = pastDebit._sum.nominal ?? BigInt(0)
         const kreditSum = pastKredit._sum.nominal ?? BigInt(0)
-        
+
         runningBalanceInt = runningBalanceInt + debitSum - kreditSum
-        
+
         // let runningBalance = Money.toFloat(Number(runningBalanceInt))
 
         const dailyTransactions = await prisma.transaksi.findMany({
@@ -462,26 +415,16 @@ export async function getAkunDetail(id: string, days: number = 30) {
             const dateStr = targetDate.toISOString().split('T')[0]
 
             runningBalanceInt += (dailyMutations[dateStr] || BigInt(0))
-            trendData.push({ 
-                tanggal: dateStr, 
-                saldo: Money.toFloat(Number(runningBalanceInt)) 
+            trendData.push({
+                tanggal: dateStr,
+                saldo: Money.toFloat(Number(runningBalanceInt))
             })
-        }
-        
-        const akunMapped = {
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-            setoranAwal: akun.setoranAwal ? Money.toFloat(Number(akun.setoranAwal)) : null,
-            minPaymentFixed: akun.minPaymentFixed ? Money.toFloat(Number(akun.minPaymentFixed)) : null,
-            minInstallmentAmount: akun.minInstallmentAmount ? Money.toFloat(Number(akun.minInstallmentAmount)) : null,
         }
 
         return {
             success: true,
             data: {
-                akun: akunMapped,
+                akun: mapAccountToDTO(akun),
                 recentTransactions: recentMapped,
                 trendData
             }

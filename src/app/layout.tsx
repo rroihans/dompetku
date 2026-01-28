@@ -11,12 +11,20 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import { LiveClock } from "@/components/layout/live-clock";
 import { Toaster } from "sonner";
 import { FAB } from "@/components/ui/fab";
+import { SWRegister } from "@/components/pwa/sw-register";
+import { RecurringTriggerProvider } from "@/components/pwa/recurring-trigger-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Dompetku - Personal Finance",
   description: "Aplikasi pembukuan mandiri dengan sistem Double-Entry",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Dompetku",
+  },
 };
 
 export const viewport: Viewport = {
@@ -31,6 +39,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={`${inter.className} antialiased min-h-screen bg-background overflow-x-hidden`}>
@@ -68,6 +77,8 @@ export default function RootLayout({
           <BottomNav />
           <FAB />
           <Toaster position="top-center" richColors closeButton />
+          <SWRegister />
+          <RecurringTriggerProvider />
         </ThemeProvider>
       </body>
     </html>

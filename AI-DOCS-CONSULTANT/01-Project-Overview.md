@@ -5,6 +5,7 @@
 {
   "@prisma/client": "^5.10.2",
   "@radix-ui/react-alert-dialog": "^1.1.15",
+  "@radix-ui/react-checkbox": "^1.3.3",
   "@radix-ui/react-dropdown-menu": "^2.1.16",
   "@radix-ui/react-radio-group": "^1.3.8",
   "@radix-ui/react-slot": "^1.2.4",
@@ -13,6 +14,7 @@
   "@radix-ui/react-tooltip": "^1.2.8",
   "class-variance-authority": "^0.7.1",
   "clsx": "^2.1.1",
+  "date-fns": "^4.1.0",
   "dotenv": "^17.2.3",
   "lucide-react": "^0.562.0",
   "next": "16.1.1",
@@ -52,6 +54,21 @@ conductor/
       ├─ metadata.json
       ├─ plan.md
       ├─ spec.md
+    ├─ analytics_advanced_20260118/
+      ├─ index.md
+      ├─ metadata.json
+      ├─ plan.md
+      ├─ spec.md
+    ├─ analytics_polish_20260118/
+      ├─ index.md
+      ├─ metadata.json
+      ├─ plan.md
+      ├─ spec.md
+    ├─ critical_improvements_20260118/
+      ├─ index.md
+      ├─ metadata.json
+      ├─ plan.md
+      ├─ spec.md
     ├─ flexible_templates_20260102/
       ├─ metadata.json
       ├─ plan.md
@@ -71,6 +88,7 @@ conductor/
     ├─ optimization_refactor_20260116/
       ├─ index.md
       ├─ metadata.json
+      ├─ optimization_refactor_20260116/
       ├─ plan.md
       ├─ spec.md
   ├─ code_styleguides/
@@ -98,7 +116,6 @@ package.json
 postcss.config.mjs
 prisma/
   ├─ dev.db
-  ├─ dev.db-journal
   ├─ migrations/
     ├─ 20260101175930_add_transaksi_indexes/
       ├─ migration.sql
@@ -119,6 +136,10 @@ prisma/
     ├─ 20260116061005_rename_columns_final/
       ├─ migration.sql
     ├─ 20260116061525_add_performance_indexes/
+      ├─ migration.sql
+    ├─ 20260116083322_add_notifications/
+      ├─ migration.sql
+    ├─ 20260118071257_add_filter_preset/
       ├─ migration.sql
     ├─ migration_lock.toml
   ├─ schema.prisma
@@ -155,6 +176,8 @@ src/
     ├─ actions/
       ├─ admin-fee.ts
       ├─ akun.ts
+      ├─ analytics-heatmap.ts
+      ├─ analytics-yoy.ts
       ├─ analytics.ts
       ├─ anggaran.ts
       ├─ backup.ts
@@ -165,9 +188,12 @@ src/
       ├─ debug-automation.ts
       ├─ debug-quick.ts
       ├─ debug.ts
+      ├─ filter-preset.ts
       ├─ installment.ts
+      ├─ integrity.ts
       ├─ laporan.ts
       ├─ networth.ts
+      ├─ notifications.ts
       ├─ recurring-admin.ts
       ├─ recurring.ts
       ├─ seed.ts
@@ -181,6 +207,8 @@ src/
     ├─ anggaran/
       ├─ loading.tsx
       ├─ page.tsx
+    ├─ api/
+      ├─ cron/
     ├─ cicilan/
       ├─ loading.tsx
       ├─ page.tsx
@@ -196,18 +224,24 @@ src/
       ├─ calendar-client.tsx
       ├─ page.tsx
     ├─ laporan/
+      ├─ comparison/
       ├─ loading.tsx
       ├─ page.tsx
     ├─ layout.tsx
     ├─ loading.tsx
     ├─ not-found.tsx
+    ├─ notifications/
+      ├─ notification-list.tsx
+      ├─ page.tsx
     ├─ page.tsx
     ├─ pengaturan/
       ├─ page.tsx
+      ├─ verify-balance/
     ├─ recurring/
       ├─ loading.tsx
       ├─ page.tsx
     ├─ statistik/
+      ├─ heatmap/
       ├─ page.tsx
     ├─ template/
       ├─ page.tsx
@@ -222,9 +256,13 @@ src/
       ├─ admin-fee-manager.tsx
       ├─ akun-actions.tsx
       ├─ edit-account-form.tsx
+    ├─ analytics/
+      ├─ heatmap/
+      ├─ yoy/
     ├─ anggaran/
       ├─ budget-actions.tsx
     ├─ calendar/
+      ├─ calendar-event-actions.tsx
       ├─ financial-calendar.tsx
     ├─ charts/
       ├─ admin-fee-reminder.tsx
@@ -242,6 +280,9 @@ src/
       ├─ cicilan-actions.tsx
     ├─ credit-card/
       ├─ payment-calculator.tsx
+      ├─ payment-dialog.tsx
+    ├─ dashboard/
+      ├─ budget-banner.tsx
     ├─ forms/
       ├─ add-account-form.tsx
       ├─ add-account-template-form.tsx
@@ -254,6 +295,8 @@ src/
     ├─ layout/
       ├─ bottom-nav.tsx
       ├─ debug-menu.tsx
+      ├─ live-clock.tsx
+      ├─ notification-bell.tsx
       ├─ privacy-toggle.tsx
       ├─ sidebar.tsx
       ├─ theme-toggle.tsx
@@ -269,17 +312,24 @@ src/
       ├─ use-template-button.tsx
     ├─ theme-provider.tsx
     ├─ transaksi/
+      ├─ active-filter-chips.tsx
+      ├─ advanced-filter-panel.tsx
       ├─ convert-to-installment-dialog.tsx
+      ├─ filter-logic-builder.tsx
+      ├─ save-preset-dialog.tsx
       ├─ transaksi-actions.tsx
       ├─ transaksi-filter.tsx
     ├─ ui/
       ├─ alert-dialog.tsx
+      ├─ alert.tsx
       ├─ badge.tsx
       ├─ button.tsx
       ├─ card.tsx
+      ├─ checkbox.tsx
       ├─ confirm-dialog.tsx
       ├─ dialog.tsx
       ├─ dropdown-menu.tsx
+      ├─ fab.tsx
       ├─ form-field.tsx
       ├─ input.tsx
       ├─ label.tsx
@@ -287,10 +337,14 @@ src/
       ├─ select.tsx
       ├─ skeleton.tsx
       ├─ switch.tsx
+      ├─ table.tsx
       ├─ tabs.tsx
       ├─ tooltip.tsx
   ├─ hooks/
   ├─ lib/
+    ├─ analytics/
+      ├─ insights.ts
+    ├─ budget-alert.ts
     ├─ constants/
       ├─ error-messages.ts
     ├─ currency.ts
@@ -299,10 +353,13 @@ src/
     ├─ logger.ts
     ├─ money.ts
     ├─ prisma.ts
+    ├─ query-builder.ts
     ├─ template-utils.ts
     ├─ utils.ts
     ├─ validation.ts
     ├─ validations/
+      ├─ cicilan.ts
+      ├─ credit-card.ts
       ├─ transaksi.ts
   ├─ types/
     ├─ index.ts

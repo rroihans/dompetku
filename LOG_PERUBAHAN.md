@@ -128,7 +128,32 @@
 
 ---
 
+
 ## Riwayat Versi
+
+### v0.8.1 (2026-01-28)
+- **UI/UX Fixes (Post-Meeting Testing):**
+    - **Form Tambah Akun:** Input desimal dinonaktifkan by default (checkbox optional).
+    - **Form Transfer:** Notifikasi sukses & redirect yang benar ke halaman transaksi.
+    - **Layout Akun:** Hapus tombol redundan (Riwayat/Cicilan/Transaksi) dari card akun untuk tampilan bersih.
+    - **List Transaksi:** Kolom Akun menampilkan "Asal → Tujuan" untuk transfer, dan counterparty untuk transaksi lain.
+    - **FAB (Floating Action Button):** Refactor total menggunakan `Dialog` untuk Tambah Akun & Transfer, serta Link yang benar.
+- **Bug Fixes:**
+    - Fix logic form transaksi yang sempat hilang saat refactor.
+    - Perbaikan `TransferForm` state management.
+
+### v0.8.0 (2026-01-28)
+- **Offline-First Transformation (PWA):**
+    - **Local Database (Dexie):** Implementasi IndexedDB untuk penyimpanan data lokal tanpa server (Akun, Transaksi, Cicilan, Recurring).
+    - **Incremental Summaries:** Sistem agregasi otomatis (SummaryMonth, Category, Account) saat transaksi dibuat/diedit/dihapus untuk performa dashboard O(1).
+    - **Offline Capabilities:** Web Manifest dan Service Worker (`sw.js`) untuk akses tanpa internet (cache-first assets, network-first shell).
+    - **Repositories:** Refactoring logika bisnis ke `libs/db` (repository pattern) untuk memisahkan UI dari data layer.
+- **Core Features Migration:**
+    - **Recurring:** Repository logic untuk pemrosesan transaksi berulang (`processRecurringTransaction`).
+    - **Cicilan:** Logika pembayaran cicilan (`processCicilanPayment`) yang mengupdate status dan saldo otomatis.
+    - **Backup/Restore:** Fitur export/import data JSON lengkap (`backup.ts`).
+    - **Correctness Tools:** Fungsi `rebuildSummaries` dan `checkIntegrity` untuk perbaikan data otomatis.
+
 
 ### v0.7.1 (2026-01-18)
 - **Analytics Polish:**

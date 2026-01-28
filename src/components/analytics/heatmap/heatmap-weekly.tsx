@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { HeatmapData } from "@/app/actions/analytics-heatmap"
+import { HeatmapData } from "@/lib/db/analytics-repo"
 import { HeatmapCell } from "./heatmap-cell"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -24,7 +24,7 @@ export function HeatmapWeeklySwipe({ data, year, month, onDayClick }: Props) {
 
     // Pad data with nulls to align with weeks
     const paddedData = [...Array(offset).fill(null), ...data];
-    
+
     // Chunk into weeks
     const weeks: (HeatmapData | null)[][] = [];
     for (let i = 0; i < paddedData.length; i += 7) {
@@ -44,18 +44,18 @@ export function HeatmapWeeklySwipe({ data, year, month, onDayClick }: Props) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between bg-muted/30 p-2 rounded-lg">
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
+                <Button
+                    variant="ghost"
+                    size="icon"
                     disabled={currentWeek === 0}
                     onClick={() => setCurrentWeek(c => c - 1)}
                 >
                     <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <span className="font-medium text-sm">Week {currentWeek + 1}</span>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
+                <Button
+                    variant="ghost"
+                    size="icon"
                     disabled={currentWeek === weeks.length - 1}
                     onClick={() => setCurrentWeek(c => c + 1)}
                 >

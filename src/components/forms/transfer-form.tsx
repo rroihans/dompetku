@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRightLeft, ArrowRight } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,22 +24,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { getAkun } from "@/app/actions/akun"
-import { createTransfer } from "@/app/actions/transfer"
+import { getAkun, createTransfer } from "@/lib/db"
 import { formatRupiah } from "@/lib/format"
+import type { AccountDTO } from "@/lib/account-dto"
 
-interface Akun {
-    id: string
-    nama: string
-    tipe: string
-    saldoSekarang: number
+interface TransferFormProps {
+    trigger?: React.ReactNode;
 }
 
-export function TransferForm() {
+export function TransferForm({ trigger }: TransferFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [akunList, setAkunList] = useState<Akun[]>([])
+    const [akunList, setAkunList] = useState<AccountDTO[]>([])
     const [error, setError] = useState("")
 
     // Form state
@@ -53,7 +51,7 @@ export function TransferForm() {
         if (open) {
             getAkun().then((akuns) => {
                 // Hanya tampilkan akun uang (bukan kategori internal)
-                const filtered = akuns.filter((a: Akun) =>
+                const filtered = akuns.filter((a: AccountDTO) =>
                     ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(a.tipe)
                 )
                 setAkunList(filtered)
@@ -102,12 +100,14 @@ export function TransferForm() {
 
             if (res.success) {
                 setOpen(false)
+                toast.success("Transfer berhasil")
                 // Reset form
                 setDariAkunId("")
                 setKeAkunId("")
                 setNominal(0)
                 setCatatan("")
                 setTanggal(new Date().toISOString().split('T')[0])
+                router.push('/transaksi')
                 router.refresh()
             } else {
                 setError(res.error || "Gagal melakukan transfer")
@@ -122,13 +122,14 @@ export function TransferForm() {
 
     // Filter akun tujuan (tidak boleh sama dengan akun asal)
     const akunTujuanList = akunList.filter(a => a.id !== dariAkunId)
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                    <ArrowRightLeft className="h-4 w-4" /> Transfer
-                </Button>
+                {trigger ? trigger : (
+                    <Button variant="outline" className="gap-2">
+                        <ArrowRightLeft className="h-4 w-4" /> Transfer
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[450px]">
                 <DialogHeader>

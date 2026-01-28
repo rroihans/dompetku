@@ -25,10 +25,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { createTransaksiSimple } from "@/app/actions/transaksi"
-import { getAkun } from "@/app/actions/akun"
+import { createTransaksiSimple, getAkun } from "@/lib/db"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner" // Assuming sonner is installed as per Tech Stack
+import type { AccountDTO } from "@/lib/account-dto"
 
 // Kategori pengeluaran sederhana
 const KATEGORI_PENGELUARAN = [
@@ -69,16 +69,15 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
-interface Akun {
-    id: string
-    nama: string
-    tipe: string
+
+interface AddTransactionFormProps {
+    trigger?: React.ReactNode;
 }
 
-export function AddTransactionForm() {
+export function AddTransactionForm({ trigger }: AddTransactionFormProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [akunList, setAkunList] = useState<Akun[]>([])
+    const [akunList, setAkunList] = useState<AccountDTO[]>([])
 
     const {
         register,
@@ -100,7 +99,6 @@ export function AddTransactionForm() {
             deskripsi: "",
         },
     })
-
     const tipeTransaksi = watch("tipeTransaksi")
     const kategoriValue = watch("kategori")
     const akunIdValue = watch("akunId")
@@ -109,10 +107,10 @@ export function AddTransactionForm() {
     useEffect(() => {
         if (open) {
             getAkun().then((akuns) => {
-                const filtered = akuns.filter((a: Akun) =>
+                const filtered = akuns.filter((a: AccountDTO) =>
                     ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(a.tipe)
                 )
-                const unique = filtered.filter((akun: Akun, index: number, self: Akun[]) =>
+                const unique = filtered.filter((akun: AccountDTO, index: number, self: AccountDTO[]) =>
                     index === self.findIndex((a) => a.id === akun.id)
                 )
                 setAkunList(unique)
@@ -139,14 +137,14 @@ export function AddTransactionForm() {
                 setOpen(false)
                 reset()
                 toast.success("Transaksi berhasil disimpan")
-                
+
                 // Show budget alert if any
                 if (res.alert && res.alert.level !== "SAFE") {
-                     if (res.alert.level === "CRITICAL" || res.alert.level === "DANGER") {
-                         toast.error(res.alert.message, { duration: 5000 })
-                     } else {
-                         toast.warning(res.alert.message, { duration: 5000 })
-                     }
+                    if (res.alert.level === "CRITICAL" || res.alert.level === "DANGER") {
+                        toast.error(res.alert.message, { duration: 5000 })
+                    } else {
+                        toast.warning(res.alert.message, { duration: 5000 })
+                    }
                 }
             } else {
                 toast.error(res.error || "Gagal menyimpan transaksi")
@@ -158,13 +156,14 @@ export function AddTransactionForm() {
             setLoading(false)
         }
     }
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="gap-2">
-                    <Plus className="h-4 w-4" /> Transaksi Baru
-                </Button>
+                {trigger ? trigger : (
+                    <Button className="gap-2">
+                        <Plus className="h-4 w-4" /> Transaksi Baru
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[400px]">
                 <DialogHeader>
@@ -215,8 +214,8 @@ export function AddTransactionForm() {
                     {/* Kategori */}
                     <div className="grid gap-2">
                         <Label htmlFor="kategori">Kategori</Label>
-                        <Select 
-                            value={kategoriValue} 
+                        <Select
+                            value={kategoriValue}
                             onValueChange={(val) => setValue("kategori", val, { shouldValidate: true })}
                         >
                             <SelectTrigger className={cn(errors.kategori && "border-red-500")}>
@@ -240,7 +239,7 @@ export function AddTransactionForm() {
                         <Label htmlFor="akunId">
                             {tipeTransaksi === "KELUAR" ? "Dari Akun" : "Ke Akun"}
                         </Label>
-                        <Select 
+                        <Select
                             value={akunIdValue}
                             onValueChange={(val) => setValue("akunId", val, { shouldValidate: true })}
                         >
@@ -289,7 +288,7 @@ export function AddTransactionForm() {
                             className={cn(errors.deskripsi && "border-red-500")}
                             {...register("deskripsi")}
                         />
-                         {errors.deskripsi && (
+                        {errors.deskripsi && (
                             <p className="text-sm text-red-500">{errors.deskripsi.message}</p>
                         )}
                     </div>

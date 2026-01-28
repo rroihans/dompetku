@@ -24,21 +24,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { createCicilan } from "@/app/actions/cicilan"
+// Imports updated
+import { createCicilan } from "@/lib/db/cicilan-repo" // Ensure correct path
 import { formatRupiah } from "@/lib/format"
-
-interface Account {
-    id: string
-    nama: string
-    tipe: string
-    limitKredit?: number | null
-}
+import type { AccountDTO } from "@/lib/account-dto"
 
 interface AddCicilanFormProps {
-    accounts: Account[]
+    accounts: AccountDTO[]
+    onRefresh?: () => void
 }
 
-export function AddCicilanForm({ accounts }: AddCicilanFormProps) {
+export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -100,9 +96,14 @@ export function AddCicilanForm({ accounts }: AddCicilanFormProps) {
                 setBiayaAdmin(0)
                 setTanggalJatuhTempo(5)
                 setAkunKreditId("")
-                router.refresh()
+
+                if (onRefresh) {
+                    onRefresh()
+                } else {
+                    router.refresh()
+                }
             } else {
-                setError(res.error || "Gagal membuat rencana cicilan")
+                setError(typeof res.error === 'string' ? res.error : "Gagal membuat rencana cicilan")
             }
         } catch (err) {
             console.error(err)

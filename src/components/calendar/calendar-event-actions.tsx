@@ -2,20 +2,20 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { 
-    Play, 
-    Edit, 
-    Trash2, 
-    Copy, 
-    ExternalLink, 
+import {
+    Play,
+    Edit,
+    Trash2,
+    Copy,
+    ExternalLink,
     FastForward,
     Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { bayarCicilan } from "@/app/actions/cicilan"
-import { deleteTransaksi } from "@/app/actions/transaksi"
-import { skipRecurringForMonth } from "@/app/actions/recurring"
+import { bayarCicilan } from "@/lib/db/cicilan-repo"
+import { deleteTransaksi } from "@/lib/db/transactions-repo"
+import { skipRecurringForMonth } from "@/lib/db/recurring-repo"
 import Link from "next/link"
 
 interface CalendarEventActionsProps {
@@ -88,9 +88,9 @@ export function CalendarEventActions({ event }: CalendarEventActionsProps) {
     if (event.type === 'cicilan') {
         return (
             <div className="flex gap-1">
-                <Button 
-                    size="sm" 
-                    variant="outline" 
+                <Button
+                    size="sm"
+                    variant="outline"
                     className="h-7 text-[10px] gap-1 px-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50"
                     onClick={handleBayarCicilan}
                     disabled={loading}
@@ -111,9 +111,9 @@ export function CalendarEventActions({ event }: CalendarEventActionsProps) {
     if (event.type === 'recurring') {
         return (
             <div className="flex gap-1">
-                <Button 
-                    size="sm" 
-                    variant="outline" 
+                <Button
+                    size="sm"
+                    variant="outline"
                     className="h-7 text-[10px] gap-1 px-2 border-amber-500 text-amber-600 hover:bg-amber-50"
                     onClick={handleSkipRecurring}
                     disabled={loading}
@@ -134,9 +134,9 @@ export function CalendarEventActions({ event }: CalendarEventActionsProps) {
     if (event.type === 'transaksi') {
         return (
             <div className="flex gap-1">
-                <Button 
-                    size="sm" 
-                    variant="ghost" 
+                <Button
+                    size="sm"
+                    variant="ghost"
                     className="h-7 text-[10px] gap-1 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                     onClick={handleDeleteTransaksi}
                     disabled={loading}

@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,26 +14,60 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { formatRupiah } from "@/lib/format"
-import { getCalendarEvents, getCalendarSummary } from "@/app/actions/calendar"
+import { getCalendarEvents, getCalendarSummary, CalendarEvent } from "@/lib/db/kalender-repo"
 import { CalendarClient } from "./calendar-client"
+import { useSearchParams } from "next/navigation"
 
-interface PageProps {
-    searchParams: Promise<{ bulan?: string; tahun?: string }>
+export default function KalenderPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Memuat kalender...</div>}>
+            <KalenderContent />
+        </Suspense>
+    )
 }
 
-export default async function KalenderPage({ searchParams }: PageProps) {
-    const params = await searchParams
+function KalenderContent() {
+    const searchParams = useSearchParams()
+
     const now = new Date()
-    const bulan = params.bulan ? parseInt(params.bulan) : now.getMonth() + 1
-    const tahun = params.tahun ? parseInt(params.tahun) : now.getFullYear()
+    const paramBulan = searchParams.get("bulan") ? parseInt(searchParams.get("bulan")!) : now.getMonth() + 1
+    const paramTahun = searchParams.get("tahun") ? parseInt(searchParams.get("tahun")!) : now.getFullYear()
 
-    const [eventsResult, summaryResult] = await Promise.all([
-        getCalendarEvents(bulan, tahun),
-        getCalendarSummary(bulan, tahun)
-    ])
+    const bulan = isNaN(paramBulan) ? now.getMonth() + 1 : paramBulan
+    const tahun = isNaN(paramTahun) ? now.getFullYear() : paramTahun
 
-    const events = eventsResult.data || []
-    const summary = summaryResult.data
+    const [events, setEvents] = useState<CalendarEvent[]>([])
+    const [summary, setSummary] = useState({
+        cicilanAktif: 0,
+        totalCicilan: 0,
+        recurringCount: 0,
+        transaksiCount: 0
+    })
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        async function loadData() {
+            setLoading(true)
+            try {
+                const [eventsResult, summaryResult] = await Promise.all([
+                    getCalendarEvents(bulan, tahun),
+                    getCalendarSummary(bulan, tahun)
+                ])
+
+                if (eventsResult.success && eventsResult.data) {
+                    setEvents(eventsResult.data)
+                }
+                if (summaryResult.success && summaryResult.data) {
+                    setSummary(summaryResult.data)
+                }
+            } catch (error) {
+                console.error("Failed to load calendar data", error)
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadData()
+    }, [bulan, tahun])
 
     return (
         <div className="space-y-6">
@@ -117,7 +153,13 @@ export default async function KalenderPage({ searchParams }: PageProps) {
             </div>
 
             {/* Calendar Component */}
-            <CalendarClient events={events} bulan={bulan} tahun={tahun} />
+            {loading ? (
+                <div className="h-[500px] flex items-center justify-center border rounded-lg">
+                    <p className="text-muted-foreground">Memuat data...</p>
+                </div>
+            ) : (
+                <CalendarClient events={events} bulan={bulan} tahun={tahun} />
+            )}
         </div>
     )
 }

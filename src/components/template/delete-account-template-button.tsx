@@ -14,15 +14,16 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Trash2 } from "lucide-react"
-import { deleteAccountTemplate } from "@/app/actions/template"
+import { deleteAccountTemplate } from "@/lib/db/templates-repo"
 import { useRouter } from "next/navigation"
 
 interface DeleteAccountTemplateButtonProps {
     id: string
     nama: string
+    onSuccess?: () => void
 }
 
-export function DeleteAccountTemplateButton({ id, nama }: DeleteAccountTemplateButtonProps) {
+export function DeleteAccountTemplateButton({ id, nama, onSuccess }: DeleteAccountTemplateButtonProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
@@ -33,6 +34,7 @@ export function DeleteAccountTemplateButton({ id, nama }: DeleteAccountTemplateB
 
         if (result.success) {
             router.refresh()
+            if (onSuccess) onSuccess()
         } else {
             alert(result.error || "Gagal menghapus template")
         }

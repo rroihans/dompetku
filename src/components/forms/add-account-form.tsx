@@ -25,9 +25,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { createAkun } from "@/app/actions/akun"
+import { createAkun } from "@/lib/db"
 import { formatCurrency } from "@/lib/format"
 import { PatternBuilderUI, TierEditor } from "@/components/akun/account-settings-components"
+import { type AccountTemplateDTO as AccountTemplateData } from "@/lib/db/templates-repo"
 
 const formSchema = z.object({
     nama: z.string()
@@ -95,18 +96,12 @@ interface AddAccountFormValues {
     useDecimalFormat?: boolean;
 }
 
-interface AccountTemplate {
-    id: string;
-    nama: string;
-    tipeAkun: string;
-    biayaAdmin: number | null;
-    polaTagihan: string;
-    tanggalTagihan: number | null;
-    bungaTier: string | null;
-    deskripsi: string | null;
+interface AddAccountFormProps {
+    templates?: AccountTemplateData[];
+    trigger?: React.ReactNode;
 }
 
-export function AddAccountForm({ templates = [] }: { templates?: AccountTemplate[] }) {
+export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -281,9 +276,11 @@ export function AddAccountForm({ templates = [] }: { templates?: AccountTemplate
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="gap-2">
-                    <Plus className="h-4 w-4" /> Tambah Akun
-                </Button>
+                {trigger ? trigger : (
+                    <Button className="gap-2">
+                        <Plus className="h-4 w-4" /> Tambah Akun
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -303,7 +300,7 @@ export function AddAccountForm({ templates = [] }: { templates?: AccountTemplate
                             <SelectContent>
                                 <SelectItem value="none">Tanpa Template (Kustom)</SelectItem>
                                 {templates.map((t) => (
-                                    <SelectItem key={t.id} value={t.id}>{t.nama}</SelectItem>
+                                    <SelectItem key={t.id!} value={t.id!}>{t.nama}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -363,28 +360,32 @@ export function AddAccountForm({ templates = [] }: { templates?: AccountTemplate
                                             setValue("saldoAwal", whole + (decimal / 100))
                                         }}
                                     />
-                                    <span className="text-muted-foreground font-bold">,</span>
-                                    <Input
-                                        type="text"
-                                        inputMode="numeric"
-                                        placeholder="00"
-                                        className="w-16"
-                                        maxLength={2}
-                                        value={saldoDecimal}
-                                        onChange={(e) => {
-                                            // Only allow numbers, max 2 digits
-                                            const val = e.target.value.replace(/\D/g, "").slice(0, 2)
-                                            setSaldoDecimal(val)
-                                            // Update form value
-                                            const whole = parseInt(saldoWhole) || 0
-                                            const decimal = parseInt(val) || 0
-                                            setValue("saldoAwal", whole + (decimal / 100))
-                                        }}
-                                    />
+                                    {watch("useDecimalFormat") && (
+                                        <>
+                                            <span className="text-muted-foreground font-bold">,</span>
+                                            <Input
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="00"
+                                                className="w-16"
+                                                maxLength={2}
+                                                value={saldoDecimal}
+                                                onChange={(e) => {
+                                                    // Only allow numbers, max 2 digits
+                                                    const val = e.target.value.replace(/\D/g, "").slice(0, 2)
+                                                    setSaldoDecimal(val)
+                                                    // Update form value
+                                                    const whole = parseInt(saldoWhole) || 0
+                                                    const decimal = parseInt(val) || 0
+                                                    setValue("saldoAwal", whole + (decimal / 100))
+                                                }}
+                                            />
+                                        </>
+                                    )}
                                 </div>
                                 {/* Preview */}
                                 <div className="text-sm font-medium text-primary">
-                                    = Rp {((parseInt(saldoWhole) || 0) + ((parseInt(saldoDecimal) || 0) / 100)).toLocaleString('id-ID', { minimumFractionDigits: saldoDecimal ? 2 : 0, maximumFractionDigits: 2 })}
+                                    = Rp {((parseInt(saldoWhole) || 0) + (watch("useDecimalFormat") ? ((parseInt(saldoDecimal) || 0) / 100) : 0)).toLocaleString('id-ID', { minimumFractionDigits: watch("useDecimalFormat") ? 2 : 0, maximumFractionDigits: watch("useDecimalFormat") ? 2 : 0 })}
                                 </div>
                             </div>
                         )}

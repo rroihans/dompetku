@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -8,28 +10,70 @@ import {
     AlertTriangle,
     Clock
 } from "lucide-react"
-import { getCicilan, getCicilanStats } from "@/app/actions/cicilan"
-import { getAkun } from "@/app/actions/akun"
+import { getCicilan, getCicilanStats } from "@/lib/db/cicilan-repo"
+import { getAkun } from "@/lib/db/accounts-repo"
 import { formatRupiah } from "@/lib/format"
 import { AddCicilanForm } from "@/components/forms/add-cicilan-form"
 import { CicilanActions } from "@/components/cicilan/cicilan-actions"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { AccountDTO } from "@/lib/account-dto"
 
-export default async function CicilanPage() {
-    const [cicilanResult, statsResult, accounts] = await Promise.all([
-        getCicilan(),
-        getCicilanStats(),
-        getAkun()
-    ])
+export default function CicilanPage() {
+    const [cicilan, setCicilan] = useState<any[]>([])
+    const [stats, setStats] = useState({
+        totalHutang: 0,
+        tagihanBulanIni: 0,
+        jumlahCicilanAktif: 0,
+        rasioHutang: 0
+    })
+    const [accounts, setAccounts] = useState<AccountDTO[]>([])
+    const [loading, setLoading] = useState(true)
 
-    const cicilan = cicilanResult.data || []
-    const stats = statsResult.data
+    async function loadData() {
+        try {
+            const [cicilanResult, statsResult, accountsResult] = await Promise.all([
+                getCicilan(),
+                getCicilanStats(),
+                getAkun() // getAkun from accounts-repo returns Promise<AccountDTO[]>
+            ])
+
+            if (cicilanResult.success) {
+                setCicilan(cicilanResult.data || [])
+            }
+
+            if (statsResult.success) {
+                setStats(statsResult.data)
+            }
+
+            setAccounts(accountsResult) // getAkun returns array directly
+        } catch (error) {
+            console.error(error)
+            toast.error("Gagal memuat data cicilan")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        loadData()
+    }, [])
+
+    // Callback for when data changes (e.g. after add/edit/delete)
+    const handleRefresh = () => {
+        loadData()
+    }
+
+    if (loading) {
+        return <div className="p-8 text-center">Memuat data cicilan...</div>
+    }
 
     // Buat map akun untuk menampilkan nama
-    const akunMap = new Map(accounts.map((a: any) => [a.id, a.nama]))
+    const akunMap = new Map(accounts.map((a) => [a.id, a.nama]))
 
     // Pisahkan cicilan aktif dan lunas
-    const cicilanAktif = cicilan.filter((c: any) => c.status === "AKTIF")
-    const cicilanLunas = cicilan.filter((c: any) => c.status === "LUNAS")
+    const cicilanAktif = cicilan.filter((c) => c.status === "AKTIF")
+    const cicilanLunas = cicilan.filter((c) => c.status === "LUNAS")
 
     // Ambil bulan & tahun sekarang untuk jatuh tempo
     const now = new Date()
@@ -44,7 +88,13 @@ export default async function CicilanPage() {
                         Otomatisasi pencatatan tagihan kartu kredit dan tenor.
                     </p>
                 </div>
-                <AddCicilanForm accounts={accounts} />
+                {/* AddCicilanForm needs to trigger refresh on success. 
+                    The logical way is passing a onSuccess prop, but the original component relied on router.refresh() 
+                    Since we moved to client state, router.refresh() might not trigger full reload of this component state unless we rely on Next.js 14 caching behavior?
+                    Next.js 'router.refresh()' refreshes server components. For client state, we need callback.
+                    However, AddCicilanForm is imported. We should modify it to accept onSuccess.
+                */}
+                <AddCicilanForm accounts={accounts} onRefresh={handleRefresh} />
             </div>
 
             {/* Info Box */}
@@ -54,7 +104,7 @@ export default async function CicilanPage() {
                         <CreditCard className="w-4 h-4 text-primary" />
                     </div>
                     <p className="text-sm">
-                        <span className="font-bold">Info:</span> Cicilan adalah metode pembayaran hutang kartu kredit. 
+                        <span className="font-bold">Info:</span> Cicilan adalah metode pembayaran hutang kartu kredit.
                         Total hutang sudah termasuk dalam saldo kartu kredit Anda di Dashboard.
                     </p>
                 </CardContent>
@@ -121,7 +171,7 @@ export default async function CicilanPage() {
                         Rencana Berjalan ({cicilanAktif.length})
                     </h3>
                     <div className="grid gap-6">
-                        {cicilanAktif.map((item: any) => {
+                        {cicilanAktif.map((item) => {
                             const progress = ((item.cicilanKe - 1) / item.tenor) * 100
                             const sisaTenor = item.tenor - item.cicilanKe + 1
                             const sisaNominal = sisaTenor * item.nominalPerBulan
@@ -150,7 +200,7 @@ export default async function CicilanPage() {
                                             <span className="px-2 py-1 rounded-full text-xs font-bold bg-primary/20 text-primary">
                                                 AKTIF
                                             </span>
-                                            <CicilanActions cicilan={item} />
+                                            <CicilanActions cicilan={item} onRefresh={handleRefresh} />
                                         </div>
                                     </CardHeader>
                                     <CardContent>
@@ -207,7 +257,7 @@ export default async function CicilanPage() {
                         Sudah Lunas ({cicilanLunas.length})
                     </h3>
                     <div className="grid gap-4 md:grid-cols-2">
-                        {cicilanLunas.map((item: any) => (
+                        {cicilanLunas.map((item) => (
                             <Card key={item.id} className="opacity-70 border-l-4 border-l-emerald-500">
                                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                                     <div>
@@ -227,6 +277,9 @@ export default async function CicilanPage() {
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Total: {formatRupiah(item.totalPokok)}</span>
                                         <span className="text-muted-foreground">{item.tenor}x cicilan</span>
+                                    </div>
+                                    <div className="flex justify-end mt-2">
+                                        <CicilanActions cicilan={item} onRefresh={handleRefresh} />
                                     </div>
                                 </CardContent>
                             </Card>

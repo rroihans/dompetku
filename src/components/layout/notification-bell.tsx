@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "@/app/actions/notifications"
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from "@/lib/db/notifications-repo"
 import { formatDistanceToNow } from "date-fns"
 import { id } from "date-fns/locale"
 import Link from "next/link"
@@ -55,8 +55,8 @@ export function NotificationBell() {
                 <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
-                        <Badge 
-                            variant="destructive" 
+                        <Badge
+                            variant="destructive"
                             className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] border-2 border-background"
                         >
                             {unreadCount > 9 ? '9+' : unreadCount}
@@ -68,9 +68,9 @@ export function NotificationBell() {
                 <div className="flex items-center justify-between p-4 border-b">
                     <h3 className="font-semibold">Notifikasi</h3>
                     {unreadCount > 0 && (
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-8 text-xs text-primary"
                             onClick={handleMarkAllRead}
                         >
@@ -86,7 +86,7 @@ export function NotificationBell() {
                         </div>
                     ) : (
                         notifications.map((notif) => (
-                            <div 
+                            <div
                                 key={notif.id}
                                 className={`p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer relative ${!notif.read ? 'bg-primary/5' : ''}`}
                                 onClick={() => handleMarkAsRead(notif.id)}
@@ -119,7 +119,7 @@ export function NotificationBell() {
                     )}
                 </div>
                 <DropdownMenuSeparator />
-                <Link href="/notifications" onClick={() => setOpen(false)}>
+                <Link href="/notifikasi" onClick={() => setOpen(false)}>
                     <div className="p-2 text-center text-xs text-primary font-semibold hover:underline cursor-pointer">
                         Lihat Semua Notifikasi
                     </div>

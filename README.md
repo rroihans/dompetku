@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💰 Dompetku - Personal Finance Management
 
-## Getting Started
+Dompetku adalah aplikasi manajemen keuangan personal modern yang dibangun dengan **Next.js 15**, **Prisma**, dan **Tailwind CSS**. Aplikasi ini dirancang untuk membantu pengguna mengelola berbagai jenis akun (Bank, E-Wallet, Kartu Kredit), melacak pengeluaran, dan mengotomatisasi pencatatan rutin.
 
-First, run the development server:
+## ✨ Fitur Utama
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+-   **🏦 Multi-Akun**: Kelola saldo Bank, E-Wallet, Kartu Kredit, dan Cash dalam satu tempat.
+-   **💳 Mesin Cicilan**: Otomatisasi pencatatan cicilan kartu kredit dengan perhitungan bunga dan biaya admin.
+-   **🔄 Transaksi Berulang**: Jadwalkan transaksi rutin (bulanan/mingguan) yang akan tercatat otomatis.
+-   **📊 Analitik Mendalam**: Visualisasi pengeluaran melalui Heatmap, Year-over-Year (YoY) analysis, dan Drilldown Pie Charts.
+-   **📅 Kalender Finansial**: Lihat histori dan rencana transaksi dalam tampilan kalender yang intuitif.
+-   **🎯 Manajemen Anggaran**: Tetapkan limit pengeluaran per kategori untuk menjaga kesehatan finansial.
+-   **🔔 Sistem Notifikasi**: Peringatan untuk anggaran yang menipis, cicilan jatuh tempo, dan saldo rendah.
+-   **💱 Multi-Currency**: Dukungan konversi mata uang dengan rate yang dapat diperbarui.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Teknologi Utama
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+-   **Framework**: [Next.js 15 (App Router)](https://nextjs.org/)
+-   **Database**: [SQLite](https://www.sqlite.org/) dengan [Prisma ORM](https://www.prisma.io/)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/)
+-   **Charts**: [Recharts](https://recharts.org/)
+-   **State & Forms**: [React Hook Form](https://react-hook-form.com/) & [Zod](https://zod.dev/)
+-   **Icons**: [Lucide React](https://lucide.dev/)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Persiapan Awal
 
-## Learn More
+### Prasyarat
+-   Node.js 20+
+-   NPM / Bun / PNPM
 
-To learn more about Next.js, take a look at the following resources:
+### Instalasi
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1.  Clone repositori ini:
+    ```bash
+    git clone <repository-url>
+    cd dompetku
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2.  Instal dependensi:
+    ```bash
+    npm install
+    ```
 
-## Deploy on Vercel
+3.  Setup environment variable:
+    Buat file `.env` dan sesuaikan:
+    ```env
+    DATABASE_URL="file:./dev.db"
+    ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4.  Setup database dan seed data:
+    ```bash
+    npx prisma migrate dev
+    npx prisma db seed
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5.  Jalankan server pengembangan:
+    ```bash
+    npm run dev
+    ```
+
+## 📖 Dokumentasi Lanjutan
+
+Dokumentasi teknis yang lebih mendalam tersedia di direktori [`AI-DOCS-CONSULTANT/`](AI-DOCS-CONSULTANT/):
+
+-   [01 Project Overview](AI-DOCS-CONSULTANT/01-Project-Overview.md)
+-   [02 Database Schema](AI-DOCS-CONSULTANT/02-Database-Schema.md)
+-   [03 Business Logic](AI-DOCS-CONSULTANT/03-Business-Logic.md)
+-   [04 Frontend Structure](AI-DOCS-CONSULTANT/04-Frontend-Structure.md)
+-   [05 Current Status](AI-DOCS-CONSULTANT/05-Current-Status.md)
+
+## 📜 Lisensi
+
+Proyek ini bersifat privat. Seluruh hak cipta dilindungi.

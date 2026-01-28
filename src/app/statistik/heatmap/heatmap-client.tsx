@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getSpendingHeatmap, HeatmapData, PatternInsight } from "@/app/actions/analytics-heatmap"
+import { getSpendingHeatmap, HeatmapData, PatternInsight } from "@/lib/db/analytics-repo"
 import { HeatmapGrid } from "@/components/analytics/heatmap/heatmap-grid"
 import { HeatmapWeeklySwipe } from "@/components/analytics/heatmap/heatmap-weekly"
 import { DailyDetailModal } from "@/components/analytics/heatmap/daily-detail-modal"
@@ -89,22 +89,22 @@ export default function HeatmapClient() {
                         </CardHeader>
                         <CardContent>
                             <div className="hidden md:block">
-                                <HeatmapGrid 
-                                    data={data.heatmap} 
-                                    year={parseInt(year)} 
+                                <HeatmapGrid
+                                    data={data.heatmap}
+                                    year={parseInt(year)}
                                     month={parseInt(month)}
                                     onDayClick={setSelectedDate}
                                 />
                             </div>
                             <div className="md:hidden">
-                                <HeatmapWeeklySwipe 
-                                    data={data.heatmap} 
-                                    year={parseInt(year)} 
+                                <HeatmapWeeklySwipe
+                                    data={data.heatmap}
+                                    year={parseInt(year)}
                                     month={parseInt(month)}
                                     onDayClick={setSelectedDate}
                                 />
                             </div>
-                            
+
                             {/* Legend */}
                             <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground justify-center">
                                 <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200"></div> Low</div>

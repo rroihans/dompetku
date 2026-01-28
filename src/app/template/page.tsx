@@ -1,48 +1,76 @@
+"use client";
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
     FileText,
-    Plus,
     Zap,
     TrendingUp,
     TrendingDown,
     ArrowLeft,
-    Trash2
 } from "lucide-react"
 import Link from "next/link"
-import { getTemplates } from "@/app/actions/template"
+import { getTransactionTemplates } from "@/lib/db/transaction-templates-repo"
+import { getAkun, getCategoryAccounts } from "@/lib/db/accounts-repo"
 import { formatRupiah } from "@/lib/format"
 import { AddTemplateForm } from "@/components/forms/add-template-form"
 import { UseTemplateButton } from "@/components/template/use-template-button"
 import { DeleteTemplateButton } from "@/components/template/delete-template-button"
-import prisma from "@/lib/prisma"
+import type { AccountDTO } from "@/lib/account-dto"
+import { Skeleton } from "@/components/ui/skeleton"
 
-const USER_ACCOUNT_TYPES = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"]
+export default function TemplatePage() {
+    const [loading, setLoading] = useState(true)
+    const [templates, setTemplates] = useState<any[]>([])
+    const [akuns, setAkuns] = useState<AccountDTO[]>([])
+    const [kategoris, setKategoris] = useState<string[]>([])
+    const [kategoriIncome, setKategoriIncome] = useState<string[]>([])
 
-export default async function TemplatePage() {
-    const [templatesResult, akuns] = await Promise.all([
-        getTemplates(),
-        prisma.akun.findMany({
-            where: { tipe: { in: USER_ACCOUNT_TYPES } },
-            orderBy: { nama: "asc" }
-        })
-    ])
+    useEffect(() => {
+        async function loadData() {
+            try {
+                const [
+                    templatesResult,
+                    akunsResult,
+                    expenseAkuns,
+                    incomeAkuns
+                ] = await Promise.all([
+                    getTransactionTemplates(),
+                    getAkun(),
+                    getCategoryAccounts("EXPENSE"),
+                    getCategoryAccounts("INCOME")
+                ])
 
-    const templates = templatesResult.data || []
+                setTemplates(templatesResult.data || [])
+                setAkuns(akunsResult)
+                setKategoris(expenseAkuns.map(a => a.nama.replace("[EXPENSE] ", "")))
+                setKategoriIncome(incomeAkuns.map(a => a.nama.replace("[INCOME] ", "")))
+            } catch (error) {
+                console.error("Failed to load template data:", error)
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadData()
+    }, [])
 
-    // Get kategori from expense accounts
-    const expenseAkuns = await prisma.akun.findMany({
-        where: { tipe: "EXPENSE" },
-        select: { nama: true }
-    })
-    const kategoris = expenseAkuns.map(a => a.nama.replace("[EXPENSE] ", ""))
-
-    // Get kategori income
-    const incomeAkuns = await prisma.akun.findMany({
-        where: { tipe: "INCOME" },
-        select: { nama: true }
-    })
-    const kategoriIncome = incomeAkuns.map(a => a.nama.replace("[INCOME] ", ""))
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <Skeleton className="h-10 w-48" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <Skeleton className="h-32 w-full" />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Skeleton className="h-48" />
+                    <Skeleton className="h-48" />
+                    <Skeleton className="h-48" />
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -68,6 +96,7 @@ export default async function TemplatePage() {
                     akuns={akuns}
                     kategoriExpense={kategoris}
                     kategoriIncome={kategoriIncome}
+                    onSuccess={() => window.location.reload()}
                 />
             </div>
 
@@ -104,8 +133,8 @@ export default async function TemplatePage() {
                                     <div className="flex items-center gap-2">
                                         <div
                                             className={`p-2 rounded-full ${template.tipeTransaksi === "KELUAR"
-                                                    ? 'bg-red-100 dark:bg-red-900'
-                                                    : 'bg-emerald-100 dark:bg-emerald-900'
+                                                ? 'bg-red-100 dark:bg-red-900'
+                                                : 'bg-emerald-100 dark:bg-emerald-900'
                                                 }`}
                                         >
                                             {template.tipeTransaksi === "KELUAR"
@@ -120,7 +149,7 @@ export default async function TemplatePage() {
                                             </p>
                                         </div>
                                     </div>
-                                    <DeleteTemplateButton id={template.id} nama={template.nama} />
+                                    <DeleteTemplateButton id={template.id} nama={template.nama} onSuccess={() => window.location.reload()} />
                                 </div>
 
                                 <p className="text-sm text-muted-foreground mb-2">
@@ -155,6 +184,7 @@ export default async function TemplatePage() {
                             akuns={akuns}
                             kategoriExpense={kategoris}
                             kategoriIncome={kategoriIncome}
+                            onSuccess={() => window.location.reload()}
                         />
                     </CardContent>
                 </Card>

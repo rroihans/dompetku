@@ -27,7 +27,7 @@ import {
     convertTransactionToInstallment,
     getInstallmentTemplates,
     getConversionPreview
-} from "@/app/actions/installment"
+} from "@/lib/db/cicilan-repo"
 import { formatRupiah } from "@/lib/format"
 
 interface ConvertToInstallmentDialogProps {

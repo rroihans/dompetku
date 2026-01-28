@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { getDailyTransactions } from "@/app/actions/analytics-heatmap"
+import { getDailyTransactions } from "@/lib/db/analytics-repo"
 import { formatRupiah } from "@/lib/format"
 import { Loader2 } from "lucide-react"
 

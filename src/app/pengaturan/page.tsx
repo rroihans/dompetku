@@ -44,10 +44,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { exportBackup, importBackup, resetAllData, getBackupInfo, exportSelective } from "@/app/actions/backup"
-import { getLogData } from "@/app/actions/debug"
-import { checkDatabaseIntegrity, fixDatabaseIntegrity, IntegrityReport } from "@/app/actions/integrity"
-import { saveNetWorthSnapshot } from "@/app/actions/networth"
+import { exportData as exportBackup, importData as importBackup, resetAllData, exportSelective } from "@/lib/db/backup"
+import { getLogData } from "@/lib/db/debug-repo"
+import { checkDatabaseIntegrity, fixDatabaseIntegrity, type IntegrityReport } from "@/lib/db/integrity-repo"
+import { saveNetWorthSnapshot } from "@/lib/db/networth-repo"
 import { CurrencySettings } from "@/components/settings/currency-settings"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -71,7 +71,7 @@ export default function PengaturanPage() {
     const [resultMessage, setResultMessage] = useState("")
     const [resultSuccess, setResultSuccess] = useState(false)
     const [lastLogs, setLastLogs] = useState<LogEntry[]>([])
-    
+
     // Integrity check states
     const [integrityLoading, setIntegrityLoading] = useState(false)
     const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null)
@@ -107,9 +107,9 @@ export default function PengaturanPage() {
         try {
             const result = await exportBackup()
 
-            if (result.success && result.data) {
+            if (result) {
                 // Buat dan download file JSON
-                const jsonString = JSON.stringify(result.data, null, 2)
+                const jsonString = JSON.stringify(result, null, 2)
                 const blob = new Blob([jsonString], { type: "application/json" })
                 const url = URL.createObjectURL(blob)
 
@@ -124,12 +124,10 @@ export default function PengaturanPage() {
                 document.body.removeChild(a)
                 URL.revokeObjectURL(url)
 
+                const stats = result.stats || { totalAkun: 0, totalTransaksi: 0, totalCicilan: 0, totalBudget: 0 }
+
                 setResultSuccess(true)
-                setResultMessage(`Backup berhasil! File ${filename} telah diunduh.\n\nStatistik:\n• ${result.data.stats.totalAkun} akun\n• ${result.data.stats.totalTransaksi} transaksi\n• ${result.data.stats.totalCicilan} cicilan\n• ${result.data.stats.totalBudget} anggaran`)
-                setResultDialogOpen(true)
-            } else {
-                setResultSuccess(false)
-                setResultMessage(result.error || "Gagal melakukan backup")
+                setResultMessage(`Backup berhasil! File ${filename} telah diunduh.\n\nStatistik:\n• ${stats.totalAkun} akun\n• ${stats.totalTransaksi} transaksi\n• ${stats.totalCicilan} cicilan\n• ${stats.totalBudget} anggaran`)
                 setResultDialogOpen(true)
             }
         } catch (err) {
@@ -153,7 +151,7 @@ export default function PengaturanPage() {
         setLoading(true)
         try {
             const content = await file.text()
-            const result = await importBackup(content)
+            const result = await importBackup(JSON.parse(content))
 
             if (result.success) {
                 const stats = result.stats
@@ -163,10 +161,6 @@ export default function PengaturanPage() {
                 )
                 setResultDialogOpen(true)
                 router.refresh()
-            } else {
-                setResultSuccess(false)
-                setResultMessage(result.error || "Gagal melakukan restore")
-                setResultDialogOpen(true)
             }
         } catch (err) {
             setResultSuccess(false)
@@ -287,7 +281,7 @@ export default function PengaturanPage() {
             alert("Pilih minimal satu tipe data")
             return
         }
-        
+
         setLoading(true)
         try {
             const result = await exportSelective(selectedTypes)
@@ -297,7 +291,7 @@ export default function PengaturanPage() {
                 const url = URL.createObjectURL(blob)
                 const date = new Date().toISOString().split('T')[0]
                 const filename = `dompetku-selective-${date}.json`
-                
+
                 const a = document.createElement("a")
                 a.href = url
                 a.download = filename
@@ -305,7 +299,7 @@ export default function PengaturanPage() {
                 a.click()
                 document.body.removeChild(a)
                 URL.revokeObjectURL(url)
-                
+
                 setSelectiveExportOpen(false)
                 setResultSuccess(true)
                 setResultMessage(`Export selektif berhasil! Tipe data: ${selectedTypes.join(', ')}`)
@@ -616,6 +610,7 @@ export default function PengaturanPage() {
                             <span className="text-muted-foreground">Lisensi</span>
                             <span className="font-medium">MIT License</span>
                         </div>
+
                         <div className="pt-4 flex flex-wrap gap-3 border-t">
                             <a href="https://iaiglobal.or.id/v03/standar-akuntansi-keuangan/pernyataan-sak" target="_blank" rel="noopener noreferrer">
                                 <Button variant="outline" size="sm" className="flex items-center gap-2">
@@ -630,6 +625,75 @@ export default function PengaturanPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Maintenance Section for PWA */}
+                <Card className="border-emerald-500/20 bg-emerald-500/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <RefreshCw className="w-5 h-5 text-emerald-600" />
+                            Maintenance & PWA
+                        </CardTitle>
+                        <CardDescription>Alat perbaikan data untuk versi Offline PWA.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-3 bg-background"
+                            onClick={async () => {
+                                if (!confirm("Isi data dummy? Data lama akan dihapus.")) return;
+                                setLoading(true);
+                                try {
+                                    const { seedDummyData } = await import("@/lib/db/seed");
+                                    await seedDummyData();
+                                    const { rebuildSummaries } = await import("@/lib/db/maintenance");
+                                    await rebuildSummaries();
+                                    alert("Data seeded & summaries rebuilt!");
+                                    router.push("/");
+                                } catch (e) {
+                                    alert("Error: " + e);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Database className="w-4 h-4 text-emerald-600" />
+                                <div className="text-left">
+                                    <div className="font-medium">Seed Dummy Data</div>
+                                    <div className="text-xs text-muted-foreground">Isi database lokal dengan data contoh</div>
+                                </div>
+                            </div>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-between h-auto py-3 bg-background"
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    const { rebuildSummaries } = await import("@/lib/db/maintenance");
+                                    await rebuildSummaries();
+                                    alert("Summaries berhasil direbuild ulang dari transaksi raw.");
+                                    router.refresh();
+                                } catch (e) {
+                                    alert("Error: " + e);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            disabled={loading}
+                        >
+                            <div className="flex items-center gap-3">
+                                <RefreshCw className="w-4 h-4 text-emerald-600" />
+                                <div className="text-left">
+                                    <div className="font-medium">Rebuild Analytics</div>
+                                    <div className="text-xs text-muted-foreground">Hitung ulang dashboard jika data tidak sinkron</div>
+                                </div>
+                            </div>
+                        </Button>
+                    </CardContent>
+                </Card>
+
             </div>
 
             {/* Dialog Konfirmasi Reset */}
@@ -715,7 +779,7 @@ export default function PengaturanPage() {
                             Hasil pemindaian konsistensi data sistem.
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     {integrityReport && (
                         <div className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -772,8 +836,8 @@ export default function PengaturanPage() {
                             Tutup
                         </Button>
                         {integrityReport && integrityReport.totalIssues > 0 && (
-                            <Button 
-                                onClick={handleFixIntegrity} 
+                            <Button
+                                onClick={handleFixIntegrity}
                                 disabled={integrityLoading}
                                 className="bg-amber-600 hover:bg-amber-700 text-white"
                             >
@@ -803,7 +867,7 @@ export default function PengaturanPage() {
                             Pilih jenis data yang ingin Anda ekspor ke file JSON.
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="grid gap-4 py-4">
                         {[
                             { id: 'akun', label: 'Daftar Akun' },
@@ -814,8 +878,8 @@ export default function PengaturanPage() {
                             { id: 'template', label: 'Template Pengaturan' }
                         ].map((type) => (
                             <div key={type.id} className="flex items-center space-x-3">
-                                <Checkbox 
-                                    id={type.id} 
+                                <Checkbox
+                                    id={type.id}
                                     checked={selectedTypes.includes(type.id)}
                                     onCheckedChange={(checked) => {
                                         if (checked) {

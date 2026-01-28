@@ -29,20 +29,11 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { updateAkun, deleteAkun } from "@/app/actions/akun"
-
-interface Akun {
-    id: string
-    nama: string
-    tipe: string
-    saldoSekarang: number
-    limitKredit: number | null
-    templateId?: string | null
-    setoranAwal?: number | null
-}
+import { updateAkun, deleteAkun } from "@/lib/db"
+import type { AccountDTO } from "@/lib/account-dto"
 
 interface AkunActionsProps {
-    akun: Akun
+    akun: AccountDTO
     templates?: any[]
 }
 
@@ -124,7 +115,7 @@ export function AkunActions({ akun, templates = [] }: AkunActionsProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                        <Link href={`/akun/${akun.id}`} className="flex items-center">
+                        <Link href={`/akun/detail?id=${akun.id}`} className="flex items-center">
                             <ExternalLink className="w-4 h-4 mr-2" />
                             Lihat Detail
                         </Link>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { verifyAccountBalances, fixAccountBalance, AccountBalanceError } from "@/app/actions/integrity"
+import { verifyAccountBalances, fixAccountBalance, AccountBalanceError } from "@/lib/db/integrity-repo"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -122,8 +122,8 @@ export function BalanceVerificationClient() {
                                         {formatRupiah(err.difference)}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             size="sm"
                                             onClick={() => setSelectedError(err)}
                                         >
@@ -145,7 +145,7 @@ export function BalanceVerificationClient() {
                             Ditemukan perbedaan antara saldo tercatat dan hasil kalkulasi transaksi.
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     {selectedError && (
                         <div className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -168,8 +168,8 @@ export function BalanceVerificationClient() {
                             <div className="p-3 bg-muted rounded-md text-sm">
                                 <span className="font-semibold block mb-1">Difference: {formatRupiah(selectedError.difference)}</span>
                                 <p className="text-muted-foreground">
-                                    {selectedError.difference > 0 
-                                        ? "Saldo tercatat lebih RENDAH dari seharusnya." 
+                                    {selectedError.difference > 0
+                                        ? "Saldo tercatat lebih RENDAH dari seharusnya."
                                         : "Saldo tercatat lebih TINGGI dari seharusnya."}
                                 </p>
                             </div>
@@ -189,9 +189,9 @@ export function BalanceVerificationClient() {
                         <Button variant="outline" onClick={() => setSelectedError(null)}>
                             Dismiss
                         </Button>
-                        <Button 
-                            variant="destructive" 
-                            onClick={handleFix} 
+                        <Button
+                            variant="destructive"
+                            onClick={handleFix}
                             disabled={fixing}
                         >
                             {fixing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

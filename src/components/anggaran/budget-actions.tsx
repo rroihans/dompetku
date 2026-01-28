@@ -31,7 +31,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { upsertBudget, deleteBudget } from "@/app/actions/anggaran"
+import { upsertBudget, deleteBudget } from "@/lib/db/budget-repo"
 import { formatRupiah } from "@/lib/format"
 
 interface BudgetActionsProps {
@@ -43,9 +43,10 @@ interface BudgetActionsProps {
         nominal: number
         realisasi: number
     }
+    onRefresh?: () => void
 }
 
-export function BudgetActions({ budget }: BudgetActionsProps) {
+export function BudgetActions({ budget, onRefresh }: BudgetActionsProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
@@ -72,7 +73,8 @@ export function BudgetActions({ budget }: BudgetActionsProps) {
 
             if (res.success) {
                 setEditOpen(false)
-                router.refresh()
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal memperbarui budget")
             }
@@ -91,7 +93,8 @@ export function BudgetActions({ budget }: BudgetActionsProps) {
             const res = await deleteBudget(budget.id)
             if (res.success) {
                 setDeleteOpen(false)
-                router.refresh()
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal menghapus budget")
             }

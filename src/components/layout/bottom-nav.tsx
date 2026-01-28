@@ -38,7 +38,7 @@ const navGroups = [
         items: [
             { name: "Statistik", href: "/statistik", icon: BarChart3 },
             { name: "Laporan", href: "/laporan", icon: PieChart },
-            { name: "YoY", href: "/laporan/comparison", icon: TrendingUp },
+            { name: "YoY", href: "/laporan/perbandingan", icon: TrendingUp },
             { name: "Heatmap", href: "/statistik/heatmap", icon: Calendar },
         ]
     },
@@ -46,9 +46,9 @@ const navGroups = [
         name: "Perencanaan",
         items: [
             { name: "Cicilan", href: "/cicilan", icon: CreditCard },
-            { name: "Recurring", href: "/recurring", icon: RefreshCw },
+            { name: "Recurring", href: "/transaksi-berulang", icon: RefreshCw },
             { name: "Kalender", href: "/kalender", icon: Calendar },
-            { name: "Template Bank", href: "/template-akun", icon: Shield },
+            { name: "Template Bank", href: "/template-admin-dan-bunga-bank", icon: Shield },
             { name: "Template Cepat", href: "/template", icon: FileText },
         ]
     }

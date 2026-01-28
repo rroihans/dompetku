@@ -20,22 +20,18 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Plus, TrendingUp, TrendingDown } from "lucide-react"
-import { createTemplate } from "@/app/actions/template"
+import { createTransactionTemplate } from "@/lib/db/transaction-templates-repo"
 import { useRouter } from "next/navigation"
-
-interface Akun {
-    id: string
-    nama: string
-    tipe: string
-}
+import { AccountDTO } from "@/lib/account-dto"
 
 interface AddTemplateFormProps {
-    akuns: Akun[]
+    akuns: AccountDTO[]
     kategoriExpense: string[]
     kategoriIncome: string[]
+    onSuccess?: () => void
 }
 
-export function AddTemplateForm({ akuns, kategoriExpense, kategoriIncome }: AddTemplateFormProps) {
+export function AddTemplateForm({ akuns, kategoriExpense, kategoriIncome, onSuccess }: AddTemplateFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -54,7 +50,7 @@ export function AddTemplateForm({ akuns, kategoriExpense, kategoriIncome }: AddT
         e.preventDefault()
         setLoading(true)
 
-        const result = await createTemplate({
+        const result = await createTransactionTemplate({
             nama: formData.nama,
             deskripsi: formData.deskripsi,
             nominal: parseFloat(formData.nominal) || 0,
@@ -68,7 +64,8 @@ export function AddTemplateForm({ akuns, kategoriExpense, kategoriIncome }: AddT
         if (result.success) {
             setOpen(false)
             setFormData({ nama: "", deskripsi: "", nominal: "", kategori: "", akunId: "" })
-            router.refresh()
+            if (onSuccess) onSuccess()
+            else router.refresh()
         } else {
             alert(result.error || "Gagal membuat template")
         }

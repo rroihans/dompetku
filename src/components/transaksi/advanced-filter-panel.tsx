@@ -9,20 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Filter, Save, Trash, Clock, ChevronDown, ChevronUp, Database, X } from "lucide-react"
-import { getFilterPresets, saveFilterPreset, deleteFilterPreset, incrementPresetUsage } from "@/app/actions/filter-preset"
-import { getAkun } from "@/app/actions/akun"
-import { getAvailableCategories } from "@/app/actions/anggaran"
+import { getFilterPresets, saveFilterPreset, deleteFilterPreset, incrementPresetUsage } from "@/lib/db/filter-preset-repo"
+import { getAkun } from "@/lib/db/accounts-repo"
+import { getAvailableCategories } from "@/lib/db/budget-repo"
 import { ActiveFilterChips } from "./active-filter-chips"
 import { FilterLogicBuilder } from "./filter-logic-builder"
 import { RuleGroup } from "@/lib/query-builder"
 import { SavePresetDialog } from "./save-preset-dialog"
+import { AccountDTO } from "@/lib/account-dto"
 
 export function AdvancedFilterPanel() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isExpanded, setIsExpanded] = useState(true)
     const [mode, setMode] = useState<'standard' | 'advanced'>('standard')
-    
+
     // Standard Filter States
     const [dateFrom, setDateFrom] = useState("")
     const [dateTo, setDateTo] = useState("")
@@ -33,7 +34,7 @@ export function AdvancedFilterPanel() {
     const [tipe, setTipe] = useState("")
 
     // Data options
-    const [akuns, setAkuns] = useState<any[]>([])
+    const [akuns, setAkuns] = useState<AccountDTO[]>([])
     const [categories, setCategories] = useState<string[]>([])
     const [presets, setPresets] = useState<any[]>([])
 
@@ -52,10 +53,10 @@ export function AdvancedFilterPanel() {
         setMinNominal(searchParams.get("minNominal") || "")
         setMaxNominal(searchParams.get("maxNominal") || "")
         setTipe(searchParams.get("tipe") || "")
-        
+
         const kat = searchParams.getAll("kategori")
         setKategori(kat)
-        
+
         const acc = searchParams.getAll("akunId")
         setAkunId(acc)
 
@@ -65,13 +66,13 @@ export function AdvancedFilterPanel() {
             setIsExpanded(true)
             try {
                 setLogicGroup(JSON.parse(complex))
-            } catch (e) {}
+            } catch (e) { }
         }
     }, [searchParams])
 
     const applyFilters = () => {
         const params = new URLSearchParams()
-        
+
         if (mode === 'standard') {
             if (dateFrom) params.set("dateFrom", dateFrom)
             if (dateTo) params.set("dateTo", dateTo)
@@ -95,13 +96,13 @@ export function AdvancedFilterPanel() {
     const loadPreset = async (preset: any) => {
         await incrementPresetUsage(preset.id);
         const filters = JSON.parse(preset.filters);
-        
+
         // Check if complex
         if (filters.complexFilter) {
             setMode('advanced');
             try {
                 setLogicGroup(JSON.parse(filters.complexFilter));
-            } catch (e) {}
+            } catch (e) { }
         } else {
             setMode('standard');
             // Restore standard states
@@ -181,16 +182,16 @@ export function AdvancedFilterPanel() {
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-base">Konfigurasi Filter</CardTitle>
                             <div className="flex gap-2">
-                                <Button 
-                                    variant={mode === 'standard' ? 'secondary' : 'ghost'} 
-                                    size="sm" 
+                                <Button
+                                    variant={mode === 'standard' ? 'secondary' : 'ghost'}
+                                    size="sm"
                                     onClick={() => setMode('standard')}
                                 >
                                     Standard
                                 </Button>
-                                <Button 
-                                    variant={mode === 'advanced' ? 'secondary' : 'ghost'} 
-                                    size="sm" 
+                                <Button
+                                    variant={mode === 'advanced' ? 'secondary' : 'ghost'}
+                                    size="sm"
                                     onClick={() => setMode('advanced')}
                                 >
                                     <Database className="w-3 h-3 mr-1" /> Logic Builder
@@ -281,8 +282,8 @@ export function AdvancedFilterPanel() {
                         )}
 
                         <div className="flex justify-between pt-4 border-t">
-                            <SavePresetDialog 
-                                currentFilters={getCurrentFiltersObj()} 
+                            <SavePresetDialog
+                                currentFilters={getCurrentFiltersObj()}
                                 onSave={() => getFilterPresets().then(res => setPresets(res.data || []))}
                             />
                             <div className="flex gap-2">

@@ -23,10 +23,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { createRecurringTransaction } from "@/app/actions/recurring"
+import { createRecurringTransaction } from "@/lib/db/recurring-repo"
+import { AccountDTO } from "@/lib/account-dto"
 
 interface AddRecurringFormProps {
-    accounts: { id: string; nama: string }[]
+    accounts: AccountDTO[]
+    onRefresh?: () => void
 }
 
 const KATEGORI_INCOME = ["Gaji", "Bonus", "Investasi", "Lainnya"]
@@ -35,7 +37,7 @@ const KATEGORI_EXPENSE = [
     "Tabungan", "Internet", "Listrik", "Air", "Lainnya"
 ]
 
-export function AddRecurringForm({ accounts }: AddRecurringFormProps) {
+export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -74,6 +76,7 @@ export function AddRecurringForm({ accounts }: AddRecurringFormProps) {
                 frekuensi,
                 hariDalamBulan: frekuensi === "BULANAN" ? hariDalamBulan : undefined,
                 hariDalamMinggu: frekuensi === "MINGGUAN" ? hariDalamMinggu : undefined,
+                tanggalMulai: new Date(),
             })
 
             if (res.success) {
@@ -86,13 +89,13 @@ export function AddRecurringForm({ accounts }: AddRecurringFormProps) {
                 setAkunId("")
                 setFrekuensi("BULANAN")
                 setHariDalamBulan(1)
-                router.refresh()
-            } else {
-                setError(res.error || "Gagal membuat transaksi berulang")
+
+                if (onRefresh) onRefresh()
+                else router.refresh()
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err)
-            setError("Terjadi kesalahan sistem")
+            setError(err.message || "Gagal membuat transaksi berulang")
         } finally {
             setLoading(false)
         }

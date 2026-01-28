@@ -12,7 +12,7 @@ import {
     createAdminFee,
     deleteAdminFee,
     getAdminFeesByAkun
-} from "@/app/actions/admin-fee"
+} from "@/lib/db/admin-fee-repo"
 import { formatRupiah } from "@/lib/format"
 import {
     AlertDialog,

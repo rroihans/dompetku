@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,22 +13,49 @@ import {
     Target,
     ArrowUpRight
 } from "lucide-react"
-import { getRingkasanBulanan, getAvailableMonths } from "@/app/actions/laporan"
+import { getRingkasanBulanan, getAvailableMonths } from "@/lib/db/reports-repo"
 import { formatRupiah } from "@/lib/format"
 import Link from "next/link"
+import { useEffect, useState, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 
-interface PageProps {
-    searchParams: Promise<{ bulan?: string; tahun?: string }>
+export default function LaporanPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center">Memuat laporan...</div>}>
+            <LaporanContent />
+        </Suspense>
+    )
 }
 
-export default async function LaporanPage({ searchParams }: PageProps) {
-    const params = await searchParams
-    const now = new Date()
-    const bulan = Number(params.bulan) || now.getMonth() + 1
-    const tahun = Number(params.tahun) || now.getFullYear()
+function LaporanContent() {
+    const searchParams = useSearchParams()
+    const router = useRouter()
 
-    const ringkasan = await getRingkasanBulanan(bulan, tahun)
-    const availableMonths = await getAvailableMonths()
+    // Default to current month/year if not provided
+    const now = new Date()
+    const currentMonth = now.getMonth() + 1
+    const currentYear = now.getFullYear()
+
+    const bulan = Number(searchParams.get("bulan")) || currentMonth
+    const tahun = Number(searchParams.get("tahun")) || currentYear
+
+    const [ringkasan, setRingkasan] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        async function load() {
+            setLoading(true)
+            try {
+                const data = await getRingkasanBulanan(bulan, tahun)
+                setRingkasan(data)
+            } catch (error) {
+                console.error(error)
+            } finally {
+                setLoading(false)
+            }
+        }
+        load()
+    }, [bulan, tahun])
 
     // Calculate prev/next month
     const prevMonth = bulan === 1 ? 12 : bulan - 1
@@ -34,7 +63,11 @@ export default async function LaporanPage({ searchParams }: PageProps) {
     const nextMonth = bulan === 12 ? 1 : bulan + 1
     const nextYear = bulan === 12 ? tahun + 1 : tahun
 
-    const isCurrentMonth = bulan === now.getMonth() + 1 && tahun === now.getFullYear()
+    const isCurrentMonth = bulan === currentMonth && tahun === currentYear
+
+    if (loading || !ringkasan) {
+        return <div className="p-8 text-center">Memuat data laporan...</div>
+    }
 
     return (
         <div className="space-y-6">
@@ -136,7 +169,7 @@ export default async function LaporanPage({ searchParams }: PageProps) {
                             </p>
                         ) : (
                             <div className="space-y-4">
-                                {ringkasan.pengeluaranPerKategori.map((item) => (
+                                {ringkasan.pengeluaranPerKategori.map((item: any) => (
                                     <div key={item.kategori}>
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-sm font-medium">{item.kategori}</span>
@@ -173,7 +206,7 @@ export default async function LaporanPage({ searchParams }: PageProps) {
                             </p>
                         ) : (
                             <div className="space-y-4">
-                                {ringkasan.pemasukanPerKategori.map((item) => (
+                                {ringkasan.pemasukanPerKategori.map((item: any) => (
                                     <div key={item.kategori}>
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-sm font-medium">{item.kategori}</span>
@@ -211,7 +244,7 @@ export default async function LaporanPage({ searchParams }: PageProps) {
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {ringkasan.transaksiTerbesar.map((tx, i) => (
+                            {ringkasan.transaksiTerbesar.map((tx: any, i: number) => (
                                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 font-bold">

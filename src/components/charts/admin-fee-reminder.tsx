@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Receipt, AlertCircle, Loader2 } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
-import { processMonthlyAdminFees } from "@/app/actions/recurring-admin"
+import { processMonthlyAdminFees } from "@/lib/db/recurring-repo"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -71,12 +71,12 @@ export function AdminFeeReminder({ fees }: AdminFeeReminderProps) {
                             <div className="mt-1 space-y-1">
                                 {fees.map((fee, idx) => (
                                     <p key={idx} className="text-sm text-amber-800/80 dark:text-amber-400/80">
-                                        • <strong>{fee.namaAkun}</strong>: 
+                                        • <strong>{fee.namaAkun}</strong>:
                                         <span className="font-semibold" data-private="true"> {formatRupiah(fee.nominal || 0)}</span> pada {new Date(fee.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                                     </p>
                                 ))}
                             </div>
-                            
+
                             {result && (
                                 <div className="mt-2 flex gap-3">
                                     <span className="text-xs font-bold text-emerald-600">✓ {result.success} Berhasil</span>
@@ -87,7 +87,7 @@ export function AdminFeeReminder({ fees }: AdminFeeReminderProps) {
                     </div>
                     <div className="flex gap-2 shrink-0">
                         {result && result.failed > 0 && (
-                            <Button 
+                            <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => router.push('/pengaturan')}
@@ -96,8 +96,8 @@ export function AdminFeeReminder({ fees }: AdminFeeReminderProps) {
                                 Lihat Log
                             </Button>
                         )}
-                        <Button 
-                            onClick={handleProcess} 
+                        <Button
+                            onClick={handleProcess}
                             disabled={loading}
                             className="bg-amber-600 hover:bg-amber-700 text-white"
                         >

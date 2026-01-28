@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,23 +19,23 @@ import {
     getLogData,
     getDatabaseStats,
     getAppSettingsData
-} from "@/app/actions/debug"
+} from "@/lib/db/debug-repo"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
-interface PageProps {
-    params: Promise<{ id: string }>
-    searchParams: Promise<{
-        tab?: string
-        page?: string
-    }>
-}
+export default function DebugDatabasePage() {
+    const searchParams = useSearchParams()
+    const tab = searchParams.get("tab") || "stats"
+    const page = Number(searchParams.get("page")) || 1
 
-export default async function DebugDatabasePage({ searchParams }: PageProps) {
-    const params = await searchParams
-    const tab = params.tab || "stats"
-    const page = Number(params.page) || 1
+    // Stats state
+    const [stats, setStats] = useState({
+        akun: 0, akunUser: 0, transaksi: 0, recurring: 0, log: 0, setting: 0
+    })
 
-    const stats = await getDatabaseStats()
+    useEffect(() => {
+        getDatabaseStats().then(setStats)
+    }, [])
 
     return (
         <div className="space-y-6 p-6">
@@ -41,9 +43,9 @@ export default async function DebugDatabasePage({ searchParams }: PageProps) {
             <div className="flex items-center gap-3 border-b pb-4">
                 <Database className="w-8 h-8 text-primary" />
                 <div>
-                    <h1 className="text-2xl font-bold">Database Inspector</h1>
+                    <h1 className="text-2xl font-bold">Database Inspector (Client)</h1>
                     <p className="text-sm text-muted-foreground">
-                        🔒 Halaman rahasia - Direct access only
+                        🔒 Halaman rahasia - Direct access only - Dexie DB
                     </p>
                 </div>
             </div>
@@ -116,14 +118,63 @@ export default async function DebugDatabasePage({ searchParams }: PageProps) {
             </div>
 
             {/* Data Table */}
-            <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
-                <DataTable tab={tab} page={page} />
-            </Suspense>
+            <DataTable tab={tab} page={page} />
         </div>
     )
 }
 
-async function DataTable({ tab, page }: { tab: string; page: number }) {
+function DataTable({ tab, page }: { tab: string; page: number }) {
+    const [data, setData] = useState<any[]>([])
+    const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
+    const [columns, setColumns] = useState<string[]>([])
+    const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (tab === "stats") return;
+
+            setLoading(true)
+            let result: any = { success: false, data: [] }
+            let cols: string[] = []
+
+            try {
+                switch (tab) {
+                    case "akun":
+                        result = await getAkunData(page)
+                        cols = ["id", "nama", "tipe", "saldoSekarangInt", "saldoAwalInt", "warna", "createdAt"]
+                        break
+                    case "transaksi":
+                        result = await getTransaksiData(page)
+                        cols = ["id", "deskripsi", "nominalInt", "kategori", "tanggal", "debitAkunId", "kreditAkunId"]
+                        break
+                    case "recurring":
+                        result = await getRecurringData(page)
+                        cols = ["id", "nama", "nominalInt", "kategori", "frekuensi", "aktif", "terakhirDieksekusi"]
+                        break
+                    case "log":
+                        result = await getLogData(page)
+                        cols = ["id", "level", "modul", "pesan", "createdAt"]
+                        break
+                    case "setting":
+                        result = await getAppSettingsData(page)
+                        cols = ["id", "kunci", "nilai", "updatedAt"]
+                        break
+                    default:
+                        break
+                }
+            } catch (e) { console.error(e) }
+
+            if (result && result.success) {
+                setData(result.data)
+                setPagination(result.pagination || { page: 1, totalPages: 1, total: 0 })
+                setColumns(cols)
+            }
+            setLoading(false)
+        }
+
+        fetchData();
+    }, [tab, page])
+
     if (tab === "stats") {
         return (
             <Card>
@@ -135,35 +186,7 @@ async function DataTable({ tab, page }: { tab: string; page: number }) {
         )
     }
 
-    let result: any
-    let columns: string[] = []
-
-    switch (tab) {
-        case "akun":
-            result = await getAkunData(page)
-            columns = ["id", "nama", "tipe", "saldoSekarang", "saldoAwal", "warna", "createdAt"]
-            break
-        case "transaksi":
-            result = await getTransaksiData(page)
-            columns = ["id", "deskripsi", "nominal", "kategori", "tanggal", "debitAkun", "kreditAkun"]
-            break
-        case "recurring":
-            result = await getRecurringData(page)
-            columns = ["id", "nama", "nominal", "kategori", "frekuensi", "aktif", "terakhirDieksekusi"]
-            break
-        case "log":
-            result = await getLogData(page)
-            columns = ["id", "level", "modul", "pesan", "createdAt"]
-            break
-        case "setting":
-            result = await getAppSettingsData(page)
-            columns = ["id", "kunci", "nilai", "updatedAt"]
-            break
-        default:
-            return null
-    }
-
-    const { data, pagination } = result
+    if (loading) return <div className="text-center py-8">Loading table data...</div>
 
     return (
         <Card>
@@ -230,9 +253,11 @@ function formatCell(row: any, col: string): string {
     const value = row[col]
 
     if (value === null || value === undefined) return "-"
-    if (col === "debitAkun" || col === "kreditAkun") {
-        return value?.nama ? `${value.nama} (${value.tipe})` : "-"
-    }
+    // Adjusted logic for Client Objects:
+    // row is plain object from Dexie.
+    // relations like 'debitAkun' are NOT populated automatically unless we did explicit fetching.
+    // So 'debitAkunId' is what we likely have.
+
     if (value instanceof Date) {
         return value.toLocaleString("id-ID")
     }

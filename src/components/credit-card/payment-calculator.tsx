@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { calculateCreditCardPayment, type PaymentCalculation } from "@/app/actions/credit-card-payment"
+import { calculateCreditCardPayment, type PaymentCalculation } from "@/lib/db/credit-card-repo"
 import { formatRupiahDecimal, usesCimbFormat } from "@/lib/decimal-utils"
 import { PaymentDialog } from "./payment-dialog"
 
@@ -155,10 +155,10 @@ export function PaymentCalculator({ akunId, akunNama }: PaymentCalculatorProps) 
                                 {formatRupiahDecimal(fullPayment + lateFee, useCimb)}
                             </span>
                         </Button>
-                        
+
                         {/* Custom Amount Button (Full Width) */}
-                        <Button 
-                            variant="secondary" 
+                        <Button
+                            variant="secondary"
                             className="col-span-2 gap-2"
                             onClick={() => handlePaymentClick(0, "CUSTOM")}
                         >

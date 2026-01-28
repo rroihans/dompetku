@@ -36,23 +36,16 @@ import {
     fetchLiveRates,
     saveCurrencyApiKey,
     getCurrencyApiKey
-} from "@/app/actions/currency"
+} from "@/lib/db/currency-repo"
+import { type CurrencyRateRecord } from "@/lib/db/app-db"
 import { SUPPORTED_CURRENCIES, getCurrencyInfo } from "@/lib/currency"
 import { formatRupiah, formatCurrency } from "@/lib/format"
 import { useRouter } from "next/navigation"
 
-interface CurrencyRate {
-    id: string
-    kodeAsal: string
-    kodeTujuan: string
-    rate: number
-    tanggalUpdate: Date | string
-    sumber: string | null
-}
-
 export function CurrencySettings() {
     const router = useRouter()
-    const [rates, setRates] = useState<CurrencyRate[]>([])
+    const [rates, setRates] = useState<CurrencyRateRecord[]>([])
+
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [editingRate, setEditingRate] = useState<string | null>(null)
@@ -141,7 +134,11 @@ export function CurrencySettings() {
 
         const biayaPersen = parseFloat(biayaAdmin) || 0
         const result = await convertToIDR(parseFloat(amount), fromCurrency, biayaPersen)
-        setConvertedAmount(result)
+        if (result.success && result.data) {
+            setConvertedAmount(result.data.result)
+        } else {
+            setConvertedAmount(null)
+        }
     }
 
     const getSourceBadge = (sumber: string | null) => {
@@ -344,7 +341,7 @@ export function CurrencySettings() {
                                         <div>
                                             <p className="font-medium flex items-center gap-2">
                                                 {rate.kodeAsal}
-                                                {getSourceBadge(rate.sumber)}
+                                                {getSourceBadge(rate.sumber ?? null)}
                                             </p>
                                             <p className="text-xs text-muted-foreground">{currencyInfo?.nama}</p>
                                         </div>

@@ -25,11 +25,12 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { payCreditCardBill } from "@/app/actions/credit-card-payment"
-import { getAkun } from "@/app/actions/akun"
+import { payCreditCardBill } from "@/lib/db/credit-card-repo"
+import { getAkun } from "@/lib/db/accounts-repo"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { formatRupiahDecimal } from "@/lib/decimal-utils"
+import type { AccountDTO } from "@/lib/account-dto"
 
 const paymentSchema = z.object({
     amount: z.coerce.number().min(1, "Jumlah pembayaran tidak valid"),
@@ -39,12 +40,6 @@ const paymentSchema = z.object({
 
 type PaymentFormValues = z.infer<typeof paymentSchema>
 
-interface Akun {
-    id: string
-    nama: string
-    tipe: string
-    saldoSekarang: number
-}
 
 interface PaymentDialogProps {
     open: boolean
@@ -56,17 +51,17 @@ interface PaymentDialogProps {
     minAmount: number // For validation
 }
 
-export function PaymentDialog({ 
-    open, 
-    onOpenChange, 
-    akunId, 
-    akunNama, 
-    defaultAmount, 
+export function PaymentDialog({
+    open,
+    onOpenChange,
+    akunId,
+    akunNama,
+    defaultAmount,
     defaultType,
-    minAmount 
+    minAmount
 }: PaymentDialogProps) {
     const [loading, setLoading] = useState(false)
-    const [sourceList, setSourceList] = useState<Akun[]>([])
+    const [sourceList, setSourceList] = useState<AccountDTO[]>([])
 
     const {
         register,
@@ -95,10 +90,10 @@ export function PaymentDialog({
             setValue("type", defaultType)
             // Load accounts
             getAkun().then((akuns) => {
-                const sources = akuns.filter((a: any) => 
+                const sources = akuns.filter((a: AccountDTO) =>
                     ["BANK", "E_WALLET", "CASH"].includes(a.tipe) && a.id !== akunId
                 )
-                setSourceList(sources as Akun[])
+                setSourceList(sources)
             })
         }
     }, [open, defaultAmount, defaultType, akunId, setValue])
@@ -108,9 +103,9 @@ export function PaymentDialog({
         try {
             if (values.amount < minAmount && values.type === "CUSTOM") {
                 if (values.amount < minAmount) { // Strict
-                     toast.error(`Pembayaran minimal Rp ${formatRupiahDecimal(minAmount)}`)
-                     setLoading(false)
-                     return
+                    toast.error(`Pembayaran minimal Rp ${formatRupiahDecimal(minAmount)}`)
+                    setLoading(false)
+                    return
                 }
             }
 
@@ -144,23 +139,23 @@ export function PaymentDialog({
                         Pilih sumber dana untuk pembayaran kartu kredit.
                     </DialogDescription>
                 </DialogHeader>
-                
+
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
                     {/* Amount */}
                     <div className="space-y-2">
                         <Label>Jumlah Pembayaran</Label>
                         <div className="relative">
                             <span className="absolute left-3 top-2.5 text-muted-foreground">Rp</span>
-                            <Input 
-                                type="number" 
+                            <Input
+                                type="number"
                                 className={cn("pl-10 text-lg font-bold", errors.amount && "border-red-500")}
                                 {...register("amount", { valueAsNumber: true })}
                             />
                         </div>
                         {errors.amount && <p className="text-xs text-red-500">{errors.amount.message}</p>}
-                        
+
                         <div className="flex gap-2 text-xs">
-                            <Badge 
+                            <Badge
                                 variant={typeValue === "FULL" ? "default" : "outline"}
                                 className="cursor-pointer"
                                 onClick={() => {
@@ -169,14 +164,14 @@ export function PaymentDialog({
                             >
                                 Full
                             </Badge>
-                            <Badge 
+                            <Badge
                                 variant={typeValue === "MINIMUM" ? "default" : "outline"}
                                 className="cursor-pointer"
                                 onClick={() => setValue("type", "MINIMUM")}
                             >
                                 Minimum
                             </Badge>
-                            <Badge 
+                            <Badge
                                 variant={typeValue === "CUSTOM" ? "default" : "outline"}
                                 className="cursor-pointer"
                                 onClick={() => setValue("type", "CUSTOM")}
@@ -189,7 +184,7 @@ export function PaymentDialog({
                     {/* Source Account */}
                     <div className="space-y-2">
                         <Label>Sumber Dana</Label>
-                        <Select 
+                        <Select
                             onValueChange={(val) => setValue("sourceId", val, { shouldValidate: true })}
                         >
                             <SelectTrigger className={cn(errors.sourceId && "border-red-500")}>

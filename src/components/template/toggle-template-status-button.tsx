@@ -3,23 +3,33 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, XCircle } from "lucide-react"
-import { toggleAccountTemplateStatus } from "@/app/actions/template"
+import { toggleAccountTemplateStatus } from "@/lib/db/templates-repo"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface ToggleTemplateStatusButtonProps {
     id: string
+    nama: string
     isActive: boolean
+    onSuccess?: () => void
 }
 
-export function ToggleTemplateStatusButton({ id, isActive }: ToggleTemplateStatusButtonProps) {
+export function ToggleTemplateStatusButton({ id, nama, isActive, onSuccess }: ToggleTemplateStatusButtonProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
     const handleToggle = async () => {
         setLoading(true)
-        await toggleAccountTemplateStatus(id)
+        const result = await toggleAccountTemplateStatus(id)
         setLoading(false)
-        router.refresh()
+
+        if (result.success) {
+            toast.success(`Template ${nama} berhasil ${isActive ? 'dinonaktifkan' : 'diaktifkan'}`)
+            router.refresh()
+            if (onSuccess) onSuccess()
+        } else {
+            toast.error("Gagal mengubah status template")
+        }
     }
 
     return (

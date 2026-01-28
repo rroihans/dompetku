@@ -22,7 +22,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { updateTransaksi, deleteTransaksi } from "@/app/actions/transaksi"
+import { updateTransaksi, deleteTransaksi } from "@/lib/db"
 import { formatRupiah } from "@/lib/format"
 import { ConvertToInstallmentDialog } from "./convert-to-installment-dialog"
 

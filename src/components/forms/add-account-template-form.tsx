@@ -21,17 +21,22 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Plus, Trash2, Info } from "lucide-react"
-import { createAccountTemplate } from "@/app/actions/template"
+import { createAccountTemplate } from "@/lib/db/templates-repo"
 import { useRouter } from "next/navigation"
 import { TierBunga } from "@/lib/template-utils"
+import { toast } from "sonner"
 
-export function AddAccountTemplateForm() {
+interface AddAccountTemplateFormProps {
+    onSuccess?: () => void
+}
+
+export function AddAccountTemplateForm({ onSuccess }: AddAccountTemplateFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [pola, setPola] = useState("TANGGAL_TETAP")
     const [tiers, setTiers] = useState<TierBunga[]>([])
-    
+
     const [formData, setFormData] = useState({
         nama: "",
         tipeAkun: "BANK",
@@ -51,13 +56,13 @@ export function AddAccountTemplateForm() {
     const handleTierChange = (index: number, field: keyof TierBunga, value: string) => {
         const newTiers = [...tiers]
         const val = value === "" ? 0 : parseFloat(value)
-        
+
         if (field === "max_saldo") {
-          newTiers[index][field] = value === "" ? null : val
+            newTiers[index][field] = value === "" ? null : val
         } else {
-          (newTiers[index][field] as number) = val
+            (newTiers[index][field] as number) = val
         }
-        
+
         setTiers(newTiers)
     }
 
@@ -79,12 +84,14 @@ export function AddAccountTemplateForm() {
         setLoading(false)
 
         if (result.success) {
+            toast.success(`Template ${formData.nama} berhasil dibuat`)
             setOpen(false)
             setFormData({ nama: "", tipeAkun: "BANK", biayaAdmin: "", tanggalTagihan: "", deskripsi: "" })
             setTiers([])
             router.refresh()
+            if (onSuccess) onSuccess()
         } else {
-            alert(result.error || "Gagal membuat template")
+            toast.error(result.error || "Gagal membuat template")
         }
     }
 
@@ -194,7 +201,7 @@ export function AddAccountTemplateForm() {
                                 <Plus className="w-3 h-3 mr-1" /> Tier
                             </Button>
                         </div>
-                        
+
                         {tiers.length === 0 ? (
                             <p className="text-xs text-muted-foreground italic text-center py-2">
                                 Tidak ada konfigurasi bunga.
@@ -203,31 +210,42 @@ export function AddAccountTemplateForm() {
                             <div className="space-y-2">
                                 {tiers.map((tier, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <Input
-                                            type="number"
-                                            className="h-8 text-xs"
-                                            placeholder="Min Saldo"
-                                            value={tier.min_saldo}
-                                            onChange={(e) => handleTierChange(index, "min_saldo", e.target.value)}
-                                        />
-                                        <Input
-                                            type="number"
-                                            className="h-8 text-xs"
-                                            placeholder="Bunga %"
-                                            value={tier.bunga_pa}
-                                            onChange={(e) => handleTierChange(index, "bunga_pa", e.target.value)}
-                                        />
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
+                                        <div className="relative flex-1">
+                                            <Input
+                                                type="number"
+                                                className="h-8 text-xs pr-6"
+                                                placeholder="Min Saldo"
+                                                value={tier.min_saldo}
+                                                onChange={(e) => handleTierChange(index, "min_saldo", e.target.value)}
+                                                title="Saldo Minimum agar bunga ini berlaku"
+                                            />
+                                        </div>
+                                        <div className="relative w-20">
+                                            <Input
+                                                type="number"
+                                                className="h-8 text-xs pr-6"
+                                                placeholder="%"
+                                                value={tier.bunga_pa}
+                                                onChange={(e) => handleTierChange(index, "bunga_pa", e.target.value)}
+                                                title="Bunga per tahun (p.a.)"
+                                            />
+                                            <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">%</span>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
                                             className="h-8 w-8 text-red-500"
                                             onClick={() => handleRemoveTier(index)}
+                                            title="Hapus Tier"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 ))}
+                                <p className="text-[10px] text-muted-foreground mt-2">
+                                    * Field kiri: Saldo Minimum. Field kanan: Bunga % p.a.
+                                </p>
                             </div>
                         )}
                     </div>

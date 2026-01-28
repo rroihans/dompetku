@@ -59,10 +59,18 @@ export function SaldoTrendChart({ data, title = "Trend Saldo 30 Hari" }: SaldoTr
     }
 
     // Format tanggal untuk display
-    const formattedData = data.map(d => ({
-        ...d,
-        label: new Date(d.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-    }))
+    const formattedData = data.map(d => {
+        const dateStr = d.tanggal || (d as any).date;
+        const dateObj = dateStr ? new Date(dateStr) : new Date();
+        const label = isNaN(dateObj.getTime())
+            ? "---"
+            : dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+
+        return {
+            ...d,
+            label
+        };
+    })
 
     // Hitung rata-rata untuk reference line
     const avgSaldo = data.reduce((sum, d) => sum + d.saldo, 0) / data.length

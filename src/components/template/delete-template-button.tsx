@@ -14,25 +14,27 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Trash2 } from "lucide-react"
-import { deleteTemplate } from "@/app/actions/template"
+import { deleteTransactionTemplate } from "@/lib/db/transaction-templates-repo"
 import { useRouter } from "next/navigation"
 
 interface DeleteTemplateButtonProps {
     id: string
     nama: string
+    onSuccess?: () => void
 }
 
-export function DeleteTemplateButton({ id, nama }: DeleteTemplateButtonProps) {
+export function DeleteTemplateButton({ id, nama, onSuccess }: DeleteTemplateButtonProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
     const handleDelete = async () => {
         setLoading(true)
-        const result = await deleteTemplate(id)
+        const result = await deleteTransactionTemplate(id)
         setLoading(false)
 
         if (result.success) {
-            router.refresh()
+            if (onSuccess) onSuccess()
+            else router.refresh()
         } else {
             alert(result.error || "Gagal menghapus template")
         }

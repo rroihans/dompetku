@@ -29,7 +29,6 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
         [`${year2}_inc`]: monthly2[i].income,
     }));
 
-    // Cumulative data for Line Chart
     let cum1 = 0;
     let cum2 = 0;
     const lineData = MONTHS.map((m, i) => {
@@ -52,50 +51,54 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
                 </TabsList>
             </div>
 
-            <TabsContent value="monthly">
-                <Card>
-                    <CardContent className="pt-6 h-[300px] sm:h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={data}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis 
-                                    tickFormatter={(val) => `Rp ${val/1000000}M`} 
-                                    fontSize={10} 
-                                    tickLine={false} 
-                                    axisLine={false} 
-                                    width={50}
-                                />
-                                <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
-                                <Legend />
-                                <Bar dataKey={year1} fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey={year2} fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+            <TabsContent value="monthly" className="w-full">
+                <Card className="w-full">
+                    <CardContent className="p-0 sm:p-6 pt-6 overflow-hidden">
+                        <div className="w-full h-[350px] sm:h-[450px] min-h-[300px] flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis
+                                        tickFormatter={(val) => `${val / 1000000}M`}
+                                        fontSize={9}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        width={40}
+                                    />
+                                    <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
+                                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                                    <Bar dataKey={year1} name={`Tahun ${year1}`} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey={year2} name={`Tahun ${year2}`} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>
 
-            <TabsContent value="cumulative">
-                <Card>
-                    <CardContent className="pt-6 h-[300px] sm:h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={lineData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis 
-                                    tickFormatter={(val) => `Rp ${val/1000000}M`} 
-                                    fontSize={10} 
-                                    tickLine={false} 
-                                    axisLine={false}
-                                    width={50} 
-                                />
-                                <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
-                                <Legend />
-                                <Line type="monotone" dataKey={year1} stroke="#94a3b8" strokeWidth={2} dot={false} />
-                                <Line type="monotone" dataKey={year2} stroke="#3b82f6" strokeWidth={2} />
-                            </LineChart>
-                        </ResponsiveContainer>
+            <TabsContent value="cumulative" className="w-full">
+                <Card className="w-full">
+                    <CardContent className="p-0 sm:p-6 pt-6 overflow-hidden">
+                        <div className="w-full h-[350px] sm:h-[450px] min-h-[300px] flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={lineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis
+                                        tickFormatter={(val) => `${val / 1000000}M`}
+                                        fontSize={9}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        width={40}
+                                    />
+                                    <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
+                                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                                    <Line type="monotone" dataKey={year1} name={`Kumulatif ${year1}`} stroke="#94a3b8" strokeWidth={2} dot={false} />
+                                    <Line type="monotone" dataKey={year2} name={`Kumulatif ${year2}`} stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>

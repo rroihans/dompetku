@@ -1,5 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   TrendingDown,
@@ -12,82 +15,75 @@ import {
   Target,
   RefreshCw,
   Settings,
-} from "lucide-react"
-import { getAkun } from "@/app/actions/akun"
-import { getTransaksi } from "@/app/actions/transaksi"
-import { getDashboardAnalytics, getSaldoTrend, getMonthlyComparison, getAccountComposition, getEnhancedStats } from "@/app/actions/analytics"
-import { getCicilanStats } from "@/app/actions/cicilan"
-import { getUpcomingAdminFees } from "@/app/actions/recurring-admin"
-import { getNetWorthChange, getNetWorthHistory, saveNetWorthSnapshot } from "@/app/actions/networth"
-import { runSystemAlertChecks } from "@/app/actions/notifications"
-import { seedInitialData, seedInstallmentTemplates } from "@/app/actions/seed"
-import { pruneOldLogs } from "@/app/actions/debug"
-import { formatRupiah } from "@/lib/format"
-import Link from "next/link"
-import { ExpensePieChart } from "@/components/charts/expense-pie-chart"
-import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart"
-import { SaldoTrendChart } from "@/components/charts/saldo-trend-chart"
-import { MonthlyComparisonChart } from "@/components/charts/monthly-comparison-chart"
-import { AssetCompositionChart } from "@/components/charts/asset-composition-chart"
-import { DrilldownPieChart } from "@/components/charts/drilldown-pie-chart"
-import { NetWorthChart } from "@/components/charts/net-worth-chart"
-import { AdminFeeReminder } from "@/components/charts/admin-fee-reminder"
-import { BudgetBanner } from "@/components/dashboard/budget-banner"
+} from "lucide-react";
+import { getAkun } from "@/lib/db/accounts-repo";
+import { getTransaksi } from "@/lib/db/transactions-repo";
+import { getDashboardAnalytics, getSaldoTrend } from "@/lib/db/analytics-repo";
+import { getDueRecurringTransactions, getUpcomingAdminFees } from "@/lib/db/recurring-repo";
+import { formatRupiah } from "@/lib/format";
+import Link from "next/link";
+import { ExpensePieChart } from "@/components/charts/expense-pie-chart";
+import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart";
+import { SaldoTrendChart } from "@/components/charts/saldo-trend-chart";
+import { DrilldownPieChart } from "@/components/charts/drilldown-pie-chart";
+import { NetWorthChart } from "@/components/charts/net-worth-chart";
+import { AdminFeeReminder } from "@/components/charts/admin-fee-reminder";
+import { BudgetBanner } from "@/components/dashboard/budget-banner";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function Dashboard() {
-  // Auto-prune logs > 30 hari
-  await pruneOldLogs(30)
+export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<{
+    accounts: any[];
+    analytics: any;
+    transactions: any[];
+    saldoTrend: any[];
+    upcomingFees: any[];
+    recurringDue: any[];
+  } | null>(null);
 
-  // Run system notifications checks
-  await runSystemAlertChecks()
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [
+          accounts,
+          analytics,
+          transactionsResult,
+          saldoTrendResult,
+          recurringDue,
+          upcomingFeesResult
+        ] = await Promise.all([
+          getAkun(),
+          getDashboardAnalytics(),
+          getTransaksi({ page: 1 }),
+          getSaldoTrend(30),
+          getDueRecurringTransactions(),
+          getUpcomingAdminFees()
+        ]);
 
-  // Auto-seed installment templates if not exists
-  await seedInstallmentTemplates()
+        setData({
+          accounts,
+          analytics,
+          transactions: transactionsResult.data,
+          saldoTrend: saldoTrendResult.data,
+          upcomingFees: upcomingFeesResult.data,
+          recurringDue
+        });
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  let accounts = await getAkun()
-  if (accounts.length === 0) {
-    await seedInitialData()
-    accounts = await getAkun()
+    loadData();
+  }, []);
+
+  if (loading || !data) {
+    return <DashboardSkeleton />;
   }
 
-  // Ambil data analytics (parallel fetch untuk performa)
-  const [
-    analytics,
-    transactionsResult,
-    cicilanStats,
-    upcomingFeesResult,
-    saldoTrendResult,
-    monthlyComparisonResult,
-    assetCompositionResult,
-    enhancedStatsResult,
-    netWorthResult,
-    netWorthHistoryResult
-  ] = await Promise.all([
-    getDashboardAnalytics(),
-    getTransaksi(),
-    getCicilanStats(),
-    getUpcomingAdminFees(),
-    getSaldoTrend(30),
-    getMonthlyComparison(),
-    getAccountComposition(),
-    getEnhancedStats(),
-    getNetWorthChange(),
-    getNetWorthHistory(30)
-  ])
-  const transactions = transactionsResult.data
-  const upcomingFees = upcomingFeesResult.data || []
-  const saldoTrend = saldoTrendResult.data || []
-  const monthlyComparison = monthlyComparisonResult.data || []
-  const assetComposition = assetCompositionResult.data || []
-  const assetTotal = assetCompositionResult.total || 0
-  const enhancedStats = enhancedStatsResult.data
-  const netWorth = netWorthResult.data
-  const netWorthHistory = netWorthHistoryResult.data || []
-
-  // Save snapshot jika belum ada hari ini (simple implementation)
-  if (netWorthHistory.length === 0) {
-    await saveNetWorthSnapshot()
-  }
+  const { accounts, analytics, transactions, saldoTrend, upcomingFees } = data;
 
   return (
     <div className="space-y-6">
@@ -96,7 +92,7 @@ export default async function Dashboard() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted-foreground">
-            Ringkasan keuangan Anda bulan ini.
+            Ringkasan keuangan Anda bulan ini (PWA Offline).
           </p>
         </div>
         <div className="flex gap-2">
@@ -183,34 +179,6 @@ export default async function Dashboard() {
         </Link>
       </div>
 
-      {/* NEW: Admin Fee Reminder */}
-      <AdminFeeReminder fees={upcomingFees} />
-
-      {/* Alert jika ada cicilan */}
-      {cicilanStats.data.jumlahCicilanAktif > 0 && (
-        <Link href="/cicilan" className="block mb-4">
-          <Card className="border-l-4 border-l-amber-500 hover:shadow-md transition-all bg-amber-50 dark:bg-amber-950/20">
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900">
-                  <CreditCard className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Cicilan Aktif: {cicilanStats.data.jumlahCicilanAktif}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Tagihan bulan ini: <span data-private="true">{formatRupiah(cicilanStats.data.tagihanBulanIni)}</span>
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Hutang</p>
-                <p className="font-bold text-amber-600" data-private="true">{formatRupiah(cicilanStats.data.totalHutang)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      )}
-
       {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="hover:shadow-md transition-shadow">
@@ -249,32 +217,15 @@ export default async function Dashboard() {
       </div>
 
       {/* NEW: Enhanced Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-1">
         {/* Line Chart: Trend Saldo 30 Hari */}
         <SaldoTrendChart data={saldoTrend} />
-
-        {/* Bar Chart: Bulan Ini vs Bulan Lalu */}
-        <MonthlyComparisonChart data={monthlyComparison as any} />
-
-        {/* Donut Chart: Komposisi Aset */}
-        <AssetCompositionChart data={assetComposition as any} total={assetTotal} />
       </div>
 
       {/* Drill-down Pie Chart */}
       <DrilldownPieChart
         data={analytics.pengeluaranPerKategori as any}
         title="Pengeluaran per Kategori (Klik untuk Detail)"
-      />
-
-      {/* Net Worth Chart */}
-      <NetWorthChart
-        data={netWorthHistory}
-        currentNetWorth={netWorth.current}
-        change={netWorth.change}
-        changePercent={netWorth.changePercent}
-        totalAset={netWorth.totalAset}
-        totalHutang={netWorth.totalHutang}
-        totalCicilan={netWorth.totalCicilan}
       />
 
       {/* Bottom Row - Accounts & Recent Transactions */}
@@ -388,6 +339,31 @@ export default async function Dashboard() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-10 w-32" />
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-32 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-[300px] rounded-xl" />
+        <Skeleton className="h-[300px] rounded-xl" />
+      </div>
     </div>
   )
 }

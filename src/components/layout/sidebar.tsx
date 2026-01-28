@@ -49,7 +49,7 @@ const navigation: NavGroup[] = [
         items: [
             { name: "Ringkasan", href: "/statistik", icon: BarChart3 },
             { name: "Laporan Bulanan", href: "/laporan", icon: PieChart },
-            { name: "Perbandingan YoY", href: "/laporan/comparison", icon: TrendingUp },
+            { name: "Perbandingan YoY", href: "/laporan/perbandingan", icon: TrendingUp },
             { name: "Spending Heatmap", href: "/statistik/heatmap", icon: Calendar },
         ]
     },
@@ -59,9 +59,9 @@ const navigation: NavGroup[] = [
         items: [
             { name: "Anggaran", href: "/anggaran", icon: Target },
             { name: "Cicilan", href: "/cicilan", icon: CreditCard },
-            { name: "Transaksi Berulang", href: "/recurring", icon: RefreshCw },
+            { name: "Transaksi Berulang", href: "/transaksi-berulang", icon: RefreshCw },
             { name: "Kalender", href: "/kalender", icon: Calendar },
-            { name: "Template Bank", href: "/template-akun", icon: Shield },
+            { name: "Template A&B Bank", href: "/template-admin-dan-bunga-bank", icon: Shield },
             { name: "Template Cepat", href: "/template", icon: FileText },
         ]
     }
@@ -76,9 +76,9 @@ export function Sidebar() {
     const [openGroups, setOpenGroups] = useState<string[]>(["Utama", "Analisis & Laporan", "Perencanaan"])
 
     const toggleGroup = (name: string) => {
-        setOpenGroups(prev => 
-            prev.includes(name) 
-                ? prev.filter(g => g !== name) 
+        setOpenGroups(prev =>
+            prev.includes(name)
+                ? prev.filter(g => g !== name)
                 : [...prev, name]
         )
     }
@@ -86,48 +86,74 @@ export function Sidebar() {
     const isGroupOpen = (name: string) => openGroups.includes(name)
 
     const renderItem = (item: NavItem, isNested = false) => {
-        const isActive = pathname === item.href
+        // Highlighting logic:
+        // 1. Exact match (best)
+        // 2. Sub-route match (e.g. /akun/detail matches /akun)
+        // 3. BUT don't match if another menu item is a more specific match for this path
+        const isExact = pathname === item.href
+        const isSubRoute = item.href !== '/' && pathname.startsWith(item.href + '/')
+
+        // Check if there's a better (more specific) match in the navigation
+        const hasBetterMatch = navigation.some(g =>
+            g.items.some(other =>
+                other.href !== item.href &&
+                other.href.length > item.href.length &&
+                pathname.startsWith(other.href)
+            )
+        )
+
+        const isActive = isExact || (isSubRoute && !hasBetterMatch)
+
         const Icon = item.icon
         return (
             <Link
-                key={item.name}
+                key={item.href} // Use href as key for stability
                 href={item.href}
                 className={cn(
-                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all relative group",
                     isNested && "ml-4",
                     isActive
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
             >
-                <Icon className="w-4 h-4" />
-                {item.name}
+                {isActive && (
+                    <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
+                )}
+                <Icon className={cn("w-4 h-4 transition-transform", isActive && "scale-110")} />
+                <span>{item.name}</span>
+                {isActive && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                )}
             </Link>
         )
     }
 
     return (
-        <aside className="hidden md:flex flex-col w-64 border-r bg-card h-screen sticky top-0 shrink-0 overflow-y-auto">
+        <aside className="hidden md:flex flex-col w-64 border-r bg-card h-screen sticky top-0 shrink-0 overflow-y-auto shadow-sm">
             <div className="p-6">
-                <h1 className="text-2xl font-bold text-primary flex items-center gap-2">
-                    <Wallet className="w-8 h-8" />
-                    Dompetku
-                </h1>
+                <Link href="/" className="flex items-center gap-2 group">
+                    <div className="bg-primary p-1.5 rounded-lg text-primary-foreground transition-transform group-hover:scale-110">
+                        <Wallet className="w-6 h-6" />
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-foreground">
+                        Dompetku
+                    </span>
+                </Link>
             </div>
             <nav className="flex-1 px-4 space-y-4">
                 {navigation.map((group) => (
                     <div key={group.name} className="space-y-1">
                         <button
                             onClick={() => toggleGroup(group.name)}
-                            className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+                            className="flex items-center justify-between w-full px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
                         >
-                            <span className="flex items-center gap-2">
-                                {group.icon && <group.icon className="w-3 h-3" />}
+                            <span>
                                 {group.name}
                             </span>
                             {isGroupOpen(group.name) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                         </button>
-                        
+
                         {isGroupOpen(group.name) && (
                             <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
                                 {group.items.map(item => renderItem(item, group.name !== "Utama"))}
@@ -140,8 +166,8 @@ export function Sidebar() {
                     {bottomItems.map(item => renderItem(item))}
                 </div>
             </nav>
-            <div className="p-4 border-t">
-                <p className="text-xs text-muted-foreground text-center">© 2026 Dompetku Pro v0.7.1</p>
+            <div className="p-4 border-t bg-muted/30">
+                <p className="text-[10px] text-muted-foreground text-center font-medium tracking-tight">© 2026 Dompetku Pro v0.7.1</p>
             </div>
         </aside>
     )

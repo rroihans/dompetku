@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Zap } from "lucide-react"
-import { useTemplate } from "@/app/actions/template"
+import { useTemplate } from "@/lib/db/templates-repo"
 import { useRouter } from "next/navigation"
 import { formatRupiah } from "@/lib/format"
 

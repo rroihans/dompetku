@@ -23,13 +23,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { upsertBudget } from "@/app/actions/anggaran"
+import { upsertBudget } from "@/lib/db/budget-repo"
 import { formatRupiah } from "@/lib/format"
 
 interface AddBudgetFormProps {
     categories: string[]
     bulan: number
     tahun: number
+    onRefresh?: () => void
 }
 
 const PRESET_BUDGETS = [
@@ -41,7 +42,7 @@ const PRESET_BUDGETS = [
     { kategori: "Kesehatan", nominal: 300000 },
 ]
 
-export function AddBudgetForm({ categories, bulan, tahun }: AddBudgetFormProps) {
+export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudgetFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -86,11 +87,13 @@ export function AddBudgetForm({ categories, bulan, tahun }: AddBudgetFormProps) 
                 setKategori("")
                 setCustomKategori("")
                 setNominal(0)
-                router.refresh()
+
+                if (onRefresh) onRefresh()
+                else router.refresh()
             } else {
                 setError(res.error || "Gagal menyimpan budget")
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err)
             setError("Terjadi kesalahan sistem")
         } finally {

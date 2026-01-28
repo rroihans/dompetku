@@ -17,9 +17,9 @@ import {
     AlertTriangle
 } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
-import { getCashFlowTable, getIncomeExpenseBook, getSpendingInsights, type CashFlowData, type IncomeExpenseBook as IEBook } from "@/app/actions/analytics"
+import { getCashFlowTable, getIncomeExpenseBook, getSpendingInsights, type CashFlowData, type IncomeExpenseBook as IEBook, type PeriodType } from "@/lib/db/analytics-repo"
 
-type PeriodType = '7D' | '30D' | '12W' | '6M' | '1Y'
+
 
 interface SpendingInsight {
     kategori: string

@@ -1,6 +1,6 @@
 "use client"
 
-import { HeatmapData } from "@/app/actions/analytics-heatmap"
+import { HeatmapData } from "@/lib/db/analytics-repo"
 import { HeatmapCell } from "./heatmap-cell"
 
 interface Props {
@@ -16,7 +16,7 @@ export function HeatmapGrid({ data, year, month, onDayClick }: Props) {
     const firstDayOfMonth = new Date(year, month - 1, 1).getDay(); // 0=Sun, 1=Mon
     // Convert to Mon=0 ... Sun=6
     const offset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-    
+
     // Create empty slots for offset
     const blanks = Array(offset).fill(null);
 

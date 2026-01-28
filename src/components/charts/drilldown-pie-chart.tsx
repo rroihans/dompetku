@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { PieChartIcon, X, ArrowLeft, Calendar } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
-import { getCategoryDetail } from "@/app/actions/analytics"
+import { getCategoryDetail } from "@/lib/db/analytics-repo"
 
 interface KategoriData {
     kategori: string

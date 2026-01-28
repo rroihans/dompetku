@@ -9,6 +9,7 @@ import {
     calculateMinimumPayment
 } from "@/lib/decimal-utils"
 import { Money } from "@/lib/money"
+import { mapAccountToDTO } from "@/lib/account-dto"
 import { revalidatePath } from "next/cache"
 
 // Interface untuk hasil kalkulasi pembayaran
@@ -180,13 +181,13 @@ export async function calculateCreditCardPayment(akunId: string): Promise<Paymen
         // Logic: Closing Balance (This Month) = Opening Balance (Last Month) + New Purchases - Payments
         // Here we just want "Current Outstanding Balance" as Full Payment.
         // But `calculateCreditCardPayment` seems to try to reconstruct the statement.
-        
+
         // Let's simplify: Full Payment = Absolute value of Current Balance (if negative)
         const currentDebt = saldoSekarangFloat < 0 ? Math.abs(saldoSekarangFloat) : 0
-        
+
         // This month total new charges (purchases + installments + fees)
         const thisMonthTotal = purchases + installments + fees
-        
+
         // Previous balance (carried over)
         const previousBalance = Math.max(0, currentDebt - thisMonthTotal)
 
@@ -258,15 +259,8 @@ export async function getCreditCardDetail(akunId: string) {
         if (!akun || akun.tipe !== "CREDIT_CARD") {
             return { success: false, error: "Akun kartu kredit tidak ditemukan" }
         }
-        
-        const mappedAkun = {
-            ...akun,
-            saldoSekarang: Money.toFloat(Number(akun.saldoSekarang)),
-            saldoAwal: Money.toFloat(Number(akun.saldoAwal)),
-            limitKredit: akun.limitKredit ? Money.toFloat(Number(akun.limitKredit)) : null,
-            minPaymentFixed: akun.minPaymentFixed ? Money.toFloat(Number(akun.minPaymentFixed)) : null,
-            minInstallmentAmount: akun.minInstallmentAmount ? Money.toFloat(Number(akun.minInstallmentAmount)) : null,
-        }
+
+        const mappedAkun = mapAccountToDTO(akun)
 
         return { success: true, data: mappedAkun }
     } catch (error) {
@@ -279,30 +273,30 @@ export async function getCreditCardDetail(akunId: string) {
  * Pay credit card bill
  */
 export async function payCreditCardBill(
-    akunId: string, 
-    amount: number, 
+    akunId: string,
+    amount: number,
     sourceId: string,
     type: "FULL" | "MINIMUM" | "CUSTOM" = "CUSTOM"
 ) {
     try {
         // 1. Validate inputs
         if (amount <= 0) return { success: false, error: "Nominal pembayaran tidak valid" }
-        
+
         const ccAccount = await prisma.akun.findUnique({ where: { id: akunId } })
         if (!ccAccount || ccAccount.tipe !== "CREDIT_CARD") return { success: false, error: "Bukan akun kartu kredit" }
-        
+
         const sourceAccount = await prisma.akun.findUnique({ where: { id: sourceId } })
         if (!sourceAccount) return { success: false, error: "Akun sumber tidak ditemukan" }
-        
+
         const amountInt = BigInt(Money.fromFloat(amount))
-        
+
         // Check source balance (if not Cash or Credit Card itself)
         if (sourceAccount.tipe !== "CREDIT_CARD") { // Cash can go negative? usually yes. But Bank/Wallet should check?
-             // Simple check: if balance < amount
-             if (sourceAccount.saldoSekarang < amountInt) {
-                 // return { success: false, error: "Saldo tidak mencukupi" }
-                 // Allow for now, user might have overdraft or just tracking
-             }
+            // Simple check: if balance < amount
+            if (sourceAccount.saldoSekarang < amountInt) {
+                // return { success: false, error: "Saldo tidak mencukupi" }
+                // Allow for now, user might have overdraft or just tracking
+            }
         }
 
         // 2. Validate against Minimum Payment
@@ -312,7 +306,7 @@ export async function payCreditCardBill(
             // Spec says: "Strictly >= Minimum: The 'Custom Amount' input validation must enforce amount >= minimumPayment"
             // If type is CUSTOM, we enforce. If FULL/MINIMUM, we trust the logic (or passed amount).
             // Actually, frontend passes calculated amount.
-            
+
             // Allow small tolerance for float comparison?
             if (amount < calc.minimumPayment && type !== "CUSTOM") { // If user explicitly selected Custom and entered less? 
                 // Spec says "Custom Amount" must be >= minimum. 
@@ -320,11 +314,11 @@ export async function payCreditCardBill(
                 // Exception: If Full Payment < Minimum (e.g. debt is tiny), then amount is small.
                 // Logic: amount must be >= Minimum OR amount == Full Payment (if Full < Min)
                 // But Full Payment usually includes Min.
-                
+
                 // Let's enforce: Amount >= min(MinimumPayment, FullPayment)
                 const minRequired = Math.min(calc.minimumPayment, calc.fullPayment)
                 if (amount < minRequired) {
-                     return { success: false, error: `Pembayaran minimal Rp ${minRequired.toLocaleString('id-ID')}` }
+                    return { success: false, error: `Pembayaran minimal Rp ${minRequired.toLocaleString('id-ID')}` }
                 }
             }
         }
@@ -333,19 +327,19 @@ export async function payCreditCardBill(
         const result = await prisma.$transaction(async (tx) => {
             // Debit CC (Utang berkurang -> Saldo bertambah mendekati 0)
             // Credit Source (Uang keluar -> Saldo berkurang)
-            
+
             // In Accounting for Liability (CC):
             // Debit = Decrease Liability (Payment)
             // Credit = Increase Liability (Purchase)
-            
+
             // In our system:
             // debitAkun: saldo increment
             // kreditAkun: saldo decrement
-            
+
             // Payment Transaction:
             // Debit: CC Account (Saldo -1000 -> -500) -> Increment
             // Credit: Source Account (Saldo 5000 -> 4500) -> Decrement
-            
+
             const transaksi = await tx.transaksi.create({
                 data: {
                     deskripsi: `Pembayaran Kartu Kredit (${type})`,
@@ -357,28 +351,28 @@ export async function payCreditCardBill(
                     catatan: `Payment Type: ${type}`
                 }
             })
-            
+
             // Update CC Balance (Debit -> Increment)
             await tx.akun.update({
                 where: { id: akunId },
                 data: { saldoSekarang: { increment: amountInt } }
             })
-            
+
             // Update Source Balance (Credit -> Decrement)
             await tx.akun.update({
                 where: { id: sourceId },
                 data: { saldoSekarang: { decrement: amountInt } }
             })
-            
+
             return transaksi
         })
-        
+
         await logSistem("INFO", "CREDIT_CARD", `Pembayaran CC ${ccAccount.nama}: Rp ${amount.toLocaleString('id-ID')} via ${sourceAccount.nama}`)
-        
+
         revalidatePath(`/akun/${akunId}`)
         revalidatePath("/transaksi")
         revalidatePath("/")
-        
+
         return { success: true, message: "Pembayaran berhasil dicatat" }
 
     } catch (error) {
