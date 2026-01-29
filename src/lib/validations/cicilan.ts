@@ -8,8 +8,8 @@ export const CicilanSchema = z.object({
     biayaAdmin: z.coerce.number().min(0, "Biaya admin tidak boleh negatif").default(0),
     bungaPersen: z.coerce.number().min(0, "Bunga persen tidak boleh negatif").default(0),
     tanggalJatuhTempo: z.coerce.number().min(1, "Tanggal jatuh tempo harus 1-31").max(31, "Tanggal jatuh tempo harus 1-31"),
-    akunKreditId: z.string().cuid("ID akun kredit tidak valid"),
-    akunDebitId: z.string().cuid("ID akun debit tidak valid"),
+    akunKreditId: z.string().min(1, "ID akun kredit tidak valid"),
+    akunDebitId: z.string().min(1, "ID akun debit tidak valid"),
     adminFeeType: z.enum(["FLAT", "PERCENTAGE"]).optional(),
     adminFeeAmount: z.coerce.number().min(0).optional(),
 })
@@ -17,9 +17,9 @@ export const CicilanSchema = z.object({
 export type CicilanFormData = z.infer<typeof CicilanSchema>
 
 export const ConvertInstallmentSchema = z.object({
-    transaksiId: z.string().cuid("ID transaksi tidak valid"),
+    transaksiId: z.string().min(1, "ID transaksi tidak valid"),
     tenor: z.coerce.number().min(1, "Tenor minimal 1 bulan").max(60, "Tenor maksimal 60 bulan"),
-    templateId: z.string().cuid().optional(),
+    templateId: z.string().min(1).optional(),
     adminFeeType: z.enum(["FLAT", "PERCENTAGE"]).default("FLAT"),
     adminFeeAmount: z.coerce.number().min(0, "Biaya admin tidak boleh negatif").default(0),
     interestRate: z.coerce.number().min(0, "Bunga tidak boleh negatif").default(0),

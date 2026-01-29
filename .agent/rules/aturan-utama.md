@@ -10,7 +10,7 @@ trigger: always_on
 - UI: Tailwind CSS v4, Shadcn UI, Lucide Icons.
 
 ## Dos (Lakukan):
-- Gunakan Bahasa Indonesia untuk semua UI.
+- Gunakan Bahasa Indonesia untuk semua UI. Aplikasi ini wajib berbahasa indonesia.
 - Gunakan sistem "Double-Entry Bookkeeping" (Setiap transaksi ada Debit & Kredit).
 - Pastikan aplikasi 100% Mobile Responsive (Sidebar di Desktop, Bottom-Nav di Mobile).
 - Implementasikan Dark/Light mode.

@@ -10,7 +10,8 @@ import {
     Calendar as CalendarIcon,
     Tag,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Filter
 } from "lucide-react"
 import { AddTransactionForm } from "@/components/forms/add-transaction-form"
 import { TransaksiActions } from "@/components/transaksi/transaksi-actions"
@@ -24,6 +25,7 @@ export default function TransaksiPage() {
     const [transactions, setTransactions] = useState<any[]>([])
     const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 0 })
     const [loading, setLoading] = useState(true)
+    const [showFilter, setShowFilter] = useState(false)
 
     const params = useMemo(() => {
         const kategoriList = searchParams.getAll("kategori")
@@ -95,10 +97,21 @@ export default function TransaksiPage() {
                         Catatan detail setiap pemasukan dan pengeluaran Anda.
                     </p>
                 </div>
-                <AddTransactionForm />
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="default"
+                        onClick={() => setShowFilter(!showFilter)}
+                        className="gap-2"
+                    >
+                        <Filter className="w-4 h-4" />
+                        {showFilter ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+                    </Button>
+                    <AddTransactionForm />
+                </div>
             </div>
 
-            <AdvancedFilterPanel />
+            {showFilter && <AdvancedFilterPanel />}
 
             <Card>
                 <CardContent className="p-0">

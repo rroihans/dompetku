@@ -120,7 +120,8 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
         reset,
         formState: { errors },
     } = useForm<AddAccountFormValues>({
-        resolver: zodResolver(formSchema),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(formSchema) as any,
         mode: "onChange",
         defaultValues: {
             nama: "",

@@ -3,6 +3,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Target } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +29,7 @@ import {
 } from "@/components/ui/select"
 import { upsertBudget } from "@/lib/db/budget-repo"
 import { formatRupiah } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 interface AddBudgetFormProps {
     categories: string[]
@@ -42,60 +47,81 @@ const PRESET_BUDGETS = [
     { kategori: "Kesehatan", nominal: 300000 },
 ]
 
+const formSchema = z.object({
+    kategori: z.string().min(1, "Pilih kategori"),
+    customKategori: z.string().optional(),
+    nominal: z.coerce.number().min(1, "Nominal harus lebih dari 0"),
+}).refine(data => {
+    if (data.kategori === 'custom' && (!data.customKategori || data.customKategori.trim() === '')) {
+        return false
+    }
+    return true
+}, {
+    message: "Nama kategori baru wajib diisi",
+    path: ["customKategori"]
+})
+
+type FormValues = z.infer<typeof formSchema>
+
 export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudgetFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState("")
 
-    // Form state
-    const [kategori, setKategori] = useState("")
-    const [customKategori, setCustomKategori] = useState("")
-    const [nominal, setNominal] = useState<number>(0)
+    // Gabungkan kategori dari database dan preset
+    const allCategories = Array.from(new Set([...categories, ...PRESET_BUDGETS.map(p => p.kategori)])).sort()
+
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        reset,
+        formState: { errors },
+    } = useForm<FormValues>({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(formSchema) as any,
+        defaultValues: {
+            kategori: "",
+            customKategori: "",
+            nominal: 0,
+        },
+    })
+
+    const kategori = watch("kategori")
+    const nominal = watch("nominal")
+    const customKategori = watch("customKategori")
 
     const BULAN_LABEL = [
         "Januari", "Februari", "Maret", "April", "Mei", "Juni",
         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     ]
 
-    // Gabungkan kategori dari database dan preset
-    const allCategories = Array.from(new Set([...categories, ...PRESET_BUDGETS.map(p => p.kategori)])).sort()
-
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
+    async function onSubmit(values: FormValues) {
         setLoading(true)
-        setError("")
-
         try {
-            const selectedKategori = kategori === "custom" ? customKategori : kategori
-
-            if (!selectedKategori || nominal <= 0) {
-                setError("Lengkapi kategori dan nominal")
-                setLoading(false)
-                return
-            }
+            const selectedKategori = values.kategori === "custom" ? values.customKategori! : values.kategori
 
             const res = await upsertBudget({
                 kategori: selectedKategori,
                 bulan,
                 tahun,
-                nominal,
+                nominal: values.nominal,
             })
 
             if (res.success) {
                 setOpen(false)
-                setKategori("")
-                setCustomKategori("")
-                setNominal(0)
+                reset()
+                toast.success("Anggaran berhasil disimpan")
 
                 if (onRefresh) onRefresh()
                 else router.refresh()
             } else {
-                setError(res.error || "Gagal menyimpan budget")
+                toast.error(res.error || "Gagal menyimpan budget")
             }
         } catch (err: any) {
             console.error(err)
-            setError("Terjadi kesalahan sistem")
+            toast.error("Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
         }
@@ -103,10 +129,10 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
 
     // Saat kategori dipilih, set nominal dari preset jika ada
     function handleKategoriChange(value: string) {
-        setKategori(value)
+        setValue("kategori", value, { shouldValidate: true })
         const preset = PRESET_BUDGETS.find(p => p.kategori === value)
-        if (preset && nominal === 0) {
-            setNominal(preset.nominal)
+        if (preset && (nominal === 0)) {
+            setValue("nominal", preset.nominal)
         }
     }
 
@@ -127,12 +153,12 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                         Set batas pengeluaran untuk kategori di bulan {BULAN_LABEL[bulan - 1]} {tahun}.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
                     {/* Kategori */}
                     <div className="grid gap-2">
                         <Label>Kategori Pengeluaran</Label>
                         <Select value={kategori} onValueChange={handleKategoriChange}>
-                            <SelectTrigger>
+                            <SelectTrigger className={cn(errors.kategori && "border-red-500")}>
                                 <SelectValue placeholder="Pilih kategori" />
                             </SelectTrigger>
                             <SelectContent>
@@ -142,6 +168,9 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                                 <SelectItem value="custom">+ Kategori Baru</SelectItem>
                             </SelectContent>
                         </Select>
+                        {errors.kategori && (
+                            <p className="text-sm text-red-500">{errors.kategori.message}</p>
+                        )}
                     </div>
 
                     {/* Custom Kategori */}
@@ -151,9 +180,12 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                             <Input
                                 id="customKategori"
                                 placeholder="Contoh: Pendidikan, Asuransi"
-                                value={customKategori}
-                                onChange={(e) => setCustomKategori(e.target.value)}
+                                {...register("customKategori")}
+                                className={cn(errors.customKategori && "border-red-500")}
                             />
+                            {errors.customKategori && (
+                                <p className="text-sm text-red-500">{errors.customKategori.message}</p>
+                            )}
                         </div>
                     )}
 
@@ -164,11 +196,13 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                             id="nominal"
                             type="number"
                             placeholder="0"
-                            value={nominal || ""}
-                            onChange={(e) => setNominal(e.target.value === "" ? 0 : Number(e.target.value))}
-                            min={1}
+                            {...register("nominal", { valueAsNumber: true })}
+                            className={cn(errors.nominal && "border-red-500")}
                         />
-                        {nominal > 0 && (
+                        {errors.nominal && (
+                            <p className="text-sm text-red-500">{errors.nominal.message}</p>
+                        )}
+                        {(nominal || 0) > 0 && (
                             <p className="text-xs text-muted-foreground">
                                 = {formatRupiah(nominal)} per bulan
                             </p>
@@ -185,19 +219,13 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                                     type="button"
                                     variant={nominal === val ? "default" : "outline"}
                                     size="sm"
-                                    onClick={() => setNominal(val)}
+                                    onClick={() => setValue("nominal", val)}
                                 >
                                     {val >= 1000000 ? `${val / 1000000}jt` : `${val / 1000}rb`}
                                 </Button>
                             ))}
                         </div>
                     </div>
-
-                    {error && (
-                        <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
-                            {error}
-                        </p>
-                    )}
 
                     <DialogFooter>
                         <Button type="submit" disabled={loading} className="w-full">

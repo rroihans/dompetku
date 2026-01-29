@@ -4,4 +4,5 @@ export * from "./transactions-repo";
 export * from "./transfer-repo";
 export * from "./cicilan-repo";
 export * from "./summary";
+export * from "./kategori-repo";
 

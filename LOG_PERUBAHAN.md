@@ -2,15 +2,16 @@
 
 ## Stack & Arsitektur
 - **Framework:** Next.js 16, React 19, Tailwind CSS v4
-- **Database:** Prisma 5.10.2 + SQLite
+- **Database:** Dexie.js 4 (IndexedDB)
 - **Sistem:** Double-Entry Bookkeeping (PSAK Indonesia)
 - **UI:** Shadcn UI, Lucide Icons, Recharts
-- **Layout:** Sidebar (Desktop), Bottom Nav + Hamburger (Mobile)
+- **Layout:** Sidebar (Desktop), Drawer Navigation + Bottom Nav (Mobile)
 
 ## Data Dummy
 - 6 Akun User + 44 Akun Internal (kategori)
 - 348+ Transaksi (6 bulan)
 - 6 Recurring, 5 Cicilan, 27 Budget
+- 16 Kategori Default (PSAK-inspired)
 
 ---
 
@@ -61,6 +62,15 @@
 - Frekuensi: Harian, Mingguan, Bulanan, Tahunan
 - Toggle aktif/nonaktif
 - Auto-execute (siap untuk cron)
+
+### Kategori ✨
+- System kategori hierarki (Main → Sub, max depth 1)
+- CRUD lengkap dengan icon & color picker
+- Nature classification: Must / Need / Want (PSAK-inspired)
+- Visibility toggle per kategori
+- Auto-migration dari existing transaksi
+- 16 default categories (Gaji, Makan, Transport, dll)
+- Link ke /kategori dari Settings
 
 ### Budget/Anggaran
 - Set limit per kategori per bulan
@@ -146,6 +156,54 @@
 
 
 ## Riwayat Versi
+
+### v0.9.1 (2026-01-30)
+- **Service Layer Architecture:**
+    - **Architecture:** Implementasi Service Layer (`src/services`) untuk memisahkan business logic dari UI dan Repository.
+    - **Services:** `TransactionService`, `BudgetService`, `CicilanService`, `NotificationService`, `AnalyticsService`.
+    - **Pattern:** Menggunakan `ServiceFactory` untuk Dependency Injection dan Centralized Error Handling (`BusinessError`).
+    - **Type Safety:** Definisi tipe eksplisit di `src/services/types` untuk interoperabilitas yang lebih baik.
+
+### v0.9.0 (2026-01-30)
+- **Form System Overhaul (React Hook Form):**
+    - **Performance & Validation:** Migrasi 5 form prioritas (`AddCicilanForm`, `AddRecurringForm`, `AddBudgetForm`, `AddAccountForm`, `AddTransactionForm`) menggunakan `react-hook-form` + `zodResolver`.
+    - **Robust Type Safety:** Implementasi casting `as any` pada resolver untuk mengatasi strict type mismatch TS-Next.js terbaru.
+    - **Better UX:** State management yang lebih efisien (uncontrolled components), validasi real-time, dan loading state yang konsisten.
+    - **Maintainability:** Pengurangan boilerplate code manual `useState` hingga 40% per file form.
+
+### v0.8.5 (2026-01-30)
+- **Unit Testing Setup (Vitest):**
+    - **Infrastructure:** Konfigurasi Vitest + JSDOM + fake-indexeddb untuk high-speed in-memory database testing tanpa merusak data production.
+    - **Test Utilities:** Helper `test-db.ts` untuk isolasi database per-test case dan custom matchers (`toBeValidRupiah`, `toBalanceDoubleEntry`).
+    - **CI/CD Ready:** Script `npm run test:critical` untuk validasi logika bisnis vital sebelum deployment.
+- **Critical Business Logic Tests:**
+    - **Account Integrity:** Verifikasi prinsip Double-Entry Bookkeeping (Total Debits = Total Credits) pada setiap operasi mutasi saldo.
+    - **Transactions:** Validasi rule bisnis (nominal positif, akun valid), idempotency protection, dan ketepatan update summary bulanan.
+    - **Cicilan/Installments:** Validasi kalkulasi rencana cicilan, pembayaran bulanan (Expense vs Liability reduction), dan pelunasan dipercepat (Early Payoff).
+- **Core Fixes:**
+    - **Schema Validation:** Relaxed validation pada ID (`.cuid()` removed) untuk mendukung format UUID/Custom ID sistem (`id_...`), memperbaiki kompatibilitas create data.
+    - **Accounting Logic Fix:** Koreksi pemahaman test case pada transaksi Asset -> Expense (Total Debits tetap konstan karena perpindahan antar akun Debit-nature).
+
+### v0.8.4 (2026-01-30)
+- **Mobile-First UX Improvements:**
+    - **Hide Filter by Default:** Filter transaksi disembunyikan secara default dengan tombol toggle "Tampilkan Filter" untuk tampilan lebih bersih.
+    - **Drawer Navigation:** Implementasi slide drawer dari kiri dengan hamburger menu di mobile header, menggantikan bottom nav untuk akses menu lengkap.
+    - **Menu Structure:** Dark theme navigation dengan colored icons, active state highlighting, dan expandable submenu (Statistics).
+- **Kategori Hierarki System:**
+    - **Database Migration (v4):** Non-destructive migration menambah table `kategori` tanpa mengubah data existing (ZERO data loss).
+    - **Hierarchical Categories:** Support main category → subcategory (max depth = 1 level).
+    - **Nature Classification:** Must / Need / Want untuk kategorisasi keuangan (sesuai best practice PSAK).
+    - **Full CRUD:** Create via dialog, Edit inline dengan icon/color picker, Delete dengan validation.
+    - **Auto-Migration:** Sistem otomatis membuat kategori dari transaksi existing saat pertama kali load.
+    - **Default Categories:** 16 kategori default PSAK-inspired (Gaji, Makanan, Transport, dll).
+    - **UI Components:** List page (`/kategori`), detail page (`/kategori/[id]`), create dialog, color/icon picker.
+- **Component Library:**
+    - **Sheet Component:** Manual implementation Radix UI Sheet untuk drawer dengan slide animation dari 4 arah.
+- **Technical Changes:**
+    - Database version bump: v3 → v4
+    - New files: `kategori-repo.ts`, `drawer-navigation.tsx`, `sheet.tsx`, `kategori/edit/page.tsx`
+    - **Refactor:** `app/kategori/[id]` → `app/kategori/edit?id=...` (Query Params) untuk kompatibilitas penuh dengan `output: export`
+    - **Fix:** Build error `generateStaticParams` solved dengan static routing pattern.
 
 ### v0.8.1 (2026-01-28)
 - **UI/UX Fixes (Post-Meeting Testing):**

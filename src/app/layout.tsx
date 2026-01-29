@@ -9,6 +9,7 @@ import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { DebugMenu } from "@/components/layout/debug-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { LiveClock } from "@/components/layout/live-clock";
+import { DrawerNavigation } from "@/components/layout/drawer-navigation";
 import { Toaster } from "sonner";
 import { FAB } from "@/components/ui/fab";
 import { SWRegister } from "@/components/pwa/sw-register";
@@ -57,7 +58,10 @@ export default function RootLayout({
             <main className="flex-1 pb-20 md:pb-0 relative overflow-x-hidden w-full max-w-full md:h-screen md:overflow-y-auto">
               <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex h-14 items-center justify-between px-4 w-full">
-                  <div className="md:hidden font-bold text-primary text-xl mr-4">Dompetku</div>
+                  <div className="flex items-center gap-2">
+                    <DrawerNavigation />
+                    <div className="md:hidden font-bold text-primary text-xl">Dompetku</div>
+                  </div>
                   <div className="flex-1 items-center hidden md:flex">
                     <LiveClock />
                   </div>

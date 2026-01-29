@@ -219,6 +219,19 @@ export interface LogSistemRecord {
     createdAt: Date;
 }
 
+export interface KategoriRecord {
+    id: string;
+    nama: string;
+    parentId?: string | null;  // null = kategori utama
+    icon: string;              // lucide icon name
+    warna: string;             // hex color
+    nature: string;            // MUST | NEED | WANT
+    show: boolean;             // visibility toggle
+    order: number;             // untuk sorting
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 // =========================
 // Analytics summary records
 // =========================
@@ -286,6 +299,7 @@ export class DompetkuDB extends Dexie {
     accountTemplate!: Table<AccountTemplateRecord, string>;
     templateTransaksi!: Table<TemplateTransaksiRecord, string>;
     logSistem!: Table<LogSistemRecord, string>;
+    kategori!: Table<KategoriRecord, string>;
 
     summaryMonth!: Table<SummaryMonthRecord, string>;
     summaryCategoryMonth!: Table<SummaryCategoryMonthRecord, string>;
@@ -361,6 +375,32 @@ export class DompetkuDB extends Dexie {
             accountTemplate: "id, nama, tipeAkun, isActive",
             templateTransaksi: "id, nama, kategori, tipeTransaksi, akunId, usageCount",
             logSistem: "id, level, modul, createdAt",
+
+            summaryMonth: "id, month",
+            summaryCategoryMonth: "id, month, kategori",
+            summaryHeatmapDay: "id, tanggal",
+            summaryAccountMonth: "id, month, akunId",
+            archivePeriod: "id, archived, createdAt",
+        });
+
+        // Version 4: Add kategori table for hierarchical categories
+        this.version(4).stores({
+            akun: "id, nama, tipe, biayaAdminAktif, createdAt, updatedAt",
+            transaksi: "id, tanggal, kategori, debitAkunId, kreditAkunId, rencanaCicilanId, idempotencyKey, [tanggal+id], [kategori+tanggal], [debitAkunId+tanggal], [kreditAkunId+tanggal]",
+            rencanaCicilan: "id, status, tanggalJatuhTempo, akunKreditId, akunDebitId, createdAt",
+            recurringTransaction: "id, akunId, frekuensi, aktif, terakhirDieksekusi, createdAt",
+            budget: "id, kategori, [bulan+tahun]",
+            netWorthSnapshot: "id, tanggal",
+            currencyRate: "id, [kodeAsal+kodeTujuan], tanggalUpdate",
+            appSetting: "id, kunci, updatedAt",
+            adminFee: "id, akunId, isActive, recurringTxId",
+            installmentTemplate: "id, bankName, isActive",
+            notification: "id, read, createdAt",
+            filterPreset: "id, name, usageCount",
+            accountTemplate: "id, nama, tipeAkun, isActive",
+            templateTransaksi: "id, nama, kategori, tipeTransaksi, akunId, usageCount",
+            logSistem: "id, level, modul, createdAt",
+            kategori: "id, nama, parentId, nature, show, order, createdAt",
 
             summaryMonth: "id, month",
             summaryCategoryMonth: "id, month, kategori",

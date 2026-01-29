@@ -3,6 +3,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, RefreshCw } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +29,7 @@ import {
 } from "@/components/ui/select"
 import { createRecurringTransaction } from "@/lib/db/recurring-repo"
 import { AccountDTO } from "@/lib/account-dto"
+import { cn } from "@/lib/utils"
 
 interface AddRecurringFormProps {
     accounts: AccountDTO[]
@@ -37,65 +42,83 @@ const KATEGORI_EXPENSE = [
     "Tabungan", "Internet", "Listrik", "Air", "Lainnya"
 ]
 
+const formSchema = z.object({
+    nama: z.string().min(1, "Nama transaksi wajib diisi"),
+    nominal: z.coerce.number().min(1, "Nominal harus lebih dari 0"),
+    kategori: z.string().min(1, "Pilih kategori"),
+    tipeTransaksi: z.enum(["MASUK", "KELUAR"]),
+    akunId: z.string().min(1, "Pilih akun"),
+    frekuensi: z.enum(["HARIAN", "MINGGUAN", "BULANAN", "TAHUNAN"]),
+    hariDalamBulan: z.coerce.number().min(1).max(28).default(1),
+    hariDalamMinggu: z.coerce.number().min(0).max(6).default(1),
+})
+
+type FormValues = z.infer<typeof formSchema>
+
 export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState("")
 
-    // Form state
-    const [nama, setNama] = useState("")
-    const [nominal, setNominal] = useState<number>(0)
-    const [kategori, setKategori] = useState("")
-    const [tipeTransaksi, setTipeTransaksi] = useState<"MASUK" | "KELUAR">("KELUAR")
-    const [akunId, setAkunId] = useState("")
-    const [frekuensi, setFrekuensi] = useState<"HARIAN" | "MINGGUAN" | "BULANAN" | "TAHUNAN">("BULANAN")
-    const [hariDalamBulan, setHariDalamBulan] = useState<number>(1)
-    const [hariDalamMinggu, setHariDalamMinggu] = useState<number>(1)
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        reset,
+        formState: { errors },
+    } = useForm<FormValues>({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(formSchema) as any,
+        defaultValues: {
+            nama: "",
+            nominal: 0,
+            kategori: "",
+            tipeTransaksi: "KELUAR",
+            akunId: "",
+            frekuensi: "BULANAN",
+            hariDalamBulan: 1,
+            hariDalamMinggu: 1,
+        },
+    })
+
+    const tipeTransaksi = watch("tipeTransaksi")
+    const kategori = watch("kategori")
+    const akunId = watch("akunId")
+    const frekuensi = watch("frekuensi")
+    const hariDalamBulan = watch("hariDalamBulan")
+    const hariDalamMinggu = watch("hariDalamMinggu")
 
     const kategoriList = tipeTransaksi === "MASUK" ? KATEGORI_INCOME : KATEGORI_EXPENSE
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
+    async function onSubmit(values: FormValues) {
         setLoading(true)
-        setError("")
-
         try {
-            if (!nama || !akunId || !kategori || nominal <= 0) {
-                setError("Lengkapi semua field yang diperlukan")
-                setLoading(false)
-                return
-            }
-
             const res = await createRecurringTransaction({
-                nama,
-                nominal,
-                kategori,
-                tipeTransaksi,
-                akunId,
-                frekuensi,
-                hariDalamBulan: frekuensi === "BULANAN" ? hariDalamBulan : undefined,
-                hariDalamMinggu: frekuensi === "MINGGUAN" ? hariDalamMinggu : undefined,
+                nama: values.nama,
+                nominal: values.nominal,
+                kategori: values.kategori,
+                tipeTransaksi: values.tipeTransaksi,
+                akunId: values.akunId,
+                frekuensi: values.frekuensi,
+                hariDalamBulan: values.frekuensi === "BULANAN" ? values.hariDalamBulan : undefined,
+                hariDalamMinggu: values.frekuensi === "MINGGUAN" ? values.hariDalamMinggu : undefined,
                 tanggalMulai: new Date(),
             })
 
             if (res.success) {
                 setOpen(false)
-                // Reset form
-                setNama("")
-                setNominal(0)
-                setKategori("")
-                setTipeTransaksi("KELUAR")
-                setAkunId("")
-                setFrekuensi("BULANAN")
-                setHariDalamBulan(1)
+                reset()
+                toast.success("Transaksi berulang berhasil dibuat")
 
                 if (onRefresh) onRefresh()
                 else router.refresh()
+            } else {
+                toast.error(res.error || "Gagal membuat transaksi berulang")
             }
         } catch (err: any) {
             console.error(err)
-            setError(err.message || "Gagal membuat transaksi berulang")
+            toast.error(err.message || "Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
         }
@@ -118,16 +141,19 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                         Buat transaksi otomatis yang akan dijalankan secara berkala.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
                     {/* Nama */}
                     <div className="grid gap-2">
                         <Label htmlFor="nama">Nama Transaksi</Label>
                         <Input
                             id="nama"
                             placeholder="Contoh: Gaji Bulanan, Tagihan Internet"
-                            value={nama}
-                            onChange={(e) => setNama(e.target.value)}
+                            {...register("nama")}
+                            className={cn(errors.nama && "border-red-500")}
                         />
+                        {errors.nama && (
+                            <p className="text-sm text-red-500">{errors.nama.message}</p>
+                        )}
                     </div>
 
                     {/* Tipe Transaksi */}
@@ -139,8 +165,8 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                                 variant={tipeTransaksi === "MASUK" ? "default" : "outline"}
                                 className={`flex-1 ${tipeTransaksi === "MASUK" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
                                 onClick={() => {
-                                    setTipeTransaksi("MASUK")
-                                    setKategori("")
+                                    setValue("tipeTransaksi", "MASUK")
+                                    setValue("kategori", "") // Reset kategori saat ganti tipe
                                 }}
                             >
                                 Pemasukan
@@ -150,8 +176,8 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                                 variant={tipeTransaksi === "KELUAR" ? "default" : "outline"}
                                 className={`flex-1 ${tipeTransaksi === "KELUAR" ? "bg-red-600 hover:bg-red-700" : ""}`}
                                 onClick={() => {
-                                    setTipeTransaksi("KELUAR")
-                                    setKategori("")
+                                    setValue("tipeTransaksi", "KELUAR")
+                                    setValue("kategori", "") // Reset kategori saat ganti tipe
                                 }}
                             >
                                 Pengeluaran
@@ -166,17 +192,22 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                             id="nominal"
                             type="number"
                             placeholder="0"
-                            value={nominal || ""}
-                            onChange={(e) => setNominal(e.target.value === "" ? 0 : Number(e.target.value))}
-                            min={1}
+                            {...register("nominal", { valueAsNumber: true })}
+                            className={cn(errors.nominal && "border-red-500")}
                         />
+                        {errors.nominal && (
+                            <p className="text-sm text-red-500">{errors.nominal.message}</p>
+                        )}
                     </div>
 
                     {/* Kategori */}
                     <div className="grid gap-2">
                         <Label>Kategori</Label>
-                        <Select value={kategori} onValueChange={setKategori}>
-                            <SelectTrigger>
+                        <Select
+                            value={kategori}
+                            onValueChange={(val) => setValue("kategori", val, { shouldValidate: true })}
+                        >
+                            <SelectTrigger className={cn(errors.kategori && "border-red-500")}>
                                 <SelectValue placeholder="Pilih kategori" />
                             </SelectTrigger>
                             <SelectContent>
@@ -185,13 +216,19 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                                 ))}
                             </SelectContent>
                         </Select>
+                        {errors.kategori && (
+                            <p className="text-sm text-red-500">{errors.kategori.message}</p>
+                        )}
                     </div>
 
                     {/* Akun */}
                     <div className="grid gap-2">
                         <Label>Akun</Label>
-                        <Select value={akunId} onValueChange={setAkunId}>
-                            <SelectTrigger>
+                        <Select
+                            value={akunId}
+                            onValueChange={(val) => setValue("akunId", val, { shouldValidate: true })}
+                        >
+                            <SelectTrigger className={cn(errors.akunId && "border-red-500")}>
                                 <SelectValue placeholder="Pilih akun" />
                             </SelectTrigger>
                             <SelectContent>
@@ -200,12 +237,18 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                                 ))}
                             </SelectContent>
                         </Select>
+                        {errors.akunId && (
+                            <p className="text-sm text-red-500">{errors.akunId.message}</p>
+                        )}
                     </div>
 
                     {/* Frekuensi */}
                     <div className="grid gap-2">
                         <Label>Frekuensi</Label>
-                        <Select value={frekuensi} onValueChange={(v: any) => setFrekuensi(v)}>
+                        <Select
+                            value={frekuensi}
+                            onValueChange={(v: any) => setValue("frekuensi", v)}
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih frekuensi" />
                             </SelectTrigger>
@@ -224,7 +267,7 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                             <Label>Tanggal Eksekusi</Label>
                             <Select
                                 value={String(hariDalamBulan)}
-                                onValueChange={(v) => setHariDalamBulan(Number(v))}
+                                onValueChange={(v) => setValue("hariDalamBulan", Number(v))}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Pilih tanggal" />
@@ -244,7 +287,7 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                             <Label>Hari Eksekusi</Label>
                             <Select
                                 value={String(hariDalamMinggu)}
-                                onValueChange={(v) => setHariDalamMinggu(Number(v))}
+                                onValueChange={(v) => setValue("hariDalamMinggu", Number(v))}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Pilih hari" />
@@ -260,12 +303,6 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                                 </SelectContent>
                             </Select>
                         </div>
-                    )}
-
-                    {error && (
-                        <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
-                            {error}
-                        </p>
                     )}
 
                     <DialogFooter>

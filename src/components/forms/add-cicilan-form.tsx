@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Plus, CreditCard, Calculator, HelpCircle } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,74 +31,91 @@ import {
 import { createCicilan } from "@/lib/db/cicilan-repo" // Ensure correct path
 import { formatRupiah } from "@/lib/format"
 import type { AccountDTO } from "@/lib/account-dto"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface AddCicilanFormProps {
     accounts: AccountDTO[]
     onRefresh?: () => void
 }
 
+const formSchema = z.object({
+    namaProduk: z.string().min(1, "Nama produk wajib diisi"),
+    totalPokok: z.coerce.number().min(1, "Harga barang harus lebih dari 0"),
+    tenor: z.coerce.number().min(1, "Tenor minimal 1 bulan"),
+    bungaPersen: z.coerce.number().min(0).default(0),
+    biayaAdmin: z.coerce.number().min(0).default(0),
+    tanggalJatuhTempo: z.coerce.number().min(1).max(31).default(5),
+    akunKreditId: z.string().min(1, "Pilih kartu kredit sumber"),
+})
+
+type FormValues = z.infer<typeof formSchema>
+
 export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
     const router = useRouter()
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState("")
-
-    // Form state
-    const [namaProduk, setNamaProduk] = useState("")
-    const [totalPokok, setTotalPokok] = useState<number>(0)
-    const [tenor, setTenor] = useState<number>(12)
-    const [bungaPersen, setBungaPersen] = useState<number>(0)
-    const [biayaAdmin, setBiayaAdmin] = useState<number>(0)
-    const [tanggalJatuhTempo, setTanggalJatuhTempo] = useState<number>(5)
-    const [akunKreditId, setAkunKreditId] = useState("")
-
-    // Hitung cicilan per bulan otomatis
-    const hitungCicilanBulanan = () => {
-        if (totalPokok <= 0 || tenor <= 0) return 0
-        const totalBunga = (totalPokok * bungaPersen) / 100
-        const totalDenganBunga = totalPokok + totalBunga + biayaAdmin
-        return Math.ceil(totalDenganBunga / tenor)
-    }
-
-    const nominalPerBulan = hitungCicilanBulanan()
-    const totalBayar = nominalPerBulan * tenor
 
     // Filter hanya kartu kredit
     const kartuKreditList = accounts.filter(a => a.tipe === "CREDIT_CARD")
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        reset,
+        formState: { errors, isValid },
+    } = useForm<FormValues>({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resolver: zodResolver(formSchema) as any,
+        defaultValues: {
+            namaProduk: "",
+            totalPokok: 0,
+            tenor: 12,
+            bungaPersen: 0,
+            biayaAdmin: 0,
+            tanggalJatuhTempo: 5,
+            akunKreditId: "",
+        },
+    })
+
+    const totalPokok = watch("totalPokok")
+    const tenor = watch("tenor")
+    const bungaPersen = watch("bungaPersen")
+    const biayaAdmin = watch("biayaAdmin")
+    const akunKreditIdValue = watch("akunKreditId")
+    const tanggalJatuhTempoValue = watch("tanggalJatuhTempo")
+
+    // Derived values for calculation
+    const hitungCicilanBulanan = () => {
+        if (!totalPokok || !tenor) return 0
+        const totalBunga = (totalPokok * (bungaPersen || 0)) / 100
+        const totalDenganBunga = totalPokok + totalBunga + (biayaAdmin || 0)
+        return Math.ceil(totalDenganBunga / tenor)
+    }
+
+    const nominalPerBulan = hitungCicilanBulanan()
+    const totalBayar = nominalPerBulan * (tenor || 0)
+
+    async function onSubmit(values: FormValues) {
         setLoading(true)
-        setError("")
-
         try {
-            if (!namaProduk || !akunKreditId || totalPokok <= 0 || tenor <= 0) {
-                setError("Lengkapi semua field yang diperlukan")
-                setLoading(false)
-                return
-            }
-
             const res = await createCicilan({
-                namaProduk,
-                totalPokok,
-                tenor,
+                namaProduk: values.namaProduk,
+                totalPokok: values.totalPokok,
+                tenor: values.tenor,
                 nominalPerBulan,
-                bungaPersen,
-                biayaAdmin,
-                tanggalJatuhTempo,
-                akunKreditId,
+                bungaPersen: values.bungaPersen,
+                biayaAdmin: values.biayaAdmin,
+                tanggalJatuhTempo: values.tanggalJatuhTempo,
+                akunKreditId: values.akunKreditId,
             })
 
             if (res.success) {
                 setOpen(false)
-                // Reset form
-                setNamaProduk("")
-                setTotalPokok(0)
-                setTenor(12)
-                setBungaPersen(0)
-                setBiayaAdmin(0)
-                setTanggalJatuhTempo(5)
-                setAkunKreditId("")
+                reset()
+                toast.success("Rencana cicilan berhasil dibuat")
 
                 if (onRefresh) {
                     onRefresh()
@@ -103,11 +123,11 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                     router.refresh()
                 }
             } else {
-                setError(typeof res.error === 'string' ? res.error : "Gagal membuat rencana cicilan")
+                toast.error(typeof res.error === 'string' ? res.error : "Gagal membuat rencana cicilan")
             }
         } catch (err) {
             console.error(err)
-            setError("Terjadi kesalahan sistem")
+            toast.error("Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
         }
@@ -130,16 +150,19 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                         Catat rencana cicilan kartu kredit untuk tracking otomatis.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
                     {/* Nama Produk */}
                     <div className="grid gap-2">
                         <Label htmlFor="namaProduk">Nama Produk / Pembelian</Label>
                         <Input
                             id="namaProduk"
                             placeholder="Contoh: iPhone 15 Pro, Laptop ASUS"
-                            value={namaProduk}
-                            onChange={(e) => setNamaProduk(e.target.value)}
+                            className={cn(errors.namaProduk && "border-red-500")}
+                            {...register("namaProduk")}
                         />
+                        {errors.namaProduk && (
+                            <p className="text-sm text-red-500">{errors.namaProduk.message}</p>
+                        )}
                     </div>
 
                     {/* Kartu Kredit */}
@@ -153,8 +176,11 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 </Link>.
                             </p>
                         ) : (
-                            <Select value={akunKreditId} onValueChange={setAkunKreditId}>
-                                <SelectTrigger>
+                            <Select
+                                value={akunKreditIdValue}
+                                onValueChange={(val) => setValue("akunKreditId", val, { shouldValidate: true })}
+                            >
+                                <SelectTrigger className={cn(errors.akunKreditId && "border-red-500")}>
                                     <SelectValue placeholder="Pilih kartu kredit" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -171,6 +197,9 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 </SelectContent>
                             </Select>
                         )}
+                        {errors.akunKreditId && (
+                            <p className="text-sm text-red-500">{errors.akunKreditId.message}</p>
+                        )}
                     </div>
 
                     {/* Harga & Tenor */}
@@ -181,17 +210,22 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 id="totalPokok"
                                 type="number"
                                 placeholder="0"
-                                value={totalPokok || ""}
-                                onChange={(e) => setTotalPokok(e.target.value === "" ? 0 : Number(e.target.value))}
-                                min={1}
+                                className={cn(errors.totalPokok && "border-red-500")}
+                                {...register("totalPokok", { valueAsNumber: true })}
                             />
+                            {errors.totalPokok && (
+                                <p className="text-sm text-red-500">{errors.totalPokok.message}</p>
+                            )}
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="tenor" className="flex items-center gap-1">
                                 Tenor (Bulan)
                                 <span className="text-muted-foreground text-xs">(berapa kali bayar)</span>
                             </Label>
-                            <Select value={String(tenor)} onValueChange={(v) => setTenor(Number(v))}>
+                            <Select
+                                value={String(tenor)}
+                                onValueChange={(val) => setValue("tenor", Number(val))}
+                            >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Pilih tenor" />
                                 </SelectTrigger>
@@ -215,10 +249,8 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 id="bungaPersen"
                                 type="number"
                                 placeholder="0"
-                                value={bungaPersen || ""}
-                                onChange={(e) => setBungaPersen(e.target.value === "" ? 0 : Number(e.target.value))}
-                                min={0}
                                 step="0.1"
+                                {...register("bungaPersen", { valueAsNumber: true })}
                             />
                         </div>
                         <div className="grid gap-2">
@@ -230,9 +262,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 id="biayaAdmin"
                                 type="number"
                                 placeholder="0"
-                                value={biayaAdmin || ""}
-                                onChange={(e) => setBiayaAdmin(e.target.value === "" ? 0 : Number(e.target.value))}
-                                min={0}
+                                {...register("biayaAdmin", { valueAsNumber: true })}
                             />
                         </div>
                     </div>
@@ -240,7 +270,10 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                     {/* Tanggal Jatuh Tempo */}
                     <div className="grid gap-2">
                         <Label>Tanggal Jatuh Tempo Setiap Bulan</Label>
-                        <Select value={String(tanggalJatuhTempo)} onValueChange={(v) => setTanggalJatuhTempo(Number(v))}>
+                        <Select
+                            value={String(tanggalJatuhTempoValue)}
+                            onValueChange={(val) => setValue("tanggalJatuhTempo", Number(val))}
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih tanggal" />
                             </SelectTrigger>
@@ -253,7 +286,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                     </div>
 
                     {/* Kalkulasi Preview */}
-                    {totalPokok > 0 && tenor > 0 && (
+                    {(totalPokok || 0) > 0 && (tenor || 0) > 0 && (
                         <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
                             <div className="flex items-center gap-2 text-primary font-semibold">
                                 <Calculator className="h-4 w-4" />
@@ -269,18 +302,12 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                     <p className="text-xl font-bold">{formatRupiah(totalBayar)}</p>
                                 </div>
                             </div>
-                            {bungaPersen > 0 && (
+                            {(bungaPersen || 0) > 0 && (
                                 <p className="text-xs text-muted-foreground">
                                     * Termasuk bunga {bungaPersen}% = {formatRupiah((totalPokok * bungaPersen) / 100)}
                                 </p>
                             )}
                         </div>
-                    )}
-
-                    {error && (
-                        <p className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
-                            {error}
-                        </p>
                     )}
 
                     <DialogFooter>

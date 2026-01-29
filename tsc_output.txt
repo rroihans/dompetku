@@ -1,0 +1,20 @@
+src/lib/db/__tests__/transactions-repo.test.ts(153,24): error TS2339: Property 'error' does not exist on type 'ServerActionResult<any>'.
+  Property 'error' does not exist on type '{ success: true; data?: any; duplicated?: boolean | undefined; alert?: any; message?: string | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(203,32): error TS2339: Property 'data' does not exist on type 'ServerActionResult<any>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(244,25): error TS2339: Property 'data' does not exist on type 'ServerActionResult<any>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(244,44): error TS2339: Property 'data' does not exist on type 'ServerActionResult<any>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(314,28): error TS2339: Property 'data' does not exist on type 'ServerActionResult<any>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/services/notification-service.ts(51,13): error TS2353: Object literal may only specify known properties, and 'dueDate' does not exist in type 'NotificationRecord'.
+src/services/notification-service.ts(72,17): error TS2561: Object literal may only specify known properties, but 'isRead' does not exist in type 'NotificationRecord'. Did you mean to write 'read'?
+src/services/transaction-service.ts(71,44): error TS2339: Property 'error' does not exist on type 'ServerActionResult<any>'.
+  Property 'error' does not exist on type '{ success: true; data?: any; duplicated?: boolean | undefined; alert?: any; message?: string | undefined; }'.
+src/services/transaction-service.ts(119,44): error TS2339: Property 'error' does not exist on type 'ServerActionResult<any>'.
+  Property 'error' does not exist on type '{ success: true; data?: any; duplicated?: boolean | undefined; alert?: any; message?: string | undefined; }'.
+src/services/transaction-service.ts(188,44): error TS2339: Property 'error' does not exist on type 'ServerActionResult<any>'.
+  Property 'error' does not exist on type '{ success: true; data?: any; duplicated?: boolean | undefined; alert?: any; message?: string | undefined; }'.
+src/services/transaction-service.ts(236,21): error TS2339: Property 'deskripsi' does not exist on type 'Partial<TransaksiInput>'.
+src/services/transaction-service.ts(236,77): error TS2339: Property 'deskripsi' does not exist on type 'Partial<TransaksiInput>'.
