@@ -58,7 +58,7 @@ export default function RootLayout({
               <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex h-14 items-center justify-between px-4 w-full">
                   <div className="md:hidden font-bold text-primary text-xl mr-4">Dompetku</div>
-                  <div className="flex-1 flex items-center">
+                  <div className="flex-1 items-center hidden md:flex">
                     <LiveClock />
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

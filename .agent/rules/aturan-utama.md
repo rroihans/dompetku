@@ -6,8 +6,8 @@ trigger: always_on
 
 ## Stack Teknologi
 - Framework: Next.js (App Router), TypeScript.
-- Database: Prisma ORM dengan SQLite.
-- UI: Tailwind CSS, Shadcn UI, Lucide Icons.
+- Database: Dexie.js (IndexedDB) - No Server Side.
+- UI: Tailwind CSS v4, Shadcn UI, Lucide Icons.
 
 ## Dos (Lakukan):
 - Gunakan Bahasa Indonesia untuk semua UI.
@@ -17,6 +17,14 @@ trigger: always_on
 - Gunakan Tooltip untuk istilah teknis keuangan (Tenor, Akrual, dll).
 - Selalu gunakan Context7 (`resolve-library-id` dan `query-docs`) untuk melihat dokumentasi terbaru dari programming languages, framework, atau library apapun.
 - Update file `LOG_PERUBAHAN.md` setiap selesai tugas.
+
+## Etika & Prosedur
+- **Status & Tugas:** Berikan ringkasan status sistem saat ini dalam Bahasa Indonesia formal, lalu tanyakan tugas spesifik.
+- **Riset:** Gunakan internet untuk troubleshooting atau validasi pengetahuan.
+- **Validasi UI:**
+  - ⛔ **DILARANG** menggunakan `browser_subagent` untuk cek visual/tampilan.
+  - ✅ Biarkan **USER** yang memvalidasi tampilan secara mandiri.
+- **Update Data:** Saat ada fitur baru yang butuh data, update seed dummy data via workflow `update-seed-dummy-data`.
 
 ## Donts (Jangan):
 - Jangan gunakan CSS murni, gunakan Tailwind.

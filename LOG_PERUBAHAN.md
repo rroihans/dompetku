@@ -137,6 +137,7 @@
     - **Form Transfer:** Notifikasi sukses & redirect yang benar ke halaman transaksi.
     - **Layout Akun:** Hapus tombol redundan (Riwayat/Cicilan/Transaksi) dari card akun untuk tampilan bersih.
     - **List Transaksi:** Kolom Akun menampilkan "Asal → Tujuan" untuk transfer, dan counterparty untuk transaksi lain.
+    - **Mobile Header:** Sembunyikan component `LiveClock` (Tanggal & Jam) di mobile layout untuk mencegah overlapping dan tampilan berantakan; user mobile sudah memiliki jam di status bar.
     - **FAB (Floating Action Button):** Refactor total menggunakan `Dialog` untuk Tambah Akun & Transfer, serta Link yang benar.
 - **Bug Fixes:**
     - Fix logic form transaksi yang sempat hilang saat refactor.
