@@ -138,7 +138,10 @@
     - **Layout Akun:** Hapus tombol redundan (Riwayat/Cicilan/Transaksi) dari card akun untuk tampilan bersih.
     - **List Transaksi:** Kolom Akun menampilkan "Asal → Tujuan" untuk transfer, dan counterparty untuk transaksi lain.
     - **Mobile Header:** Sembunyikan component `LiveClock` (Tanggal & Jam) di mobile layout untuk mencegah overlapping dan tampilan berantakan; user mobile sudah memiliki jam di status bar.
-    - **FAB (Floating Action Button):** Refactor total menggunakan `Dialog` untuk Tambah Akun & Transfer, serta Link yang benar.
+    - **Mobile Notifications:** Fix width dropdown notifikasi agar responsif dan sembunyikan scrollbar bawaan.
+    - **FAB Menu:** Tambahkan backdrop overlay saat menu terbuka, perbaiki alignment label/icon, dan animasi yang lebih halus.
+    - **Pintasan Cepat:** Refactor total semua tombol dengan `block w-full`, `min-w-0`, dan `truncate` untuk handling text overflow yang sempurna.
+    - **FAB (Floating Action Button):** Refactor total menggunakan `Dialog`, tombol menu kini otomatis menutup (`setOpen(false)`) saat item diklik agar tampilan bersih.
 - **Bug Fixes:**
     - Fix logic form transaksi yang sempat hilang saat refactor.
     - Perbaikan `TransferForm` state management.

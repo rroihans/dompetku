@@ -365,39 +365,39 @@ export default function PengaturanPage() {
                         <CardDescription>Akses cepat ke fitur-fitur utama.</CardDescription>
                     </CardHeader>
                     <CardContent className="grid gap-2 md:grid-cols-2">
-                        <Link href="/akun">
+                        <Link href="/akun" className="block w-full">
                             <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
-                                <Wallet className="w-4 h-4 mr-3" />
-                                <div className="text-left">
-                                    <div className="font-medium">Kelola Akun</div>
-                                    <div className="text-xs text-muted-foreground">Bank, E-Wallet, Kartu Kredit</div>
+                                <Wallet className="w-5 h-5 mr-3 shrink-0" />
+                                <div className="text-left flex-1 min-w-0">
+                                    <div className="font-medium truncate">Kelola Akun</div>
+                                    <div className="text-xs text-muted-foreground truncate">Bank, E-Wallet, Kartu Kredit</div>
                                 </div>
                             </Button>
                         </Link>
-                        <Link href="/cicilan">
+                        <Link href="/cicilan" className="block w-full">
                             <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
-                                <CreditCard className="w-4 h-4 mr-3" />
-                                <div className="text-left">
-                                    <div className="font-medium">Cicilan</div>
-                                    <div className="text-xs text-muted-foreground">Tracking kartu kredit</div>
+                                <CreditCard className="w-5 h-5 mr-3 shrink-0" />
+                                <div className="text-left flex-1 min-w-0">
+                                    <div className="font-medium truncate">Cicilan</div>
+                                    <div className="text-xs text-muted-foreground truncate">Kelola kartu kredit</div>
                                 </div>
                             </Button>
                         </Link>
-                        <Link href="/recurring">
+                        <Link href="/recurring" className="block w-full">
                             <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
-                                <RefreshCw className="w-4 h-4 mr-3" />
-                                <div className="text-left">
-                                    <div className="font-medium">Transaksi Berulang</div>
-                                    <div className="text-xs text-muted-foreground">Tagihan otomatis</div>
+                                <RefreshCw className="w-5 h-5 mr-3 shrink-0" />
+                                <div className="text-left flex-1 min-w-0">
+                                    <div className="font-medium truncate">Transaksi Berulang</div>
+                                    <div className="text-xs text-muted-foreground truncate">Tagihan otomatis</div>
                                 </div>
                             </Button>
                         </Link>
-                        <Link href="/anggaran">
+                        <Link href="/anggaran" className="block w-full">
                             <Button variant="outline" className="w-full justify-start h-auto py-3 hover:bg-primary/5">
-                                <Target className="w-4 h-4 mr-3" />
-                                <div className="text-left">
-                                    <div className="font-medium">Anggaran</div>
-                                    <div className="text-xs text-muted-foreground">Batas pengeluaran</div>
+                                <Target className="w-5 h-5 mr-3 shrink-0" />
+                                <div className="text-left flex-1 min-w-0">
+                                    <div className="font-medium truncate">Anggaran</div>
+                                    <div className="text-xs text-muted-foreground truncate">Batas pengeluaran</div>
                                 </div>
                             </Button>
                         </Link>

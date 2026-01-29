@@ -20,96 +20,130 @@ export function FAB() {
     }, [])
 
     return (
-        <div className="fixed bottom-24 md:bottom-6 right-6 z-[55] flex flex-col items-end gap-4">
-            {/* Menu */}
-            <div className={cn(
-                "flex flex-col items-end gap-3 transition-all duration-300 origin-bottom-right",
-                open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-50 translate-y-10 pointer-events-none"
-            )}>
-                {/* 1. Transaksi Baru (Custom Form Popup) */}
-                <div className="flex items-center gap-3">
-                    <span className="bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium shadow-md">
-                        Transaksi Baru
-                    </span>
-                    <AddTransactionForm trigger={
-                        <Button size="icon" className="rounded-full shadow-lg h-10 w-10 bg-background text-foreground hover:bg-muted border">
-                            <Plus className="h-5 w-5" />
-                        </Button>
-                    } />
+        <>
+            {/* Backdrop Overlay */}
+            {open && (
+                <div
+                    className="fixed inset-0 z-[54] bg-background/80 backdrop-blur-sm transition-opacity"
+                    onClick={() => setOpen(false)}
+                />
+            )}
+
+            <div className="fixed bottom-24 md:bottom-6 right-6 z-[55] flex flex-col items-end gap-4">
+                {/* Menu Items */}
+                <div className={cn(
+                    "flex flex-col items-end gap-3 transition-all duration-300 origin-bottom-right",
+                    open ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-50 translate-y-10 pointer-events-none"
+                )}>
+                    {/* 1. Transaksi Baru */}
+                    <div className="flex items-center gap-3">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200">
+                            Transaksi Baru
+                        </span>
+                        <AddTransactionForm trigger={
+                            <Button
+                                onClick={() => setOpen(false)}
+                                size="icon"
+                                className="rounded-full shadow-lg h-11 w-11 bg-background text-foreground hover:bg-muted border transition-transform hover:scale-105"
+                            >
+                                <Plus className="h-5 w-5" />
+                            </Button>
+                        } />
+                    </div>
+
+                    {/* 2. Transfer */}
+                    <div className="flex items-center gap-3">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-75">
+                            Transfer
+                        </span>
+                        <TransferForm trigger={
+                            <Button
+                                onClick={() => setOpen(false)}
+                                size="icon"
+                                className="rounded-full shadow-lg h-11 w-11 bg-background text-foreground hover:bg-muted border transition-transform hover:scale-105"
+                            >
+                                <ArrowRightLeft className="h-5 w-5" />
+                            </Button>
+                        } />
+                    </div>
+
+                    {/* 3. Recurring */}
+                    <div className="flex items-center gap-3">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-100">
+                            Recurring
+                        </span>
+                        <Link href="/transaksi-berulang">
+                            <Button
+                                onClick={() => setOpen(false)}
+                                size="icon"
+                                className="rounded-full shadow-lg h-11 w-11 bg-background text-foreground hover:bg-muted border transition-transform hover:scale-105"
+                            >
+                                <RefreshCw className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                    </div>
+
+                    {/* 4. Tambah Akun */}
+                    <div className="flex items-center gap-3">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-150">
+                            Tambah Akun
+                        </span>
+                        <AddAccountForm templates={templates} trigger={
+                            <Button
+                                onClick={() => setOpen(false)}
+                                size="icon"
+                                className="rounded-full shadow-lg h-11 w-11 bg-background text-foreground hover:bg-muted border transition-transform hover:scale-105"
+                            >
+                                <Wallet className="h-5 w-5" />
+                            </Button>
+                        } />
+                    </div>
+
+                    {/* 5. Set Budget */}
+                    <div className="flex items-center gap-3">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-200">
+                            Set Budget
+                        </span>
+                        <Link href="/anggaran">
+                            <Button
+                                onClick={() => setOpen(false)}
+                                size="icon"
+                                className="rounded-full shadow-lg h-11 w-11 bg-background text-foreground hover:bg-muted border transition-transform hover:scale-105"
+                            >
+                                <Target className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                    </div>
+
+                    {/* 6. Cicilan */}
+                    <div className="flex items-center gap-3">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-300">
+                            Bayar Cicilan
+                        </span>
+                        <Link href="/cicilan">
+                            <Button
+                                onClick={() => setOpen(false)}
+                                size="icon"
+                                className="rounded-full shadow-lg h-11 w-11 bg-background text-foreground hover:bg-muted border transition-transform hover:scale-105"
+                            >
+                                <CreditCard className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
-                {/* 2. Transfer (Dialog Popup) */}
-                <div className="flex items-center gap-3">
-                    <span className="bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium shadow-md">
-                        Transfer
-                    </span>
-                    <TransferForm trigger={
-                        <Button size="icon" className="rounded-full shadow-lg h-10 w-10 bg-background text-foreground hover:bg-muted border">
-                            <ArrowRightLeft className="h-5 w-5" />
-                        </Button>
-                    } />
-                </div>
-
-                {/* 3. Recurring (Link to /transaksi-berulang) */}
-                <div className="flex items-center gap-3">
-                    <span className="bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium shadow-md">
-                        Recurring
-                    </span>
-                    <Link href="/transaksi-berulang">
-                        <Button size="icon" className="rounded-full shadow-lg h-10 w-10 bg-background text-foreground hover:bg-muted border">
-                            <RefreshCw className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                </div>
-
-                {/* 4. Tambah Akun (Dialog Popup) */}
-                <div className="flex items-center gap-3">
-                    <span className="bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium shadow-md">
-                        Tambah Akun
-                    </span>
-                    <AddAccountForm templates={templates} trigger={
-                        <Button size="icon" className="rounded-full shadow-lg h-10 w-10 bg-background text-foreground hover:bg-muted border">
-                            <Wallet className="h-5 w-5" />
-                        </Button>
-                    } />
-                </div>
-
-                {/* 5. Set Budget (Link) */}
-                <div className="flex items-center gap-3">
-                    <span className="bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium shadow-md">
-                        Set Budget
-                    </span>
-                    <Link href="/anggaran">
-                        <Button size="icon" className="rounded-full shadow-lg h-10 w-10 bg-background text-foreground hover:bg-muted border">
-                            <Target className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                </div>
-
-                {/* 6. Cicilan (Link) */}
-                <div className="flex items-center gap-3">
-                    <span className="bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium shadow-md">
-                        Bayar Cicilan
-                    </span>
-                    <Link href="/cicilan">
-                        <Button size="icon" className="rounded-full shadow-lg h-10 w-10 bg-background text-foreground hover:bg-muted border">
-                            <CreditCard className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                </div>
+                {/* Main Toggle Button */}
+                <Button
+                    size="icon"
+                    className={cn(
+                        "h-14 w-14 rounded-full shadow-xl transition-all duration-300 z-[56]",
+                        open ? "rotate-45 bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90 hover:scale-105"
+                    )}
+                    onClick={() => setOpen(!open)}
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
             </div>
-
-            {/* Main Toggle */}
-            <Button
-                size="icon"
-                className={cn(
-                    "h-14 w-14 rounded-full shadow-xl transition-transform duration-300",
-                    open ? "rotate-45 bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"
-                )}
-                onClick={() => setOpen(!open)}
-            >
-                <Plus className="h-6 w-6" />
-            </Button>
-        </div>
+        </>
     )
 }

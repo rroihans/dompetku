@@ -64,7 +64,7 @@ export function NotificationBell() {
                     )}
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[320px] sm:w-[380px]">
+            <DropdownMenuContent align="end" className="w-[85vw] sm:w-[380px]">
                 <div className="flex items-center justify-between p-4 border-b">
                     <h3 className="font-semibold">Notifikasi</h3>
                     {unreadCount > 0 && (
@@ -78,7 +78,7 @@ export function NotificationBell() {
                         </Button>
                     )}
                 </div>
-                <div className="max-h-[400px] overflow-y-auto">
+                <div className="max-h-[400px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                     {notifications.length === 0 ? (
                         <div className="p-8 text-center text-muted-foreground">
                             <Bell className="h-8 w-8 mx-auto mb-2 opacity-20" />
