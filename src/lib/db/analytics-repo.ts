@@ -119,9 +119,19 @@ const periodLabels: Record<PeriodType, string> = {
 
 // Helper to fetch transactions with account info
 async function fetchTransactionsWithAccounts(start: Date, end: Date) {
+    // Validate dates to prevent IDBKeyRange errors
+    if (!(start instanceof Date) || isNaN(start.getTime())) {
+        console.error("fetchTransactionsWithAccounts: Invalid start date", start);
+        return [];
+    }
+    if (!(end instanceof Date) || isNaN(end.getTime())) {
+        console.error("fetchTransactionsWithAccounts: Invalid end date", end);
+        return [];
+    }
+
+    // Use filter instead of between to avoid potential IDBKeyRange errors
     const txs = await db.transaksi
-        .where("tanggal")
-        .between(start, end, true, true)
+        .filter(tx => tx.tanggal >= start && tx.tanggal <= end)
         .toArray();
 
     // Fetch unique account IDs

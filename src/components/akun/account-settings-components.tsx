@@ -30,6 +30,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { AccountTemplateDTO as AccountTemplateData } from "@/lib/db/templates-repo"
+import { NumberInput } from "@/components/ui/number-input"
 
 // --- PatternBuilderUI ---
 interface PatternBuilderUIProps {
@@ -168,21 +169,20 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground">Min. Saldo</Label>
-                                        <Input
-                                            type="number"
+                                        <NumberInput
                                             className="h-8 text-sm"
                                             value={tier.min_saldo}
-                                            onChange={(e) => handleUpdateTier(idx, 'min_saldo', parseFloat(e.target.value) || 0)}
+                                            onValueChange={(v) => handleUpdateTier(idx, 'min_saldo', v.floatValue || 0)}
+                                            placeholder="0"
                                         />
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground">Max. Saldo</Label>
-                                        <Input
-                                            type="number"
+                                        <NumberInput
                                             className="h-8 text-sm"
                                             placeholder="Infinity"
                                             value={tier.max_saldo || ""}
-                                            onChange={(e) => handleUpdateTier(idx, 'max_saldo', e.target.value ? parseFloat(e.target.value) : null)}
+                                            onValueChange={(v) => handleUpdateTier(idx, 'max_saldo', v.floatValue || null)}
                                         />
                                     </div>
                                 </div>
@@ -190,12 +190,11 @@ export function TierEditor({ tiers, onChange }: TierEditorProps) {
                                     <div className="flex-1 space-y-1">
                                         <Label className="text-[10px] uppercase text-muted-foreground">Bunga (% p.a.)</Label>
                                         <div className="relative">
-                                            <Input
-                                                type="number"
-                                                step="0.01"
+                                            <NumberInput
                                                 className="h-8 text-sm pr-6"
                                                 value={tier.bunga_pa}
-                                                onChange={(e) => handleUpdateTier(idx, 'bunga_pa', parseFloat(e.target.value) || 0)}
+                                                decimalScale={2}
+                                                onValueChange={(v) => handleUpdateTier(idx, 'bunga_pa', v.floatValue || 0)}
                                             />
                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
                                         </div>

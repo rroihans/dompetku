@@ -3,6 +3,7 @@ import { type RecurringTransactionRecord, type TransaksiRecord, type AkunRecord,
 import { Money } from "@/lib/money";
 import { calculateNextBillingDate, getApplicableInterestRate, type TierBunga } from "@/lib/template-utils";
 import { createNotification } from "./notifications-repo";
+import { applyTransactionSummaryDelta } from "./summary";
 
 // ============================================
 // RECURRING TRANSACTIONS (GENERIC)
@@ -189,7 +190,7 @@ export async function executeRecurringTransactions() {
                 const debitAkunId = recurring.tipeTransaksi === "KELUAR" ? catAccount.id : recurring.akunId;
                 const kreditAkunId = recurring.tipeTransaksi === "KELUAR" ? recurring.akunId : catAccount.id;
 
-                await db.transaction('rw', [db.transaksi, db.akun, db.recurringTransaction], async () => {
+                await db.transaction('rw', [db.transaksi, db.akun, db.recurringTransaction, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
                     const nominalInt = recurring.nominalInt;
 
                     await db.transaksi.add({
@@ -211,6 +212,17 @@ export async function executeRecurringTransactions() {
 
                     if (debtAcc) await db.akun.update(debitAkunId, { saldoSekarangInt: debtAcc.saldoSekarangInt + nominalInt });
                     if (credAcc) await db.akun.update(kreditAkunId, { saldoSekarangInt: credAcc.saldoSekarangInt - nominalInt });
+
+                    // Update summary tables for analytics
+                    await applyTransactionSummaryDelta({
+                        tanggal: now,
+                        nominalInt,
+                        kategori: recurring.kategori,
+                        debitAkunId,
+                        kreditAkunId,
+                        debitAkunTipe: debtAcc?.tipe,
+                        kreditAkunTipe: credAcc?.tipe
+                    }, "add");
 
                     // Update recurring status
                     await db.recurringTransaction.update(recurring.id, { terakhirDieksekusi: now });
@@ -277,9 +289,17 @@ export async function processMonthlyAdminFees(dryRun: boolean = false) {
         for (const akun of akunList) {
             if (!akun.biayaAdminNominalInt) continue;
 
+            // Skip if pola is MANUAL or not set
+            const pola = akun.biayaAdminPola;
+            if (!pola || pola === "MANUAL") continue;
+
+            // For TANGGAL_TETAP, we need tanggal; for others, it's ignored
+            const tanggal = akun.biayaAdminTanggal;
+            if (pola === "TANGGAL_TETAP" && !tanggal) continue;
+
             const billingDate = calculateNextBillingDate(
-                akun.biayaAdminPola || 'FIXED_DATE',
-                akun.biayaAdminTanggal || 1,
+                pola,
+                tanggal,
                 new Date(today.getFullYear(), today.getMonth(), 1)
             );
 
@@ -302,7 +322,7 @@ export async function processMonthlyAdminFees(dryRun: boolean = false) {
             }
 
             try {
-                await db.transaction('rw', [db.transaksi, db.akun], async () => {
+                await db.transaction('rw', [db.transaksi, db.akun, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
                     // Create Category Account if needed
                     const catName = "[EXPENSE] Biaya Admin Bank";
                     let catAccount = await db.akun.where("nama").equals(catName).first();
@@ -341,6 +361,17 @@ export async function processMonthlyAdminFees(dryRun: boolean = false) {
                         saldoSekarangInt: akun.saldoSekarangInt - nominalInt,
                         lastAdminChargeDate: billingDate
                     });
+
+                    // Update summary tables for analytics
+                    await applyTransactionSummaryDelta({
+                        tanggal: billingDate,
+                        nominalInt,
+                        kategori: "Biaya Admin Bank",
+                        debitAkunId: catAccount.id,
+                        kreditAkunId: akun.id,
+                        debitAkunTipe: "EXPENSE",
+                        kreditAkunTipe: akun.tipe
+                    }, "add");
 
                     processed++;
                     processedTransactions.push(txData);
@@ -410,7 +441,7 @@ export async function processMonthlyInterest(dryRun: boolean = false) {
             try {
                 const bungaBersihInt = Money.fromFloat(bungaBersih);
 
-                await db.transaction('rw', [db.transaksi, db.akun], async () => {
+                await db.transaction('rw', [db.transaksi, db.akun, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
                     const catName = "[INCOME] Bunga Tabungan";
                     let catAccount = await db.akun.where("nama").equals(catName).first();
                     if (!catAccount) {
@@ -449,6 +480,17 @@ export async function processMonthlyInterest(dryRun: boolean = false) {
                         saldoSekarangInt: catAccount.saldoSekarangInt - bungaBersihInt
                     });
 
+                    // Update summary tables for analytics
+                    await applyTransactionSummaryDelta({
+                        tanggal: lastMonthEnd,
+                        nominalInt: bungaBersihInt,
+                        kategori: "Bunga Tabungan",
+                        debitAkunId: akun.id,
+                        kreditAkunId: catAccount.id,
+                        debitAkunTipe: akun.tipe,
+                        kreditAkunTipe: "INCOME"
+                    }, "add");
+
                     processed++;
                 });
             } catch (e) {
@@ -475,9 +517,16 @@ export async function getUpcomingAdminFees() {
         for (const akun of akunList) {
             if (!akun.biayaAdminNominalInt) continue;
 
+            // Skip if pola is MANUAL or not set
+            const pola = akun.biayaAdminPola;
+            if (!pola || pola === "MANUAL") continue;
+
+            // For TANGGAL_TETAP, we need tanggal
+            if (pola === "TANGGAL_TETAP" && !akun.biayaAdminTanggal) continue;
+
             const nextDate = calculateNextBillingDate(
-                akun.biayaAdminPola || 'FIXED_DATE',
-                akun.biayaAdminTanggal || 1,
+                pola,
+                akun.biayaAdminTanggal,
                 today
             );
 
@@ -500,7 +549,11 @@ function isRecurringDue(recurring: RecurringTransactionRecord, now: Date): boole
 
     if (recurring.terakhirDieksekusi) {
         const lastExec = new Date(recurring.terakhirDieksekusi);
-        if (lastExec.toDateString() === now.toDateString()) {
+        // Compare date components explicitly to avoid timezone issues
+        const isSameDay = lastExec.getFullYear() === now.getFullYear() &&
+            lastExec.getMonth() === now.getMonth() &&
+            lastExec.getDate() === now.getDate();
+        if (isSameDay) {
             return false;
         }
     }
@@ -527,7 +580,14 @@ export async function getDueRecurringTransactions(): Promise<RecurringTransactio
         const allRecurring = await db.recurringTransaction.toArray();
         const now = new Date();
 
-        const due = allRecurring.filter(r => r.aktif && isRecurringDue(r, now));
+        const due = allRecurring.filter(r => {
+            // Must be active
+            if (!r.aktif) return false;
+            // Must not be expired
+            if (r.tanggalSelesai && r.tanggalSelesai < now) return false;
+            // Must be due today
+            return isRecurringDue(r, now);
+        });
 
         return due.map(mapRecurringToDTO);
     } catch (error) {

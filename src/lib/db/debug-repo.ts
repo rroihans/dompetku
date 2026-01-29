@@ -133,34 +133,35 @@ export async function quickDebugAdminFee() {
             const tanggal = akun.biayaAdminTanggal;
 
             if (nominal <= 0) issues.push("Nominal 0");
-            if (!pola) issues.push("Pola belum diset");
+            if (!pola || pola === "MANUAL") issues.push("Pola belum diset atau MANUAL");
 
             // Calculate next billing
-            // We assume last charged date is stored or we calculate from scratch?
-            // In client repo, we usually rely on `lastAdminChargeDate`.
-
             const lastCharged = akun.lastAdminChargeDate ? new Date(akun.lastAdminChargeDate) : null;
 
-            // Check if due?
-            // This replicates `processMonthlyAdminFees` logic roughly but for debug
             let isDue = false;
             let nextDate: Date | null = null;
 
-            if (pola && tanggal) {
-                // If never charged, we might charge immediately if rule matches?
-                // Or we check against `calculateNextBillingDate`.
-                nextDate = calculateNextBillingDate(pola, tanggal, lastCharged || new Date(now.getFullYear(), now.getMonth() - 1, 1)); // Heuristic
+            // Validate based on pattern type
+            const polaNeedsTanggal = pola === "TANGGAL_TETAP";
+            const isPolaValid = pola && pola !== "MANUAL" && (!polaNeedsTanggal || tanggal);
+
+            if (isPolaValid) {
+                // Calculate next billing date
+                nextDate = calculateNextBillingDate(
+                    pola,
+                    tanggal,
+                    lastCharged || new Date(now.getFullYear(), now.getMonth(), 1)
+                );
 
                 if (nextDate <= now) {
                     isDue = true;
                 }
-            } else {
-                issues.push("Konfigurasi pola/tanggal tidak valid");
+            } else if (pola === "TANGGAL_TETAP" && !tanggal) {
+                issues.push("Pola TANGGAL_TETAP memerlukan tanggal");
             }
 
             if (isDue) {
-                // Check redundancy?
-                // if lastCharged is this month?
+                // Check if already charged this month
                 if (lastCharged && lastCharged.getMonth() === now.getMonth() && lastCharged.getFullYear() === now.getFullYear()) {
                     issues.push("Sudah diproses bulan ini");
                     willProcess = false;
@@ -168,8 +169,8 @@ export async function quickDebugAdminFee() {
                     willProcess = true;
                     willBeProcessedCount++;
                 }
-            } else {
-                issues.push(`Belum jatuh tempo (Next: ${nextDate?.toLocaleDateString()})`);
+            } else if (isPolaValid) {
+                issues.push(`Belum jatuh tempo (Next: ${nextDate?.toLocaleDateString('id-ID')})`);
             }
 
             processedAccounts.push({

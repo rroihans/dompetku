@@ -20,6 +20,13 @@ export interface TransactionSummaryInput {
     kreditAkunTipe?: string | null;
 }
 
+/**
+ * Applies delta changes to summary tables when a transaction is added or removed.
+ * 
+ * NOTE: For summaryAccountMonth, txCount is incremented for BOTH debit and kredit accounts.
+ * This is INTENDED behavior - it tracks how many times each account was involved in transactions,
+ * not the total unique transaction count. For global transaction count, use summaryMonth.txCount.
+ */
 export async function applyTransactionSummaryDelta(
     input: TransactionSummaryInput,
     direction: SummaryDirection,

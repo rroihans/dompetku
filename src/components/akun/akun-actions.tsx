@@ -94,6 +94,7 @@ export function AkunActions({ akun, templates = [] }: AkunActionsProps) {
 
             if (res.success) {
                 setDeleteOpen(false)
+                window.dispatchEvent(new Event('account-updated')) // Trigger instant UI update
                 router.refresh()
             } else {
                 setError(res.error || "Gagal menghapus akun")

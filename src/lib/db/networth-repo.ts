@@ -1,4 +1,4 @@
-import { db } from "./app-db";
+import { db, type NetWorthSnapshotRecord } from "./app-db";
 import { Money } from "@/lib/money";
 
 export interface NetWorthData {
@@ -31,12 +31,22 @@ export async function calculateCurrentNetWorth(): Promise<NetWorthData> {
             breakdown[akun.tipe] += saldo
 
             if (akun.tipe === "CREDIT_CARD") {
+                // Credit Card: saldo negatif = hutang, saldo positif = overpayment (aset)
+                // Convention: transaksi belanja mengurangi saldo CC (menjadi negatif)
+                // Pembayaran CC menambah saldo (menuju 0 atau positif jika overpay)
                 if (saldo < 0) {
                     totalHutang += Math.abs(saldo)
+                } else if (saldo > 0) {
+                    // Overpayment is considered an asset (rare but possible)
+                    totalAset += saldo
                 }
             } else {
+                // BANK, E_WALLET, CASH: saldo positif = aset, saldo negatif = hutang (overdraft)
                 if (saldo > 0) {
                     totalAset += saldo
+                } else if (saldo < 0) {
+                    // Negative balance on bank = overdraft (hutang)
+                    totalHutang += Math.abs(saldo)
                 }
             }
         }
@@ -52,7 +62,8 @@ export async function calculateCurrentNetWorth(): Promise<NetWorthData> {
             totalCicilan += sisaHutang
         }
 
-        const netWorth = totalAset - totalHutang
+        // Net Worth = Aset - Hutang CC - Sisa Cicilan
+        const netWorth = totalAset - totalHutang - totalCicilan
 
         return {
             tanggal: new Date(),
@@ -80,23 +91,48 @@ export async function saveNetWorthSnapshot() {
         const data = await calculateCurrentNetWorth()
         const now = new Date()
 
-        // In Dexie we don't have netWorthSnapshot table defined in snippets yet.
-        // Assuming it exists or we need to add it?
-        // Let's check app-db.ts. 
-        // If it's missing, we might skip saving to DB or add table.
-        // For now, let's assume we just calculate and return, or log if table missing.
-        // Actually, without table definition, we can't save.
-        // Assuming user wants client-side only now, maybe we just return success with data?
-        // Or we use localStorage? 
-        // Let's check app-db.ts in next step if needed. 
-        // For now, let's just return the data as if saved.
+        // Create date key (YYYY-MM-DD format)
+        const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
-        // Wait, app-db view previously didn't show netWorthSnapshot table.
-        // I will assume it's NOT in Dexie schema yet.
-        // So I'll just return success.
+        // Check if snapshot for today already exists
+        const existing = await db.netWorthSnapshot.get(dateKey)
+
+        const snapshotRecord: NetWorthSnapshotRecord = {
+            id: dateKey,
+            tanggal: now,
+            totalAset: data.totalAset,
+            totalHutang: data.totalHutang + data.totalCicilan, // Combine all liabilities
+            netWorth: data.netWorth,
+            breakdown: JSON.stringify(data.breakdown),
+            createdAt: existing?.createdAt ?? now
+        }
+
+        await db.netWorthSnapshot.put(snapshotRecord)
 
         return { success: true, data }
     } catch (error: any) {
+        console.error("saveNetWorthSnapshot error:", error)
         return { success: false, error: "Gagal menyimpan snapshot" }
+    }
+}
+
+// Get historical net worth data for charts
+export async function getNetWorthHistory(days: number = 30): Promise<{ success: boolean; data: NetWorthSnapshotRecord[] }> {
+    try {
+        const endDate = new Date()
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - days)
+
+        const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
+        const endKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+
+        const snapshots = await db.netWorthSnapshot
+            .filter(s => s.id >= startKey && s.id <= endKey)
+            .toArray()
+
+        return { success: true, data: snapshots.sort((a, b) => a.id.localeCompare(b.id)) }
+    } catch (error) {
+        console.error("getNetWorthHistory error:", error)
+        return { success: false, data: [] }
     }
 }

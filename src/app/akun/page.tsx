@@ -51,7 +51,15 @@ export default function AkunPage() {
                 setLoading(false)
             }
         }
+
         fetchData()
+
+        const handleAccountUpdate = () => {
+            fetchData()
+        }
+
+        window.addEventListener('account-updated', handleAccountUpdate)
+        return () => window.removeEventListener('account-updated', handleAccountUpdate)
     }, [currentPage])
 
     const getIcon = (type: string) => {

@@ -180,15 +180,12 @@ export async function pelunasanDipercepat(id: string) {
         if (cicilan.status !== "AKTIF") return { success: false, error: "Cicilan sudah lunas" };
 
         const sisaTenor = cicilan.tenor - cicilan.cicilanKe + 1;
-        // Calculate nominal using integer math
-        const sisaNominalInt = BigInt(sisaTenor) * BigInt(Math.round(cicilan.nominalPerBulanInt)); // nominalPerBulanInt is number but should be treated as int
-        // Actually JS number is safe integers up to 9 quadrillion.
-        const sisaNominalNumber = sisaTenor * cicilan.nominalPerBulanInt;
+        const sisaNominalInt = sisaTenor * cicilan.nominalPerBulanInt;
 
         await db.transaction("rw", [db.transaksi, db.akun, db.rencanaCicilan, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
             await createTransaksi({
                 deskripsi: `Pelunasan ${cicilan.namaProduk} (sisa ${sisaTenor} bulan)`,
-                nominal: Money.toFloat(sisaNominalNumber),
+                nominal: Money.toFloat(sisaNominalInt),
                 kategori: "Cicilan",
                 debitAkunId: cicilan.akunDebitId,
                 kreditAkunId: cicilan.akunKreditId,

@@ -19,16 +19,19 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+    SelectValue,
     Select,
+    SelectTrigger,
     SelectContent,
     SelectItem,
-    SelectTrigger,
-    SelectValue,
 } from "@/components/ui/select"
 import { createAkun } from "@/lib/db"
 import { formatCurrency } from "@/lib/format"
 import { PatternBuilderUI, TierEditor } from "@/components/akun/account-settings-components"
 import { type AccountTemplateDTO as AccountTemplateData } from "@/lib/db/templates-repo"
+import { NumberInput } from "@/components/ui/number-input"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 const formSchema = z.object({
     nama: z.string()
@@ -107,10 +110,7 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
     const [error, setError] = useState("")
     const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0])
     const [showAdvanced, setShowAdvanced] = useState(true) // Show by default
-
-    // Split saldo input state
-    const [saldoWhole, setSaldoWhole] = useState("") // Bagian bulat (ribuan)
-    const [saldoDecimal, setSaldoDecimal] = useState("") // Bagian desimal
+    const router = useRouter()
 
     const {
         register,
@@ -149,6 +149,7 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
     const tiers = tiersStr ? JSON.parse(tiersStr) : []
     const isSyariah = watch("isSyariah")
     const billingDate = watch("billingDate")
+    const useDecimalFormat = watch("useDecimalFormat")
 
     const isCreditCard = tipeAkun === "CREDIT_CARD"
     const isCash = tipeAkun === "CASH"
@@ -226,8 +227,10 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
                 reset()
                 setSelectedColor(PRESET_COLORS[0])
                 setShowAdvanced(false)
-                setSaldoWhole("")
-                setSaldoDecimal("")
+
+                toast.success(`Akun ${values.nama} telah ditambahkan.`)
+                window.dispatchEvent(new Event('account-updated')) // Trigger refresh listeners
+                router.refresh()
             } else {
                 setError(res.error || "Gagal membuat akun")
             }
@@ -343,50 +346,15 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
                         {!isCreditCard && (
                             <div className="space-y-2">
                                 <Label>Saldo Awal (Rp)</Label>
-                                <div className="flex items-center gap-1">
-                                    <Input
-                                        type="text"
-                                        inputMode="numeric"
-                                        placeholder="0"
-                                        className="flex-1"
-                                        value={saldoWhole}
-                                        onChange={(e) => {
-                                            // Only allow numbers
-                                            const val = e.target.value.replace(/\D/g, "")
-                                            setSaldoWhole(val)
-                                            // Update form value
-                                            const whole = parseInt(val) || 0
-                                            const decimal = parseInt(saldoDecimal) || 0
-                                            setValue("saldoAwal", whole + (decimal / 100))
-                                        }}
-                                    />
-                                    {watch("useDecimalFormat") && (
-                                        <>
-                                            <span className="text-muted-foreground font-bold">,</span>
-                                            <Input
-                                                type="text"
-                                                inputMode="numeric"
-                                                placeholder="00"
-                                                className="w-16"
-                                                maxLength={2}
-                                                value={saldoDecimal}
-                                                onChange={(e) => {
-                                                    // Only allow numbers, max 2 digits
-                                                    const val = e.target.value.replace(/\D/g, "").slice(0, 2)
-                                                    setSaldoDecimal(val)
-                                                    // Update form value
-                                                    const whole = parseInt(saldoWhole) || 0
-                                                    const decimal = parseInt(val) || 0
-                                                    setValue("saldoAwal", whole + (decimal / 100))
-                                                }}
-                                            />
-                                        </>
-                                    )}
-                                </div>
-                                {/* Preview */}
-                                <div className="text-sm font-medium text-primary">
-                                    = Rp {((parseInt(saldoWhole) || 0) + (watch("useDecimalFormat") ? ((parseInt(saldoDecimal) || 0) / 100) : 0)).toLocaleString('id-ID', { minimumFractionDigits: watch("useDecimalFormat") ? 2 : 0, maximumFractionDigits: watch("useDecimalFormat") ? 2 : 0 })}
-                                </div>
+                                <NumberInput
+                                    placeholder="0"
+                                    className="flex-1"
+                                    value={watch("saldoAwal")}
+                                    decimalScale={useDecimalFormat ? 2 : 0}
+                                    fixedDecimalScale={useDecimalFormat}
+                                    decimalSeparator=","
+                                    onValueChange={(v) => setValue("saldoAwal", v.floatValue)}
+                                />
                             </div>
                         )}
                     </div>
@@ -430,23 +398,27 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Tanggal Billing <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        max={31}
+                                    <NumberInput
                                         placeholder="25"
-                                        {...register("billingDate", { valueAsNumber: true })}
+                                        value={watch("billingDate")}
+                                        onValueChange={(v) => setValue("billingDate", v.floatValue)}
+                                        isAllowed={(values) => {
+                                            const { floatValue } = values;
+                                            return floatValue === undefined || (floatValue >= 1 && floatValue <= 31);
+                                        }}
                                     />
                                     <p className="text-[10px] text-muted-foreground">Tanggal statement keluar (1-31)</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Tanggal Jatuh Tempo <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        max={31}
+                                    <NumberInput
                                         placeholder="15"
-                                        {...register("dueDate", { valueAsNumber: true })}
+                                        value={watch("dueDate")}
+                                        onValueChange={(v) => setValue("dueDate", v.floatValue)}
+                                        isAllowed={(values) => {
+                                            const { floatValue } = values;
+                                            return floatValue === undefined || (floatValue >= 1 && floatValue <= 31);
+                                        }}
                                     />
                                     <p className="text-[10px] text-muted-foreground">Deadline pembayaran (1-31)</p>
                                 </div>
@@ -456,20 +428,19 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Min. Payment (Rp) <span className="text-red-500">*</span></Label>
-                                    <Input
-                                        type="number"
-                                        min={50000}
+                                    <NumberInput
                                         placeholder="50000"
-                                        {...register("minPaymentFixed", { valueAsNumber: true })}
+                                        value={watch("minPaymentFixed")}
+                                        onValueChange={(v) => setValue("minPaymentFixed", v.floatValue)}
                                     />
                                     <p className="text-[10px] text-muted-foreground">Minimum Rp 50.000</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Min. Cicilan (Rp)</Label>
-                                    <Input
-                                        type="number"
+                                    <NumberInput
                                         placeholder="500000"
-                                        {...register("minInstallmentAmount", { valueAsNumber: true })}
+                                        value={watch("minInstallmentAmount")}
+                                        onValueChange={(v) => setValue("minInstallmentAmount", v.floatValue)}
                                     />
                                     <p className="text-[10px] text-muted-foreground">Opsional, min untuk konversi</p>
                                 </div>
@@ -478,10 +449,10 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
                             {/* Limit Kredit */}
                             <div className="space-y-2">
                                 <Label>Limit Kredit (Rp)</Label>
-                                <Input
-                                    type="number"
+                                <NumberInput
                                     placeholder="10000000"
-                                    {...register("limitKredit", { valueAsNumber: true })}
+                                    value={watch("limitKredit")}
+                                    onValueChange={(v) => setValue("limitKredit", v.floatValue)}
                                 />
                             </div>
 
@@ -533,10 +504,10 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
                                     <div className="space-y-4 pt-2 border-t border-muted animate-in fade-in slide-in-from-top-1">
                                         <div className="space-y-2">
                                             <Label>Nominal (Rp)</Label>
-                                            <Input
-                                                type="number"
+                                            <NumberInput
                                                 placeholder="Bisa diubah sesuai kebutuhan"
-                                                {...register("biayaAdminNominal", { valueAsNumber: true })}
+                                                value={watch("biayaAdminNominal")}
+                                                onValueChange={(v) => setValue("biayaAdminNominal", v.floatValue)}
                                             />
                                         </div>
                                         {/* Show pattern builder only for non-credit card (credit card auto-sets from billing date) */}

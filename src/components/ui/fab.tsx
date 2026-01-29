@@ -24,12 +24,12 @@ export function FAB() {
             {/* Backdrop Overlay */}
             {open && (
                 <div
-                    className="fixed inset-0 z-[54] bg-background/80 backdrop-blur-sm transition-opacity"
+                    className="fixed inset-0 z-[44] bg-background/80 backdrop-blur-sm transition-opacity"
                     onClick={() => setOpen(false)}
                 />
             )}
 
-            <div className="fixed bottom-24 md:bottom-6 right-6 z-[55] flex flex-col items-end gap-4">
+            <div className="fixed bottom-24 md:bottom-6 right-6 z-[45] flex flex-col items-end gap-4">
                 {/* Menu Items */}
                 <div className={cn(
                     "flex flex-col items-end gap-3 transition-all duration-300 origin-bottom-right",

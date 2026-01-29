@@ -116,6 +116,22 @@
 - Redirect setelah reset (ke / setelah 3 detik)
 - Filter search support nama akun debit/kredit
 - **v0.3.5:** Server action export error (SUPPORTED_CURRENCIES) - pindah ke lib/currency.ts
+- **v0.8.2:** FAB z-index - menu tertutup backdrop (backdrop z-[44], container z-[45])
+- **v0.8.2:** Decimal format ",00" tidak bisa input - ganti `fixedDecimalScale` prop
+- **v0.8.2:** Delete akun tidak auto-refresh - tambah event dispatch `account-updated`
+- **v0.8.2:** Data akun baru tidak muncul langsung - tambah event listener di AkunPage
+- **v0.8.2:** Biaya admin JUMAT_MINGGU_KETIGA/HARI_KERJA_TERAKHIR tidak diproses - perbaiki validasi pola
+- **v0.8.3:** Net Worth tidak kurangi cicilan - formula sekarang `Aset - Hutang CC - Sisa Cicilan`
+- **v0.8.3:** Typo FIXED_DATE di getUpcomingAdminFees - ganti ke TANGGAL_TETAP + validasi pola
+- **v0.8.3:** Recurring/AdminFee/Interest tidak update summary tables - tambah applyTransactionSummaryDelta
+- **v0.8.3:** getDueRecurringTransactions tidak filter tanggalSelesai - tambah validasi expired
+- **v0.8.3:** isRecurringDue timezone issue - ganti toDateString dengan explicit date comparison
+- **v0.8.3:** pelunasanDipercepat unused BigInt variable - cleanup dead code
+- **v0.8.3:** saveNetWorthSnapshot tidak simpan ke DB - implementasi penuh ke IndexedDB
+- **v0.8.3:** Credit Card balance logic - handle overpayment (aset) dan overdraft (hutang)
+- **v0.8.3:** fetchTransactionsWithAccounts date validation - tambah error handling + gunakan filter
+- **v0.8.3:** Daily net worth snapshot - otomatis tersimpan via recurring triggers
+- **v0.8.3:** txCount di summaryAccountMonth - dokumentasi bahwa ini intended (per-akun stats)
 
 ---
 

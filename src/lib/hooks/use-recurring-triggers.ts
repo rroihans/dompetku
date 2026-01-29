@@ -6,6 +6,7 @@ import {
     processMonthlyAdminFees,
     processMonthlyInterest
 } from "@/lib/db/recurring-repo";
+import { saveNetWorthSnapshot } from "@/lib/db/networth-repo";
 
 export function useRecurringTriggers() {
     useEffect(() => {
@@ -34,7 +35,10 @@ export function useRecurringTriggers() {
                 await processMonthlyAdminFees();
                 await processMonthlyInterest();
 
-                // 3. Mark as run
+                // 3. Save daily net worth snapshot for tracking
+                await saveNetWorthSnapshot();
+
+                // 4. Mark as run
                 localStorage.setItem("lastRecurringCheck", today);
                 console.log("[Recurring] Checks completed.");
 
