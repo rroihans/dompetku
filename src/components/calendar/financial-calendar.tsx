@@ -4,6 +4,11 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
     Calendar as CalendarIcon,
     ChevronLeft,
     ChevronRight,
@@ -125,13 +130,37 @@ export function FinancialCalendar({ events, bulan, tahun, onMonthChange }: Finan
                         Kalender Keuangan
                     </CardTitle>
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrevMonth}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={goToPrevMonth}
+                            aria-label="Bulan sebelumnya"
+                        >
                             <ChevronLeft className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-sm font-medium" onClick={goToToday}>
-                            {BULAN_NAMA[bulan - 1]} {tahun}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-sm font-medium"
+                                    onClick={goToToday}
+                                >
+                                    {BULAN_NAMA[bulan - 1]} {tahun}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Kembali ke Bulan Ini</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={goToNextMonth}
+                            aria-label="Bulan selanjutnya"
+                        >
                             <ChevronRight className="w-4 h-4" />
                         </Button>
                     </div>
@@ -163,6 +192,7 @@ export function FinancialCalendar({ events, bulan, tahun, onMonthChange }: Finan
                             <button
                                 key={day}
                                 onClick={() => setSelectedDate(new Date(tahun, bulan - 1, day))}
+                                aria-label={`${day} ${BULAN_NAMA[bulan - 1]} ${tahun}`}
                                 className={`
                                     aspect-square flex flex-col items-center justify-center rounded-lg text-sm
                                     transition-all relative

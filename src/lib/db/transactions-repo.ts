@@ -474,8 +474,8 @@ export async function deleteTransaksi(id: string): Promise<ServerActionResult<vo
 
 async function updateAccountBalancesLocal(debitAkunId: string, kreditAkunId: string, nominalInt: number) {
     await Promise.all([
-        db.akun.where("id").equals(debitAkunId).modify((a) => (a.saldoSekarangInt += nominalInt)),
-        db.akun.where("id").equals(kreditAkunId).modify((a) => (a.saldoSekarangInt -= nominalInt)),
+        db.akun.where("id").equals(debitAkunId).modify((a) => { a.saldoSekarangInt += nominalInt }),
+        db.akun.where("id").equals(kreditAkunId).modify((a) => { a.saldoSekarangInt -= nominalInt }),
     ]);
 }
 
