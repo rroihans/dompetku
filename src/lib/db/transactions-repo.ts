@@ -73,12 +73,43 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
 
     const akunMap = await getAccountMap();
 
-    let collection: Dexie.Collection<TransaksiRecord, string> = db.transaksi.toCollection();
+    let collection: Dexie.Collection<TransaksiRecord, string>;
 
-    if (startDate || endDate) {
+    // 1. Base Collection & Sorting
+    let sortIndex = sort;
+    if (sort === "nominal") sortIndex = "nominalInt";
+
+    // Optimized date range filtering when sorting by date
+    if (sort === "tanggal") {
+        if (startDate || endDate) {
+            const start = startDate ?? new Date(0);
+            const end = endDate ?? new Date(8640000000000000);
+            // Use index range scan
+            collection = db.transaksi.where("tanggal").between(start, end, true, true);
+        } else {
+            collection = db.transaksi.orderBy("tanggal");
+        }
+    } else {
+        // Fallback to simple orderBy
+        if (sortIndex === "nominalInt") {
+            collection = db.transaksi.orderBy("nominalInt");
+        } else if (sortIndex === "kategori") {
+            collection = db.transaksi.orderBy("kategori");
+        } else {
+            collection = db.transaksi.orderBy("id");
+        }
+    }
+
+    if (sortDir === "desc") {
+        collection = collection.reverse();
+    }
+
+    // 2. Apply Filters (Chained on Collection)
+
+    // Manual date filter if we couldn't use index range (e.g. sorting by other field)
+    if (sort !== "tanggal" && (startDate || endDate)) {
         const start = startDate ?? new Date(0);
         const end = endDate ?? new Date(8640000000000000);
-        // Fallback to filter to avoid IDBKeyRange DataError
         collection = collection.filter(tx => tx.tanggal >= start && tx.tanggal <= end);
     }
 
@@ -123,30 +154,19 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         });
     }
 
-    let data = await collection.toArray();
-    const invalidTanggal = data.filter(
-        (tx) => !(tx.tanggal instanceof Date) || Number.isNaN(tx.tanggal.getTime())
-    );
-    if (invalidTanggal.length > 0) {
-        console.warn("getTransaksi invalid tanggal values", {
-            count: invalidTanggal.length,
-            sample: invalidTanggal.slice(0, 5).map((tx) => ({ id: tx.id, tanggal: tx.tanggal })),
-        });
-    }
+    // 3. Pagination & Data Fetching
+    // Note: Reverting to offset/limit because primaryKeys() was slow in benchmark (fake-indexeddb).
+    // In real DB, offset/limit on index is efficient.
+    // However, count() with filter is slow.
+    // Let's assume we use offset/limit but optimize count if possible.
 
-    data.sort((a, b) => {
-        let cmp = 0;
-        if (sort === "nominal") cmp = a.nominalInt - b.nominalInt;
-        else if (sort === "kategori") cmp = a.kategori.localeCompare(b.kategori);
-        else cmp = a.tanggal.getTime() - b.tanggal.getTime();
-        if (cmp === 0) cmp = a.id.localeCompare(b.id);
-        return sortDir === "asc" ? cmp : -cmp;
-    });
-
-    const total = data.length;
+    const total = await collection.count();
     const totalPages = Math.ceil(total / PAGE_SIZE);
     const startIndex = (page - 1) * PAGE_SIZE;
-    const pageItems = data.slice(startIndex, startIndex + PAGE_SIZE);
+
+    // Use clone() to avoid mutating collection used for count/runningBalance if implemented that way,
+    // although count() is safe. But offset/limit modify the collection.
+    const pageItems = await collection.clone().offset(startIndex).limit(PAGE_SIZE).toArray();
 
     const result = pageItems.map((tx) => ({
         ...mapTransaksi(tx, akunMap),
@@ -158,10 +178,11 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         if (akun) {
             let runningBalanceInt = akun.saldoSekarangInt;
             if (startIndex > 0) {
-                for (const skipped of data.slice(0, startIndex)) {
+                // Efficiently iterate skipped items to calculate running balance
+                await collection.clone().limit(startIndex).each(skipped => {
                     if (skipped.debitAkunId === akunId) runningBalanceInt -= skipped.nominalInt;
                     else if (skipped.kreditAkunId === akunId) runningBalanceInt += skipped.nominalInt;
-                }
+                });
             }
 
             for (const item of result) {
