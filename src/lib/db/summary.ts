@@ -49,33 +49,39 @@ export async function applyTransactionSummaryDelta(
     const summaryHeatmapDay = getTable<SummaryHeatmapDayRecord>("summaryHeatmapDay", tx);
     const summaryAccountMonth = getTable<SummaryAccountMonthRecord>("summaryAccountMonth", tx);
 
-    await updateSummaryMonth(summaryMonth, monthKey, {
-        totalInDelta: isIncome ? nominalInt : 0,
-        totalOutDelta: isExpense ? nominalInt : 0,
-        txCountDelta: sign,
-    });
+    const promises = [
+        updateSummaryMonth(summaryMonth, monthKey, {
+            totalInDelta: isIncome ? nominalInt : 0,
+            totalOutDelta: isExpense ? nominalInt : 0,
+            txCountDelta: sign,
+        }),
+        updateSummaryAccountMonth(summaryAccountMonth, monthKey, input.debitAkunId, {
+            deltaDelta: nominalInt,
+            txCountDelta: sign,
+        }),
+        updateSummaryAccountMonth(summaryAccountMonth, monthKey, input.kreditAkunId, {
+            deltaDelta: -nominalInt,
+            txCountDelta: sign,
+        }),
+    ];
 
     if (isExpense) {
-        await updateSummaryCategoryMonth(summaryCategoryMonth, monthKey, input.kategori, {
-            totalOutDelta: nominalInt,
-            txCountDelta: sign,
-        });
+        promises.push(
+            updateSummaryCategoryMonth(summaryCategoryMonth, monthKey, input.kategori, {
+                totalOutDelta: nominalInt,
+                txCountDelta: sign,
+            })
+        );
 
-        await updateSummaryHeatmapDay(summaryHeatmapDay, dayKey, {
-            totalOutDelta: nominalInt,
-            txCountDelta: sign,
-        });
+        promises.push(
+            updateSummaryHeatmapDay(summaryHeatmapDay, dayKey, {
+                totalOutDelta: nominalInt,
+                txCountDelta: sign,
+            })
+        );
     }
 
-    await updateSummaryAccountMonth(summaryAccountMonth, monthKey, input.debitAkunId, {
-        deltaDelta: nominalInt,
-        txCountDelta: sign,
-    });
-
-    await updateSummaryAccountMonth(summaryAccountMonth, monthKey, input.kreditAkunId, {
-        deltaDelta: -nominalInt,
-        txCountDelta: sign,
-    });
+    await Promise.all(promises);
 }
 
 export async function applyTransactionSummaryDeltas(
