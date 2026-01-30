@@ -78,6 +78,145 @@ export async function applyTransactionSummaryDelta(
     });
 }
 
+export async function applyTransactionSummaryDeltas(
+    inputs: TransactionSummaryInput[],
+    direction: SummaryDirection,
+    tx?: Transaction
+) {
+    if (inputs.length === 0) return;
+
+    const sign = direction === "add" ? 1 : -1;
+
+    // Aggregation maps
+    const monthUpdates = new Map<string, { totalInDelta: number; totalOutDelta: number; txCountDelta: number }>();
+    const categoryUpdates = new Map<string, { month: string; kategori: string; totalOutDelta: number; txCountDelta: number }>();
+    const heatmapUpdates = new Map<string, { totalOutDelta: number; txCountDelta: number }>();
+    const accountUpdates = new Map<string, { month: string; akunId: string; deltaDelta: number; txCountDelta: number }>();
+
+    // Process inputs to aggregate
+    for (const input of inputs) {
+        const tanggal = normalizeDate(input.tanggal);
+        const monthKey = toMonthKey(tanggal);
+        const dayKey = toDayKey(tanggal);
+        const nominalInt = input.nominalInt * sign;
+
+        // Note: Assume types are provided.
+        // If not, we might fall back to individual fetches (slow) or assume caller provides them.
+        let debitTipe = input.debitAkunTipe;
+        let kreditTipe = input.kreditAkunTipe;
+
+        if (!debitTipe || !kreditTipe) {
+            // Fallback for safety, though bulk caller should provide them
+            if (!debitTipe) debitTipe = (await db.akun.get(input.debitAkunId))?.tipe;
+            if (!kreditTipe) kreditTipe = (await db.akun.get(input.kreditAkunId))?.tipe;
+        }
+
+        const isExpense = debitTipe === "EXPENSE";
+        const isIncome = kreditTipe === "INCOME";
+
+        // Summary Month
+        const m = monthUpdates.get(monthKey) || { totalInDelta: 0, totalOutDelta: 0, txCountDelta: 0 };
+        if (isIncome) m.totalInDelta += nominalInt;
+        if (isExpense) m.totalOutDelta += nominalInt;
+        m.txCountDelta += sign;
+        monthUpdates.set(monthKey, m);
+
+        // Summary Category (Only Expense)
+        if (isExpense) {
+            const catKey = `${monthKey}|${input.kategori}`;
+            const c = categoryUpdates.get(catKey) || { month: monthKey, kategori: input.kategori, totalOutDelta: 0, txCountDelta: 0 };
+            c.totalOutDelta += nominalInt;
+            c.txCountDelta += sign;
+            categoryUpdates.set(catKey, c);
+
+            // Heatmap (Only Expense)
+            const h = heatmapUpdates.get(dayKey) || { totalOutDelta: 0, txCountDelta: 0 };
+            h.totalOutDelta += nominalInt;
+            h.txCountDelta += sign;
+            heatmapUpdates.set(dayKey, h);
+        }
+
+        // Summary Account (Debit)
+        const accKeyDebit = `${monthKey}|${input.debitAkunId}`;
+        const ad = accountUpdates.get(accKeyDebit) || { month: monthKey, akunId: input.debitAkunId, deltaDelta: 0, txCountDelta: 0 };
+        ad.deltaDelta += nominalInt;
+        ad.txCountDelta += sign;
+        accountUpdates.set(accKeyDebit, ad);
+
+        // Summary Account (Credit)
+        const accKeyCredit = `${monthKey}|${input.kreditAkunId}`;
+        const ac = accountUpdates.get(accKeyCredit) || { month: monthKey, akunId: input.kreditAkunId, deltaDelta: 0, txCountDelta: 0 };
+        ac.deltaDelta -= nominalInt;
+        ac.txCountDelta += sign;
+        accountUpdates.set(accKeyCredit, ac);
+    }
+
+    const summaryMonth = getTable<SummaryMonthRecord>("summaryMonth", tx);
+    const summaryCategoryMonth = getTable<SummaryCategoryMonthRecord>("summaryCategoryMonth", tx);
+    const summaryHeatmapDay = getTable<SummaryHeatmapDayRecord>("summaryHeatmapDay", tx);
+    const summaryAccountMonth = getTable<SummaryAccountMonthRecord>("summaryAccountMonth", tx);
+
+    // Helper to bulk update
+    const bulkUpdate = async <T>(
+        table: Dexie.Table<T, string>,
+        updates: Map<string, any>,
+        updater: (existing: T | undefined, upd: any, key: string) => T
+    ) => {
+        if (updates.size === 0) return;
+        const keys = Array.from(updates.keys());
+        const existingItems = await table.bulkGet(keys);
+        const toPut: T[] = [];
+
+        keys.forEach((key, i) => {
+            const existing = existingItems[i];
+            const upd = updates.get(key);
+            if (upd) {
+                toPut.push(updater(existing, upd, key));
+            }
+        });
+
+        if (toPut.length > 0) {
+            await table.bulkPut(toPut);
+        }
+    };
+
+    // Batch Process Month
+    await bulkUpdate(summaryMonth, monthUpdates, (rec, upd, key) => ({
+        id: key,
+        month: key,
+        totalIn: (rec?.totalIn ?? 0) + upd.totalInDelta,
+        totalOut: (rec?.totalOut ?? 0) + upd.totalOutDelta,
+        net: ((rec?.totalIn ?? 0) + upd.totalInDelta) - ((rec?.totalOut ?? 0) + upd.totalOutDelta),
+        txCount: Math.max(0, (rec?.txCount ?? 0) + upd.txCountDelta)
+    }));
+
+    // Batch Process Category
+    await bulkUpdate(summaryCategoryMonth, categoryUpdates, (rec, upd, key) => ({
+        id: key,
+        month: upd.month,
+        kategori: upd.kategori,
+        totalOut: (rec?.totalOut ?? 0) + upd.totalOutDelta,
+        txCount: Math.max(0, (rec?.txCount ?? 0) + upd.txCountDelta)
+    }));
+
+    // Batch Process Heatmap
+    await bulkUpdate(summaryHeatmapDay, heatmapUpdates, (rec, upd, key) => ({
+        id: key,
+        tanggal: key,
+        totalOut: (rec?.totalOut ?? 0) + upd.totalOutDelta,
+        txCount: Math.max(0, (rec?.txCount ?? 0) + upd.txCountDelta)
+    }));
+
+    // Batch Process Account
+    await bulkUpdate(summaryAccountMonth, accountUpdates, (rec, upd, key) => ({
+        id: key,
+        month: upd.month,
+        akunId: upd.akunId,
+        delta: (rec?.delta ?? 0) + upd.deltaDelta,
+        txCount: Math.max(0, (rec?.txCount ?? 0) + upd.txCountDelta)
+    }));
+}
+
 export async function applyTransactionUpdateSummaryDelta(params: {
     before: TransactionSummaryInput;
     after: TransactionSummaryInput;
