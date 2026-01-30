@@ -3,7 +3,7 @@ import { type RecurringTransactionRecord, type TransaksiRecord, type AkunRecord,
 import { Money } from "@/lib/money";
 import { calculateNextBillingDate, getApplicableInterestRate, type TierBunga } from "@/lib/template-utils";
 import { createNotification } from "./notifications-repo";
-import { applyTransactionSummaryDelta } from "./summary";
+import { applyTransactionSummaryDelta, applyTransactionSummaryDeltas } from "./summary";
 
 // ============================================
 // RECURRING TRANSACTIONS (GENERIC)
@@ -134,8 +134,6 @@ export async function skipRecurringForMonth(id: string, yearMonth: string) {
 export async function executeRecurringTransactions() {
     try {
         const now = new Date();
-        const today = now.getDate();
-        const dayOfWeek = now.getDay(); // 0 = Minggu
 
         const activeRecurring = await db.recurringTransaction
             .where("aktif")
@@ -145,92 +143,163 @@ export async function executeRecurringTransactions() {
         // Filter valid dates (not expired)
         const validRecurring = activeRecurring.filter(r => !r.tanggalSelesai || r.tanggalSelesai >= now);
 
+        const dueTransactions = validRecurring.filter(r => isRecurringDue(r, now));
+
+        if (dueTransactions.length === 0) {
+             return { success: true, executed: 0 };
+        }
+
+        // 1. Check Idempotency
+        const idempotencyKeys = dueTransactions.map(r => {
+             const dateKey = now.toISOString().split('T')[0];
+             return `recurring_${r.id}_${dateKey}`;
+        });
+
+        const existingTx = await db.transaksi.where("idempotencyKey").anyOf(idempotencyKeys).toArray();
+        const existingKeys = new Set(existingTx.map(t => t.idempotencyKey));
+
+        const toExecute = dueTransactions.filter((r, i) => !existingKeys.has(idempotencyKeys[i]));
+
+        if (toExecute.length === 0) {
+             return { success: true, executed: 0 };
+        }
+
         let executed = 0;
 
-        for (const recurring of validRecurring) {
-            if (isRecurringDue(recurring, now)) {
-                const dateKey = now.toISOString().split('T')[0];
-                const idempotencyKey = `recurring_${recurring.id}_${dateKey}`;
+        // 2. Prepare Category Accounts
+        const categoryNames = new Set<string>();
+        toExecute.forEach(r => {
+             const catName = r.tipeTransaksi === "KELUAR" ? `[EXPENSE] ${r.kategori}` : `[INCOME] ${r.kategori}`;
+             categoryNames.add(catName);
+        });
 
-                // Idempotency check 
-                const existing = await db.transaksi.where("idempotencyKey").equals(idempotencyKey).first();
-                if (existing) continue;
+        const existingCats = await db.akun.where("nama").anyOf(Array.from(categoryNames)).toArray();
+        const catMap = new Map<string, AkunRecord>();
+        existingCats.forEach(c => catMap.set(c.nama, c));
 
-                // Create Transaction
-                const kategoriTipe = recurring.tipeTransaksi === "KELUAR" ? "EXPENSE" : "INCOME";
+        const newCats: AkunRecord[] = [];
 
-                // Find/Create Category Account
-                const catName = recurring.tipeTransaksi === "KELUAR" ? `[EXPENSE] ${recurring.kategori}` : `[INCOME] ${recurring.kategori}`;
-                let catAccount = await db.akun.where("nama").equals(catName).first();
-
-                if (!catAccount) {
-                    // Create minimal Category Account
-                    const newCat: AkunRecord = {
+        // Identify missing categories and create them
+        for (const catName of categoryNames) {
+             if (!catMap.has(catName)) {
+                 const isExpense = catName.startsWith("[EXPENSE]");
+                 const newCat: AkunRecord = {
                         id: crypto.randomUUID(),
                         nama: catName,
-                        tipe: categoryToType(kategoriTipe), // Helper needs to map 'EXPENSE' -> 'PENGELUARAN'?? app-db.ts says 'EXPENSE' type is string.
-                        // app-db.ts: tipe: // BANK | E_WALLET | CASH | CREDIT_CARD | EXPENSE | INCOME
-                        // So literal "EXPENSE" or "INCOME"
+                        tipe: isExpense ? "EXPENSE" : "INCOME",
                         saldoAwalInt: 0,
                         saldoSekarangInt: 0,
                         createdAt: new Date(),
                         updatedAt: new Date()
-                    };
-                    // But wait, category account type is purely a convention here? 
-                    // app-db.ts says tipe is string.
-                    // Let's assume valid types are capitalized "EXPENSE", "INCOME".
+                 };
+                 newCats.push(newCat);
+                 catMap.set(catName, newCat);
+             }
+        }
 
-                    if (recurring.tipeTransaksi === "KELUAR") newCat.tipe = "EXPENSE";
-                    else newCat.tipe = "INCOME";
+        // 3. Prepare Transactions and Updates
+        const newTransactions: TransaksiRecord[] = [];
+        const accountUpdates = new Map<string, number>(); // AccountId -> Delta
+        const recurringUpdates: RecurringTransactionRecord[] = [];
 
-                    await db.akun.add(newCat);
-                    catAccount = newCat;
-                }
+        // Need to fetch source accounts to know their types for summary
+        const sourceAccountIds = new Set(toExecute.map(r => r.akunId));
 
-                const debitAkunId = recurring.tipeTransaksi === "KELUAR" ? catAccount.id : recurring.akunId;
-                const kreditAkunId = recurring.tipeTransaksi === "KELUAR" ? recurring.akunId : catAccount.id;
+        const sourceAccounts = await db.akun.where("id").anyOf(Array.from(sourceAccountIds)).toArray();
+        const accountMap = new Map<string, AkunRecord>();
+        sourceAccounts.forEach(a => accountMap.set(a.id, a));
 
-                await db.transaction('rw', [db.transaksi, db.akun, db.recurringTransaction, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
-                    const nominalInt = recurring.nominalInt;
+        // Add new categories to accountMap as well
+        newCats.forEach(c => accountMap.set(c.id, c));
+        // Add existing categories to accountMap
+        existingCats.forEach(c => accountMap.set(c.id, c));
 
-                    await db.transaksi.add({
+        await db.transaction('rw', [db.transaksi, db.akun, db.recurringTransaction, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
+
+             // Save new categories first
+             if (newCats.length > 0) {
+                 await db.akun.bulkAdd(newCats);
+             }
+
+             for (const r of toExecute) {
+                  const dateKey = now.toISOString().split('T')[0];
+                  const idempotencyKey = `recurring_${r.id}_${dateKey}`;
+
+                  const catName = r.tipeTransaksi === "KELUAR" ? `[EXPENSE] ${r.kategori}` : `[INCOME] ${r.kategori}`;
+                  const catAccount = catMap.get(catName)!;
+
+                  const debitAkunId = r.tipeTransaksi === "KELUAR" ? catAccount.id : r.akunId;
+                  const kreditAkunId = r.tipeTransaksi === "KELUAR" ? r.akunId : catAccount.id;
+
+                  const nominalInt = r.nominalInt;
+
+                  newTransactions.push({
                         id: crypto.randomUUID(),
                         tanggal: now,
-                        deskripsi: `[Auto] ${recurring.nama}`,
+                        deskripsi: `[Auto] ${r.nama}`,
                         nominalInt: nominalInt,
-                        kategori: recurring.kategori,
+                        kategori: r.kategori,
                         debitAkunId,
                         kreditAkunId,
                         catatan: "Dibuat otomatis dari transaksi berulang",
                         idempotencyKey,
                         createdAt: new Date()
-                    });
+                  });
 
-                    // Update balances
-                    const debtAcc = await db.akun.get(debitAkunId);
-                    const credAcc = await db.akun.get(kreditAkunId);
+                  // Track account updates
+                  accountUpdates.set(debitAkunId, (accountUpdates.get(debitAkunId) || 0) + nominalInt);
+                  accountUpdates.set(kreditAkunId, (accountUpdates.get(kreditAkunId) || 0) - nominalInt);
 
-                    if (debtAcc) await db.akun.update(debitAkunId, { saldoSekarangInt: debtAcc.saldoSekarangInt + nominalInt });
-                    if (credAcc) await db.akun.update(kreditAkunId, { saldoSekarangInt: credAcc.saldoSekarangInt - nominalInt });
+                  // Track recurring update
+                  recurringUpdates.push({ ...r, terakhirDieksekusi: now });
+             }
 
-                    // Update summary tables for analytics
-                    await applyTransactionSummaryDelta({
-                        tanggal: now,
-                        nominalInt,
-                        kategori: recurring.kategori,
-                        debitAkunId,
-                        kreditAkunId,
-                        debitAkunTipe: debtAcc?.tipe,
-                        kreditAkunTipe: credAcc?.tipe
-                    }, "add");
+             // Batch Insert Transactions
+             if (newTransactions.length > 0) {
+                 await db.transaksi.bulkAdd(newTransactions);
+             }
 
-                    // Update recurring status
-                    await db.recurringTransaction.update(recurring.id, { terakhirDieksekusi: now });
-                });
+             // Batch Update Accounts
+             const involvedIds = Array.from(accountUpdates.keys());
+             const involvedAccounts = await db.akun.bulkGet(involvedIds);
 
-                executed++;
-            }
-        }
+             const accountsToUpdate: AkunRecord[] = [];
+             involvedAccounts.forEach((acc, i) => {
+                 if (acc) {
+                     const delta = accountUpdates.get(acc.id) || 0;
+                     acc.saldoSekarangInt += delta;
+                     accountsToUpdate.push(acc);
+                 }
+             });
+
+             if (accountsToUpdate.length > 0) {
+                 await db.akun.bulkPut(accountsToUpdate);
+             }
+
+             // Batch Update Recurring
+             if (recurringUpdates.length > 0) {
+                 await db.recurringTransaction.bulkPut(recurringUpdates);
+             }
+
+             // Batch Summary Updates
+             const summaryInputs = newTransactions.map(tx => {
+                 const debitAcc = accountMap.get(tx.debitAkunId);
+                 const kreditAcc = accountMap.get(tx.kreditAkunId);
+                 return {
+                     tanggal: tx.tanggal,
+                     nominalInt: tx.nominalInt,
+                     kategori: tx.kategori,
+                     debitAkunId: tx.debitAkunId,
+                     kreditAkunId: tx.kreditAkunId,
+                     debitAkunTipe: debitAcc?.tipe,
+                     kreditAkunTipe: kreditAcc?.tipe
+                 };
+             });
+
+             await applyTransactionSummaryDeltas(summaryInputs, "add");
+
+             executed = toExecute.length;
+        });
 
         return { success: true, executed };
     } catch (error) {
