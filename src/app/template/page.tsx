@@ -12,7 +12,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { getTransactionTemplates } from "@/lib/db/transaction-templates-repo"
-import { getAkun, getCategoryAccounts } from "@/lib/db/accounts-repo"
+import { getAkun } from "@/lib/db/accounts-repo"
+import { getAllKategori } from "@/lib/db/kategori-repo"
 import { formatRupiah } from "@/lib/format"
 import { AddTemplateForm } from "@/components/forms/add-template-form"
 import { UseTemplateButton } from "@/components/template/use-template-button"
@@ -33,19 +34,26 @@ export default function TemplatePage() {
                 const [
                     templatesResult,
                     akunsResult,
-                    expenseAkuns,
-                    incomeAkuns
+                    allCategories
                 ] = await Promise.all([
                     getTransactionTemplates(),
                     getAkun(),
-                    getCategoryAccounts("EXPENSE"),
-                    getCategoryAccounts("INCOME")
+                    getAllKategori()
                 ])
 
                 setTemplates(templatesResult.data || [])
                 setAkuns(akunsResult)
-                setKategoris(expenseAkuns.map(a => a.nama.replace("[EXPENSE] ", "")))
-                setKategoriIncome(incomeAkuns.map(a => a.nama.replace("[INCOME] ", "")))
+
+                // Using new Kategori system which doesn't strictly separate by type yet
+                // displaying all active parent categories, ensuring unique names
+                const catNames = Array.from(new Set(
+                    allCategories
+                        .filter(c => c.show && !c.parentId)
+                        .map(c => c.nama)
+                ))
+
+                setKategoris(catNames)
+                setKategoriIncome(catNames)
             } catch (error) {
                 console.error("Failed to load template data:", error)
             } finally {

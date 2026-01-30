@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { ChevronLeft, Pencil, Save, Plus, Trash2 } from "lucide-react"
+import { ChevronLeft, Pencil, Save, Plus, Trash2, MoreVertical } from "lucide-react"
 import * as LucideIcons from "lucide-react"
 import {
     getKategoriById,
@@ -45,6 +46,7 @@ function KategoriDetailContent() {
     const [loading, setLoading] = useState(true)
     const [isEditing, setIsEditing] = useState(false)
     const [showCreateSub, setShowCreateSub] = useState(false)
+    const [editingSubData, setEditingSubData] = useState<KategoriRecord | null>(null)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
@@ -95,7 +97,7 @@ function KategoriDetailContent() {
             nature,
             show,
         })
-        // ... (rest of function logic same as before)
+        // ...(removed redundant reloading) logic same as before... could just reload
 
         if (result.success) {
             toast.success("Perubahan berhasil disimpan", { id: toastId })
@@ -128,6 +130,16 @@ function KategoriDetailContent() {
     function confirmDelete(confirmId: string) {
         setDeleteTargetId(confirmId)
         setShowDeleteDialog(true)
+    }
+
+    function handleEditSub(sub: KategoriRecord) {
+        setEditingSubData(sub)
+        setShowCreateSub(true)
+    }
+
+    function handleCreateNewSub() {
+        setEditingSubData(null)
+        setShowCreateSub(true)
     }
 
     if (!id) return null
@@ -200,17 +212,19 @@ function KategoriDetailContent() {
                         {isEditing && (
                             <div className="w-full space-y-3">
                                 <Label>Pilih Ikon</Label>
-                                <div className="grid grid-cols-9 gap-2">
+                                <div className="grid grid-cols-6 sm:grid-cols-9 gap-2">
                                     {POPULAR_ICONS.map((iconName) => {
                                         const Ico = (LucideIcons as any)[iconName] || LucideIcons.Tag
                                         return (
                                             <button
                                                 key={iconName}
                                                 type="button"
-                                                onClick={() => setIcon(iconName)}
+                                                onClick={() => {
+                                                    setIcon(iconName)
+                                                }}
                                                 className={`p-2 rounded border transition-all ${icon === iconName
-                                                        ? 'border-primary bg-primary/10'
-                                                        : 'border-border hover:border-primary/50'
+                                                    ? 'border-primary bg-primary/10'
+                                                    : 'border-border hover:border-primary/50'
                                                     }`}
                                             >
                                                 <Ico className="w-4 h-4 mx-auto" />
@@ -240,7 +254,7 @@ function KategoriDetailContent() {
                     <div className="space-y-2">
                         <Label>Category Nature</Label>
                         {isEditing ? (
-                            <Select value={nature} onValueChange={setNature}>
+                            <Select value={nature || "NEED"} onValueChange={setNature}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -287,57 +301,68 @@ function KategoriDetailContent() {
 
             {/* Subcategories */}
             <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground px-1">
-                        Subkategori
-                    </div>
-                    <Button size="sm" variant="outline" onClick={() => setShowCreateSub(true)}>
+                <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground px-1">
+                    Subkategori
+                </div>
+                {!kategori.parentId && (
+                    <Button size="sm" variant="outline" onClick={handleCreateNewSub}>
                         <Plus className="w-4 h-4 mr-2" />
                         Tambah Subkategori
                     </Button>
-                </div>
-
-                {subKategori.length === 0 ? (
-                    <Card>
-                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                            Belum ada subkategori
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-2">
-                        {subKategori.map((sub) => {
-                            const SubIcon = (LucideIcons as any)[sub.icon] || LucideIcons.Tag
-                            return (
-                                <Card key={sub.id} className="hover:bg-accent/40 transition-colors">
-                                    <CardContent className="p-3">
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                                                style={{ backgroundColor: sub.warna }}
-                                            >
-                                                <SubIcon className="w-5 h-5 text-white" />
-                                            </div>
-                                            <div className="flex-1 min-w-0 font-medium truncate">
-                                                {sub.nama}
-                                            </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => confirmDelete(sub.id)}
-                                                className="shrink-0 text-red-500 hover:text-red-600"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )
-                        })}
-                    </div>
                 )}
             </div>
 
-            {/* Create Sub Dialog */}
+            {subKategori.length === 0 ? (
+                <Card>
+                    <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                        Belum ada subkategori
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="space-y-2">
+                    {subKategori.map((sub) => {
+                        const SubIcon = (LucideIcons as any)[sub.icon] || LucideIcons.Tag
+                        return (
+                            <Card key={sub.id} className="hover:bg-accent/40 transition-colors">
+                                <CardContent className="p-3">
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                                            style={{ backgroundColor: sub.warna }}
+                                        >
+                                            <SubIcon className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-medium truncate">{sub.nama}</div>
+                                                {!sub.show && <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Hidden</span>}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">{sub.nature}</div>
+                                        </div>
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => handleEditSub(sub)}>
+                                                    <Pencil className="w-4 h-4 mr-2" /> Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => confirmDelete(sub.id)}>
+                                                    <Trash2 className="w-4 h-4 mr-2" /> Hapus
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )
+                    })}
+                </div>
+            )}
+            {/* Create/Edit Sub Dialog */}
             <CreateKategoriDialog
                 open={showCreateSub}
                 onOpenChange={setShowCreateSub}
@@ -346,6 +371,7 @@ function KategoriDetailContent() {
                     if (id) loadData(id)
                 }}
                 parentId={id}
+                initialData={editingSubData}
             />
 
             {/* Delete Confirmation */}

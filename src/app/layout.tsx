@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Sidebar } from "@/components/layout/sidebar";
-import { BottomNav } from "@/components/layout/bottom-nav";
+
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { DebugMenu } from "@/components/layout/debug-menu";
@@ -78,7 +78,7 @@ export default function RootLayout({
               </div>
             </main>
           </div>
-          <BottomNav />
+
           <FAB />
           <Toaster position="top-center" richColors closeButton />
           <SWRegister />

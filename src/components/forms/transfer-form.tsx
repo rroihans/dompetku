@@ -28,16 +28,28 @@ import { getAkun, createTransfer } from "@/lib/db"
 import { formatRupiah } from "@/lib/format"
 import type { AccountDTO } from "@/lib/account-dto"
 
+
 interface TransferFormProps {
     trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
-export function TransferForm({ trigger }: TransferFormProps) {
+export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: TransferFormProps) {
     const router = useRouter()
-    const [open, setOpen] = useState(false)
+    const [internalOpen, setInternalOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [akunList, setAkunList] = useState<AccountDTO[]>([])
     const [error, setError] = useState("")
+
+    const open = controlledOpen ?? internalOpen
+    const setOpen = (val: boolean) => {
+        if (onOpenChange) {
+            onOpenChange(val)
+        } else {
+            setInternalOpen(val)
+        }
+    }
 
     // Form state
     const [dariAkunId, setDariAkunId] = useState("")
@@ -124,13 +136,7 @@ export function TransferForm({ trigger }: TransferFormProps) {
     const akunTujuanList = akunList.filter(a => a.id !== dariAkunId)
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {trigger ? trigger : (
-                    <Button variant="outline" className="gap-2">
-                        <ArrowRightLeft className="h-4 w-4" /> Transfer
-                    </Button>
-                )}
-            </DialogTrigger>
+            {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
             <DialogContent className="sm:max-w-[450px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">

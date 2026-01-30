@@ -7,6 +7,7 @@ export interface IntegrityReport {
     orphanedTransactions: number
     balanceMismatches: number
     mismatchedAdminFees: number
+    negativeInstallments: number
     totalIssues: number
     details: string[]
 }
@@ -19,6 +20,7 @@ export async function checkDatabaseIntegrity(): Promise<{ success: boolean; data
             orphanedTransactions: 0,
             balanceMismatches: 0,
             mismatchedAdminFees: 0,
+            negativeInstallments: 0,
             totalIssues: 0,
             details: []
         };
@@ -62,7 +64,7 @@ export async function checkDatabaseIntegrity(): Promise<{ success: boolean; data
             }
         }
 
-        report.totalIssues = report.orphanedRecurring + report.orphanedCicilan + report.orphanedTransactions + report.balanceMismatches + report.mismatchedAdminFees;
+        report.totalIssues = report.orphanedRecurring + report.orphanedCicilan + report.orphanedTransactions + report.balanceMismatches + report.mismatchedAdminFees + report.negativeInstallments;
 
         // 2. Orphaned Recurring (orphaned logic relies on what? maybe missing account?)
         // In this case, maybe just check if account exists

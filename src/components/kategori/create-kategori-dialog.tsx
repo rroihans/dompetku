@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import * as LucideIcons from "lucide-react"
-import { createKategori } from "@/lib/db/kategori-repo"
+import { createKategori, getKategoriById, updateKategori, type KategoriRecord } from "@/lib/db/kategori-repo"
 import { toast } from "sonner"
 
 const PRESET_COLORS = [
@@ -28,37 +29,84 @@ interface CreateKategoriDialogProps {
     onOpenChange: (open: boolean) => void
     onCreated: () => void
     parentId?: string | null
+    initialData?: KategoriRecord | null
 }
 
-export function CreateKategoriDialog({ open, onOpenChange, onCreated, parentId }: CreateKategoriDialogProps) {
+export function CreateKategoriDialog({ open, onOpenChange, onCreated, parentId, initialData }: CreateKategoriDialogProps) {
+    const isEdit = !!initialData
     const [nama, setNama] = useState("")
     const [icon, setIcon] = useState("Tag")
     const [warna, setWarna] = useState("#3b82f6")
     const [nature, setNature] = useState("NEED")
+    const [show, setShow] = useState(true)
     const [loading, setLoading] = useState(false)
+
+    // Reset or Load Data
+    useEffect(() => {
+        if (open) {
+            if (initialData) {
+                setNama(initialData.nama)
+                setIcon(initialData.icon)
+                setWarna(initialData.warna)
+                setNature(initialData.nature)
+                setShow(initialData.show ?? true)
+            } else {
+                setNama("")
+                setIcon("Tag")
+                setWarna("#3b82f6")
+                setShow(true)
+
+                // Inherit nature from parent only if creating new
+                if (parentId) {
+                    getKategoriById(parentId).then(parent => {
+                        if (parent) {
+                            setNature(parent.nature)
+                        }
+                    })
+                } else {
+                    setNature("NEED")
+                }
+            }
+        }
+    }, [open, initialData, parentId])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         setLoading(true)
-        const toastId = toast.loading("Membuat kategori...")
+        const toastId = toast.loading(isEdit ? "Menyimpan perubahan..." : "Membuat kategori...")
 
-        const result = await createKategori({
-            nama,
-            icon,
-            warna,
-            nature,
-            parentId: parentId ?? null,
-        })
+        let result;
+
+        if (isEdit && initialData) {
+            result = await updateKategori(initialData.id, {
+                nama,
+                icon,
+                warna,
+                nature,
+                show
+            })
+        } else {
+            result = await createKategori({
+                nama,
+                icon,
+                warna,
+                nature,
+                parentId: parentId ?? null,
+                show
+            })
+        }
 
         if (result.success) {
-            toast.success("Kategori berhasil dibuat", { id: toastId })
-            setNama("")
-            setIcon("Tag")
-            setWarna("#3b82f6")
-            setNature("NEED")
+            toast.success(isEdit ? "Perubahan berhasil disimpan" : "Kategori berhasil dibuat", { id: toastId })
+            if (!isEdit) {
+                setNama("")
+                setIcon("Tag")
+                // Keep nature/color for ease of repeated entry? or reset?
+                // reset
+            }
             onCreated()
         } else {
-            toast.error(result.error || "Gagal membuat kategori", { id: toastId })
+            toast.error(result.error || "Gagal menyimpan", { id: toastId })
         }
 
         setLoading(false)
@@ -66,11 +114,16 @@ export function CreateKategoriDialog({ open, onOpenChange, onCreated, parentId }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md h-[90vh] sm:h-auto overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{parentId ? "Tambah Subkategori" : "Tambah Kategori Baru"}</DialogTitle>
+                    <DialogTitle>
+                        {isEdit
+                            ? "Edit Kategori"
+                            : (parentId ? "Tambah Subkategori" : "Tambah Kategori Baru")
+                        }
+                    </DialogTitle>
                     <DialogDescription>
-                        Buat {parentId ? "subkategori" : "kategori"} dengan ikon dan warna kustom
+                        {isEdit ? "Ubah detail kategori ini" : `Buat ${parentId ? "subkategori" : "kategori"} dengan ikon dan warna kustom`}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -87,22 +140,30 @@ export function CreateKategoriDialog({ open, onOpenChange, onCreated, parentId }
                         />
                     </div>
 
-                    {/* Nature (hanya untuk kategori utama) */}
-                    {!parentId && (
-                        <div className="space-y-2">
-                            <Label>Nature</Label>
-                            <Select value={nature} onValueChange={setNature}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="MUST">Must (Kebutuhan Wajib)</SelectItem>
-                                    <SelectItem value="NEED">Need (Kebutuhan Penting)</SelectItem>
-                                    <SelectItem value="WANT">Want (Keinginan)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    {/* Nature - Always visible now */}
+                    <div className="space-y-2">
+                        <Label>Category Nature</Label>
+                        <Select value={nature} onValueChange={setNature}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="MUST">Must (Kebutuhan Wajib)</SelectItem>
+                                <SelectItem value="NEED">Need (Kebutuhan Penting)</SelectItem>
+                                <SelectItem value="WANT">Want (Keinginan)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {parentId && !isEdit && <p className="text-[10px] text-muted-foreground">*Otomatis mengikuti parent, tapi bisa diubah</p>}
+                    </div>
+
+                    {/* Show Toggle */}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                            <Label>Show</Label>
+                            <p className="text-xs text-muted-foreground">Tampilkan kategori di daftar</p>
                         </div>
-                    )}
+                        <Switch checked={show} onCheckedChange={setShow} />
+                    </div>
 
                     {/* Icon */}
                     <div className="space-y-2">
@@ -116,8 +177,8 @@ export function CreateKategoriDialog({ open, onOpenChange, onCreated, parentId }
                                         type="button"
                                         onClick={() => setIcon(iconName)}
                                         className={`p-3 rounded-lg border-2 transition-all ${icon === iconName
-                                                ? 'border-primary bg-primary/10'
-                                                : 'border-border hover:border-primary/50'
+                                            ? 'border-primary bg-primary/10'
+                                            : 'border-border hover:border-primary/50'
                                             }`}
                                     >
                                         <IconComponent className="w-5 h-5 mx-auto" />
