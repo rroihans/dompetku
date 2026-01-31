@@ -355,6 +355,9 @@ export async function processMonthlyAdminFees(dryRun: boolean = false) {
         let failed = 0;
         const processedTransactions: any[] = [];
 
+        // Prepare data structures
+        const candidates: { akun: AkunRecord; billingDate: Date; nominalInt: number; deskripsi: string }[] = [];
+
         for (const akun of akunList) {
             if (!akun.biayaAdminNominalInt) continue;
 
@@ -384,71 +387,111 @@ export async function processMonthlyAdminFees(dryRun: boolean = false) {
             const nominalInt = akun.biayaAdminNominalInt;
             const deskripsi = `Biaya admin bulanan ${akun.nama}`;
 
-            if (dryRun) {
+            candidates.push({ akun, billingDate, nominalInt, deskripsi });
+        }
+
+        if (candidates.length === 0) {
+            return { success: true, processed: 0, failed: 0, processedTransactions: [] };
+        }
+
+        if (dryRun) {
+            candidates.forEach(c => {
                 processed++;
-                processedTransactions.push({ akunId: akun.id, namaAkun: akun.nama, nominal: Money.toFloat(nominalInt), tanggal: billingDate });
-                continue;
-            }
+                processedTransactions.push({ akunId: c.akun.id, namaAkun: c.akun.nama, nominal: Money.toFloat(c.nominalInt), tanggal: c.billingDate });
+            });
+            return { success: true, processed, failed: 0, processedTransactions };
+        }
 
-            try {
-                await db.transaction('rw', [db.transaksi, db.akun, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
-                    // Create Category Account if needed
-                    const catName = "[EXPENSE] Biaya Admin Bank";
-                    let catAccount = await db.akun.where("nama").equals(catName).first();
-                    if (!catAccount) {
-                        const newCat: AkunRecord = {
-                            id: crypto.randomUUID(),
-                            nama: catName,
-                            tipe: "EXPENSE",
-                            saldoAwalInt: 0,
-                            saldoSekarangInt: 0,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                            warna: "#ef4444"
-                        };
-                        await db.akun.add(newCat);
-                        catAccount = newCat;
-                    }
+        try {
+            await db.transaction('rw', [db.transaksi, db.akun, db.summaryMonth, db.summaryCategoryMonth, db.summaryHeatmapDay, db.summaryAccountMonth], async () => {
+                // 1. Get or Create Category Account
+                const catName = "[EXPENSE] Biaya Admin Bank";
+                let catAccount = await db.akun.where("nama").equals(catName).first();
 
-                    const txData = {
+                if (!catAccount) {
+                    const newCat: AkunRecord = {
+                        id: crypto.randomUUID(),
+                        nama: catName,
+                        tipe: "EXPENSE",
+                        saldoAwalInt: 0,
+                        saldoSekarangInt: 0,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        warna: "#ef4444"
+                    };
+                    await db.akun.add(newCat);
+                    catAccount = newCat;
+                }
+
+                const newTransactions: TransaksiRecord[] = [];
+                const summaryInputs: any[] = [];
+                const accountUpdatesMap = new Map<string, AkunRecord>();
+
+                // Initial state of category account balance delta
+                let catBalanceDelta = 0;
+
+                for (const cand of candidates) {
+                    const { akun, billingDate, nominalInt, deskripsi } = cand;
+
+                    const txData: TransaksiRecord = {
                         id: crypto.randomUUID(),
                         tanggal: billingDate,
                         deskripsi,
                         nominalInt: nominalInt,
                         kategori: "Biaya Admin Bank",
-                        debitAkunId: catAccount.id,
+                        debitAkunId: catAccount!.id,
                         kreditAkunId: akun.id,
                         idempotencyKey: `admin-${akun.id}-${currentMonthStr}`,
                         createdAt: new Date()
                     };
 
-                    await db.transaksi.add(txData);
+                    newTransactions.push(txData);
+                    processedTransactions.push(txData);
 
-                    // Update balances
-                    await db.akun.update(catAccount.id, { saldoSekarangInt: catAccount.saldoSekarangInt + nominalInt });
-                    await db.akun.update(akun.id, {
-                        saldoSekarangInt: akun.saldoSekarangInt - nominalInt,
-                        lastAdminChargeDate: billingDate
-                    });
+                    // Prepare User Account Update
+                    const updatedAkun = accountUpdatesMap.get(akun.id) || { ...akun };
+                    updatedAkun.saldoSekarangInt = (updatedAkun.saldoSekarangInt || 0) - nominalInt;
+                    updatedAkun.lastAdminChargeDate = billingDate;
+                    accountUpdatesMap.set(akun.id, updatedAkun);
 
-                    // Update summary tables for analytics
-                    await applyTransactionSummaryDelta({
+                    // Category Balance Update
+                    catBalanceDelta += nominalInt;
+
+                    // Summary Input
+                    summaryInputs.push({
                         tanggal: billingDate,
                         nominalInt,
                         kategori: "Biaya Admin Bank",
-                        debitAkunId: catAccount.id,
+                        debitAkunId: catAccount!.id,
                         kreditAkunId: akun.id,
                         debitAkunTipe: "EXPENSE",
                         kreditAkunTipe: akun.tipe
-                    }, "add");
+                    });
+                }
 
-                    processed++;
-                    processedTransactions.push(txData);
-                });
-            } catch (e) {
-                console.error("processMonthlyAdminFees failed for " + akun.nama, e);
-                failed++;
-            }
+                // Apply Category Account Update
+                const finalCatAccount = accountUpdatesMap.get(catAccount!.id) || { ...catAccount! };
+                finalCatAccount.saldoSekarangInt = (finalCatAccount.saldoSekarangInt || 0) + catBalanceDelta;
+                accountUpdatesMap.set(catAccount!.id, finalCatAccount);
+
+                // Execute Bulk Ops
+                if (newTransactions.length > 0) {
+                    await db.transaksi.bulkAdd(newTransactions);
+                }
+
+                if (accountUpdatesMap.size > 0) {
+                    await db.akun.bulkPut(Array.from(accountUpdatesMap.values()));
+                }
+
+                if (summaryInputs.length > 0) {
+                    await applyTransactionSummaryDeltas(summaryInputs, "add");
+                }
+
+                processed = candidates.length;
+            });
+        } catch (e) {
+            console.error("processMonthlyAdminFees batch error", e);
+            failed = candidates.length;
         }
 
         return { success: true, processed, failed, processedTransactions };
