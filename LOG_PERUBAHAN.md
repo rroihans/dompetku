@@ -1,6 +1,7 @@
 # Log Perubahan - Dompetku
 
 ## Stack & Arsitektur
+
 - **Framework:** Next.js 16, React 19, Tailwind CSS v4
 - **Database:** Dexie.js 4 (IndexedDB)
 - **Sistem:** Double-Entry Bookkeeping (PSAK Indonesia)
@@ -8,6 +9,7 @@
 - **Layout:** Sidebar (Desktop), Drawer Navigation + Bottom Nav (Mobile)
 
 ## Data Dummy
+
 - 6 Akun User + 44 Akun Internal (kategori)
 - 348+ Transaksi (6 bulan)
 - 6 Recurring, 5 Cicilan, 27 Budget
@@ -18,18 +20,21 @@
 ## Fitur Selesai ✅
 
 ### Akun
+
 - CRUD lengkap dengan warna custom
 - Validasi nama unik, pagination 8/halaman
 - Tipe: Bank, E-Wallet, Cash, Kartu Kredit
 - Transfer antar akun dengan double-entry
 
 ### Transaksi
+
 - CRUD dengan filter (search, kategori, tipe, akun)
 - Edit nominal dengan auto-adjust saldo
 - Date picker untuk tanggal custom
 - Pagination 10/halaman
 
 ### Dashboard
+
 - Stat Cards: Total Saldo, Pemasukan, Pengeluaran, Selisih
 - Pie Chart: Pengeluaran per kategori
 - Bar Chart: Trend 6 bulan terakhir
@@ -37,12 +42,14 @@
 - Quick Links footer
 
 ### Laporan Bulanan
+
 - Navigasi bulan (prev/next)
 - Summary: Pemasukan, Pengeluaran, Selisih, Rata-rata harian
 - Breakdown per kategori dengan progress bar
 - Top 5 pengeluaran terbesar
 
 ### Statistik/Insight ✨
+
 - Cash Flow Table (ringkasan income vs expense)
 - Income & Expense Book (breakdown per kategori)
 - Spending Insights (top kategori, tren, pola harian)
@@ -50,6 +57,7 @@
 - Period selector: 7H, 30H, 12M, 6B, 1T
 
 ### Cicilan
+
 - CRUD rencana cicilan
 - Pembayaran bulanan dengan double-entry
 - Pelunasan dipercepat
@@ -58,12 +66,14 @@
 - Alert jatuh tempo
 
 ### Recurring
+
 - Template transaksi berulang
 - Frekuensi: Harian, Mingguan, Bulanan, Tahunan
 - Toggle aktif/nonaktif
 - Auto-execute (siap untuk cron)
 
 ### Kategori ✨
+
 - System kategori hierarki (Main → Sub, max depth 1)
 - CRUD lengkap dengan icon & color picker
 - Nature classification: Must / Need / Want (PSAK-inspired)
@@ -73,6 +83,7 @@
 - Link ke /kategori dari Settings
 
 ### Budget/Anggaran
+
 - Set limit per kategori per bulan
 - Progress bar dengan warna:
   - Hijau: < 80%
@@ -83,26 +94,31 @@
 - Budget Chart (visualisasi anggaran vs realisasi)
 
 ### Template Transaksi ✨
+
 - Simpan transaksi favorit sebagai template
 - Quick-add untuk transaksi cepat
 - Usage count tracking
 
 ### Kalender Keuangan ✨
+
 - View bulanan dengan event dots
 - Tampilkan cicilan, recurring, transaksi
 - Detail per tanggal
 
 ### Net Worth ✨
+
 - Grafik area chart di Dashboard
 - Total Aset vs Hutang
 - Perubahan 30 hari terakhir
 
 ### Multi-Currency ✨
+
 - 10 mata uang support (USD, EUR, SGD, dll)
 - Rate management di Pengaturan
 - Konverter built-in
 
 ### Pengaturan
+
 - Backup: Export semua data ke JSON
 - Restore: Import dari file JSON
 - Reset: Hapus semua data (dengan konfirmasi)
@@ -112,6 +128,7 @@
 - Currency Rates: Kelola kurs mata uang
 
 ### UI/UX
+
 - Cursor pointer global untuk semua elemen interaktif
 - Hover effects pada cards
 - Empty states yang clickable
@@ -121,6 +138,7 @@
 ---
 
 ## Bug Fixes
+
 - Hydration error (AlertDialogDescription dengan asChild)
 - Import akun duplikat (cek by NAMA+TIPE, bukan ID)
 - Redirect setelah reset (ke / setelah 3 detik)
@@ -146,6 +164,7 @@
 ---
 
 ## Catatan Teknis
+
 - Lint warnings `@plugin/@theme/@apply` = false positive (Tailwind v4)
 - Loading ~200ms di dev mode = normal (SSR + DB queries)
 - Privacy mode menggunakan CSS `filter: blur()` + `data-private` attribute
@@ -154,191 +173,201 @@
 
 ---
 
-
 ## Riwayat Versi
 
 ### v0.9.1 (2026-01-30)
+
 - **Service Layer Architecture:**
-    - **Architecture:** Implementasi Service Layer (`src/services`) untuk memisahkan business logic dari UI dan Repository.
-    - **Services:** `TransactionService`, `BudgetService`, `CicilanService`, `NotificationService`, `AnalyticsService`.
-    - **Pattern:** Menggunakan `ServiceFactory` untuk Dependency Injection dan Centralized Error Handling (`BusinessError`).
-    - **Type Safety:** Definisi tipe eksplisit di `src/services/types` untuk interoperabilitas yang lebih baik.
+  - **Architecture:** Implementasi Service Layer (`src/services`) untuk memisahkan business logic dari UI dan Repository.
+  - **Services:** `TransactionService`, `BudgetService`, `CicilanService`, `NotificationService`, `AnalyticsService`.
+  - **Pattern:** Menggunakan `ServiceFactory` untuk Dependency Injection dan Centralized Error Handling (`BusinessError`).
+  - **Type Safety:** Definisi tipe eksplisit di `src/services/types` untuk interoperabilitas yang lebih baik.
 
 ### v0.9.0 (2026-01-30)
+
 - **Form System Overhaul (React Hook Form):**
-    - **Performance & Validation:** Migrasi 5 form prioritas (`AddCicilanForm`, `AddRecurringForm`, `AddBudgetForm`, `AddAccountForm`, `AddTransactionForm`) menggunakan `react-hook-form` + `zodResolver`.
-    - **Robust Type Safety:** Implementasi casting `as any` pada resolver untuk mengatasi strict type mismatch TS-Next.js terbaru.
-    - **Better UX:** State management yang lebih efisien (uncontrolled components), validasi real-time, dan loading state yang konsisten.
-    - **Maintainability:** Pengurangan boilerplate code manual `useState` hingga 40% per file form.
+  - **Performance & Validation:** Migrasi 5 form prioritas (`AddCicilanForm`, `AddRecurringForm`, `AddBudgetForm`, `AddAccountForm`, `AddTransactionForm`) menggunakan `react-hook-form` + `zodResolver`.
+  - **Robust Type Safety:** Implementasi casting `as any` pada resolver untuk mengatasi strict type mismatch TS-Next.js terbaru.
+  - **Better UX:** State management yang lebih efisien (uncontrolled components), validasi real-time, dan loading state yang konsisten.
+  - **Maintainability:** Pengurangan boilerplate code manual `useState` hingga 40% per file form.
 
 ### v0.8.5 (2026-01-30)
+
 - **Unit Testing Setup (Vitest):**
-    - **Infrastructure:** Konfigurasi Vitest + JSDOM + fake-indexeddb untuk high-speed in-memory database testing tanpa merusak data production.
-    - **Test Utilities:** Helper `test-db.ts` untuk isolasi database per-test case dan custom matchers (`toBeValidRupiah`, `toBalanceDoubleEntry`).
-    - **CI/CD Ready:** Script `npm run test:critical` untuk validasi logika bisnis vital sebelum deployment.
+  - **Infrastructure:** Konfigurasi Vitest + JSDOM + fake-indexeddb untuk high-speed in-memory database testing tanpa merusak data production.
+  - **Test Utilities:** Helper `test-db.ts` untuk isolasi database per-test case dan custom matchers (`toBeValidRupiah`, `toBalanceDoubleEntry`).
+  - **CI/CD Ready:** Script `npm run test:critical` untuk validasi logika bisnis vital sebelum deployment.
 - **Critical Business Logic Tests:**
-    - **Account Integrity:** Verifikasi prinsip Double-Entry Bookkeeping (Total Debits = Total Credits) pada setiap operasi mutasi saldo.
-    - **Transactions:** Validasi rule bisnis (nominal positif, akun valid), idempotency protection, dan ketepatan update summary bulanan.
-    - **Cicilan/Installments:** Validasi kalkulasi rencana cicilan, pembayaran bulanan (Expense vs Liability reduction), dan pelunasan dipercepat (Early Payoff).
+  - **Account Integrity:** Verifikasi prinsip Double-Entry Bookkeeping (Total Debits = Total Credits) pada setiap operasi mutasi saldo.
+  - **Transactions:** Validasi rule bisnis (nominal positif, akun valid), idempotency protection, dan ketepatan update summary bulanan.
+  - **Cicilan/Installments:** Validasi kalkulasi rencana cicilan, pembayaran bulanan (Expense vs Liability reduction), dan pelunasan dipercepat (Early Payoff).
 - **Core Fixes:**
-    - **Schema Validation:** Relaxed validation pada ID (`.cuid()` removed) untuk mendukung format UUID/Custom ID sistem (`id_...`), memperbaiki kompatibilitas create data.
-    - **Accounting Logic Fix:** Koreksi pemahaman test case pada transaksi Asset -> Expense (Total Debits tetap konstan karena perpindahan antar akun Debit-nature).
+  - **Schema Validation:** Relaxed validation pada ID (`.cuid()` removed) untuk mendukung format UUID/Custom ID sistem (`id_...`), memperbaiki kompatibilitas create data.
+  - **Accounting Logic Fix:** Koreksi pemahaman test case pada transaksi Asset -> Expense (Total Debits tetap konstan karena perpindahan antar akun Debit-nature).
 
 ### v0.8.4 (2026-01-30)
+
 - **Mobile-First UX Improvements:**
-    - **Hide Filter by Default:** Filter transaksi disembunyikan secara default dengan tombol toggle "Tampilkan Filter" untuk tampilan lebih bersih.
-    - **Drawer Navigation:** Implementasi slide drawer dari kiri dengan hamburger menu di mobile header, menggantikan bottom nav untuk akses menu lengkap.
-    - **Menu Structure:** Dark theme navigation dengan colored icons, active state highlighting, dan expandable submenu (Statistics).
+  - **Hide Filter by Default:** Filter transaksi disembunyikan secara default dengan tombol toggle "Tampilkan Filter" untuk tampilan lebih bersih.
+  - **Drawer Navigation:** Implementasi slide drawer dari kiri dengan hamburger menu di mobile header, menggantikan bottom nav untuk akses menu lengkap.
+  - **Menu Structure:** Dark theme navigation dengan colored icons, active state highlighting, dan expandable submenu (Statistics).
 - **Kategori Hierarki System:**
-    - **Database Migration (v4):** Non-destructive migration menambah table `kategori` tanpa mengubah data existing (ZERO data loss).
-    - **Hierarchical Categories:** Support main category → subcategory (max depth = 1 level).
-    - **Nature Classification:** Must / Need / Want untuk kategorisasi keuangan (sesuai best practice PSAK).
-    - **Full CRUD:** Create via dialog, Edit inline dengan icon/color picker, Delete dengan validation.
-    - **Auto-Migration:** Sistem otomatis membuat kategori dari transaksi existing saat pertama kali load.
-    - **Default Categories:** 16 kategori default PSAK-inspired (Gaji, Makanan, Transport, dll).
-    - **UI Components:** List page (`/kategori`), detail page (`/kategori/[id]`), create dialog, color/icon picker.
+  - **Database Migration (v4):** Non-destructive migration menambah table `kategori` tanpa mengubah data existing (ZERO data loss).
+  - **Hierarchical Categories:** Support main category → subcategory (max depth = 1 level).
+  - **Nature Classification:** Must / Need / Want untuk kategorisasi keuangan (sesuai best practice PSAK).
+  - **Full CRUD:** Create via dialog, Edit inline dengan icon/color picker, Delete dengan validation.
+  - **Auto-Migration:** Sistem otomatis membuat kategori dari transaksi existing saat pertama kali load.
+  - **Default Categories:** 16 kategori default PSAK-inspired (Gaji, Makanan, Transport, dll).
+  - **UI Components:** List page (`/kategori`), detail page (`/kategori/[id]`), create dialog, color/icon picker.
 - **Component Library:**
-    - **Sheet Component:** Manual implementation Radix UI Sheet untuk drawer dengan slide animation dari 4 arah.
+  - **Sheet Component:** Manual implementation Radix UI Sheet untuk drawer dengan slide animation dari 4 arah.
 - **Technical Changes:**
-    - Database version bump: v3 → v4
-    - New files: `kategori-repo.ts`, `drawer-navigation.tsx`, `sheet.tsx`, `kategori/edit/page.tsx`
-    - **Refactor:** `app/kategori/[id]` → `app/kategori/edit?id=...` (Query Params) untuk kompatibilitas penuh dengan `output: export`
-    - **Fix:** Build error `generateStaticParams` solved dengan static routing pattern.
+  - Database version bump: v3 → v4
+  - New files: `kategori-repo.ts`, `drawer-navigation.tsx`, `sheet.tsx`, `kategori/edit/page.tsx`
+  - **Refactor:** `app/kategori/[id]` → `app/kategori/edit?id=...` (Query Params) untuk kompatibilitas penuh dengan `output: export`
+  - **Fix:** Build error `generateStaticParams` solved dengan static routing pattern.
 
 ### v0.8.1 (2026-01-28)
+
 - **UI/UX Fixes (Post-Meeting Testing):**
-    - **Form Tambah Akun:** Input desimal dinonaktifkan by default (checkbox optional).
-    - **Form Transfer:** Notifikasi sukses & redirect yang benar ke halaman transaksi.
-    - **Layout Akun:** Hapus tombol redundan (Riwayat/Cicilan/Transaksi) dari card akun untuk tampilan bersih.
-    - **List Transaksi:** Kolom Akun menampilkan "Asal → Tujuan" untuk transfer, dan counterparty untuk transaksi lain.
-    - **Mobile Header:** Sembunyikan component `LiveClock` (Tanggal & Jam) di mobile layout untuk mencegah overlapping dan tampilan berantakan; user mobile sudah memiliki jam di status bar.
-    - **Mobile Notifications:** Fix width dropdown notifikasi agar responsif dan sembunyikan scrollbar bawaan.
-    - **FAB Menu:** Tambahkan backdrop overlay saat menu terbuka, perbaiki alignment label/icon, dan animasi yang lebih halus.
-    - **Pintasan Cepat:** Refactor total semua tombol dengan `block w-full`, `min-w-0`, dan `truncate` untuk handling text overflow yang sempurna.
-    - **FAB (Floating Action Button):** Refactor total menggunakan `Dialog`, tombol menu kini otomatis menutup (`setOpen(false)`) saat item diklik agar tampilan bersih.
+  - **Form Tambah Akun:** Input desimal dinonaktifkan by default (checkbox optional).
+  - **Form Transfer:** Notifikasi sukses & redirect yang benar ke halaman transaksi.
+  - **Layout Akun:** Hapus tombol redundan (Riwayat/Cicilan/Transaksi) dari card akun untuk tampilan bersih.
+  - **List Transaksi:** Kolom Akun menampilkan "Asal → Tujuan" untuk transfer, dan counterparty untuk transaksi lain.
+  - **Mobile Header:** Sembunyikan component `LiveClock` (Tanggal & Jam) di mobile layout untuk mencegah overlapping dan tampilan berantakan; user mobile sudah memiliki jam di status bar.
+  - **Mobile Notifications:** Fix width dropdown notifikasi agar responsif dan sembunyikan scrollbar bawaan.
+  - **FAB Menu:** Tambahkan backdrop overlay saat menu terbuka, perbaiki alignment label/icon, dan animasi yang lebih halus.
+  - **Pintasan Cepat:** Refactor total semua tombol dengan `block w-full`, `min-w-0`, dan `truncate` untuk handling text overflow yang sempurna.
+  - **FAB (Floating Action Button):** Refactor total menggunakan `Dialog`, tombol menu kini otomatis menutup (`setOpen(false)`) saat item diklik agar tampilan bersih.
 - **Bug Fixes:**
-    - Fix logic form transaksi yang sempat hilang saat refactor.
-    - Perbaikan `TransferForm` state management.
+  - Fix logic form transaksi yang sempat hilang saat refactor.
+  - Perbaikan `TransferForm` state management.
 
 ### v0.8.0 (2026-01-28)
-- **Offline-First Transformation (PWA):**
-    - **Local Database (Dexie):** Implementasi IndexedDB untuk penyimpanan data lokal tanpa server (Akun, Transaksi, Cicilan, Recurring).
-    - **Incremental Summaries:** Sistem agregasi otomatis (SummaryMonth, Category, Account) saat transaksi dibuat/diedit/dihapus untuk performa dashboard O(1).
-    - **Offline Capabilities:** Web Manifest dan Service Worker (`sw.js`) untuk akses tanpa internet (cache-first assets, network-first shell).
-    - **Repositories:** Refactoring logika bisnis ke `libs/db` (repository pattern) untuk memisahkan UI dari data layer.
-- **Core Features Migration:**
-    - **Recurring:** Repository logic untuk pemrosesan transaksi berulang (`processRecurringTransaction`).
-    - **Cicilan:** Logika pembayaran cicilan (`processCicilanPayment`) yang mengupdate status dan saldo otomatis.
-    - **Backup/Restore:** Fitur export/import data JSON lengkap (`backup.ts`).
-    - **Correctness Tools:** Fungsi `rebuildSummaries` dan `checkIntegrity` untuk perbaikan data otomatis.
 
+- **Offline-First Transformation (PWA):**
+  - **Local Database (Dexie):** Implementasi IndexedDB untuk penyimpanan data lokal tanpa server (Akun, Transaksi, Cicilan, Recurring).
+  - **Incremental Summaries:** Sistem agregasi otomatis (SummaryMonth, Category, Account) saat transaksi dibuat/diedit/dihapus untuk performa dashboard O(1).
+  - **Offline Capabilities:** Web Manifest dan Service Worker (`sw.js`) untuk akses tanpa internet (cache-first assets, network-first shell).
+  - **Repositories:** Refactoring logika bisnis ke `libs/db` (repository pattern) untuk memisahkan UI dari data layer.
+- **Core Features Migration:**
+  - **Recurring:** Repository logic untuk pemrosesan transaksi berulang (`processRecurringTransaction`).
+  - **Cicilan:** Logika pembayaran cicilan (`processCicilanPayment`) yang mengupdate status dan saldo otomatis.
+  - **Backup/Restore:** Fitur export/import data JSON lengkap (`backup.ts`).
+  - **Correctness Tools:** Fungsi `rebuildSummaries` dan `checkIntegrity` untuk perbaikan data otomatis.
 
 ### v0.7.1 (2026-01-18)
+
 - **Analytics Polish:**
-    - **Filter Transaksi:** Advanced filter panel auto-expanded by default.
-    - **Heatmap Insights:** Enhanced logic with "Daily Average", "Zero Spending", "Highest Day", and "Normal Pattern" detection. Lowered threshold for weekend spike.
-    - **YoY Mobile Layout:** Improved chart responsiveness (responsive container + hidden axis) and table horizontal scroll.
-    - **UI Colors:** Softer insight colors (Pastel Amber/Emerald/Blue) for better readability.
+  - **Filter Transaksi:** Advanced filter panel auto-expanded by default.
+  - **Heatmap Insights:** Enhanced logic with "Daily Average", "Zero Spending", "Highest Day", and "Normal Pattern" detection. Lowered threshold for weekend spike.
+  - **YoY Mobile Layout:** Improved chart responsiveness (responsive container + hidden axis) and table horizontal scroll.
+  - **UI Colors:** Softer insight colors (Pastel Amber/Emerald/Blue) for better readability.
 - **Navigation Reorganization:**
-    - **Sidebar Grouping:** Menu dikelompokkan menjadi kategori Utama, Analisis & Laporan, dan Perencanaan untuk akses yang lebih terstruktur.
-    - **Mobile Bottom Nav:** Drawer menu diperbarui dengan tampilan grup kategori yang konsisten dengan Sidebar.
-    - **Aksesibilitas:** Menambahkan link langsung ke fitur Perbandingan YoY dan Spending Heatmap di menu utama.
+  - **Sidebar Grouping:** Menu dikelompokkan menjadi kategori Utama, Analisis & Laporan, dan Perencanaan untuk akses yang lebih terstruktur.
+  - **Mobile Bottom Nav:** Drawer menu diperbarui dengan tampilan grup kategori yang konsisten dengan Sidebar.
+  - **Aksesibilitas:** Menambahkan link langsung ke fitur Perbandingan YoY dan Spending Heatmap di menu utama.
 
 ### v0.7.0 (2026-01-18)
+
 - **Analytics & Advanced Features (Sprint 3):**
-    - **Year-over-Year Comparison:** Dashboard perbandingan tahunan, tabel breakdown kategori, visualisasi grafik bar/line, dan automated AI insights.
-    - **Spending Heatmap:** Visualisasi kalender pengeluaran harian (Grid Desktop / Swipe Mobile) dengan deteksi pola spending (Weekend Spike, Paycheck Splurge).
-    - **Advanced Filters:** Filter multi-kategori/akun, range tanggal custom, dan preset filter yang bisa disimpan.
-    - **Logic Builder:** Filter kompleks dengan logika AND/OR bersarang.
-    - **Floating Action Button (FAB):** Akses cepat (Quick Actions) ke fitur utama dari seluruh halaman.
+  - **Year-over-Year Comparison:** Dashboard perbandingan tahunan, tabel breakdown kategori, visualisasi grafik bar/line, dan automated AI insights.
+  - **Spending Heatmap:** Visualisasi kalender pengeluaran harian (Grid Desktop / Swipe Mobile) dengan deteksi pola spending (Weekend Spike, Paycheck Splurge).
+  - **Advanced Filters:** Filter multi-kategori/akun, range tanggal custom, dan preset filter yang bisa disimpan.
+  - **Logic Builder:** Filter kompleks dengan logika AND/OR bersarang.
+  - **Floating Action Button (FAB):** Akses cepat (Quick Actions) ke fitur utama dari seluruh halaman.
 
 ### v0.6.0 (2026-01-18)
+
 - **Critical Fixes & Foundation (Sprint 1):**
-    - **Balance Verification Tool:**
-        - Audit saldo akun vs histori transaksi (`/pengaturan/verify-balance`).
-        - **Auto-Fix** balance dengan audit trail ke Log Sistem.
-    - **Budget Alert System:**
-        - Real-time checks saat input transaksi.
-        - **Toast Notification:** Warning (80%), Danger (100%), Critical (120%).
-        - **Dashboard Banner:** Ringkasan kategori yang over-budget.
-    - **Credit Card Payment Flow:**
-        - UI Bayar Tagihan di detail kartu kredit.
-        - **Payment Calculator:** Integrasi dialog pembayaran dengan opsi Full/Minimum/Custom.
-        - **Atomic Transaction:** Pembayaran mengurangi saldo sumber dan menambah limit kartu kredit.
-    - **Data Integrity:**
-        - Strict Zod Validation untuk Transaksi, Cicilan, dan Kartu Kredit.
-        - Pencegahan input negatif, tanggal masa depan, dan data tidak valid.
+  - **Balance Verification Tool:**
+    - Audit saldo akun vs histori transaksi (`/pengaturan/verify-balance`).
+    - **Auto-Fix** balance dengan audit trail ke Log Sistem.
+  - **Budget Alert System:**
+    - Real-time checks saat input transaksi.
+    - **Toast Notification:** Warning (80%), Danger (100%), Critical (120%).
+    - **Dashboard Banner:** Ringkasan kategori yang over-budget.
+  - **Credit Card Payment Flow:**
+    - UI Bayar Tagihan di detail kartu kredit.
+    - **Payment Calculator:** Integrasi dialog pembayaran dengan opsi Full/Minimum/Custom.
+    - **Atomic Transaction:** Pembayaran mengurangi saldo sumber dan menambah limit kartu kredit.
+  - **Data Integrity:**
+    - Strict Zod Validation untuk Transaksi, Cicilan, dan Kartu Kredit.
+    - Pencegahan input negatif, tanggal masa depan, dan data tidak valid.
 
 ### v0.5.0 (2026-01-15)
+
 - **Enhanced Credit Card Management System:**
-    - **Mandatory Fields:** Kartu kredit: isSyariah, billingDate, dueDate, minPaymentFixed (minInstallmentAmount opsional).
-    - **Payment Calculator:** Breakdown (retail, cicilan, biaya, saldo lalu) + due date badge.
-    - **Late Fee Rules:** Syariah (Ta'widh Rp75k/100k) vs Konvensional (1% max Rp100k).
-    - **Admin Fee Manager:** Kelola per akun CC dengan auto-create recurring transaction.
-    - **useDecimalFormat:** Checkbox di pengaturan otomasi untuk format 2 desimal.
+  - **Mandatory Fields:** Kartu kredit: isSyariah, billingDate, dueDate, minPaymentFixed (minInstallmentAmount opsional).
+  - **Payment Calculator:** Breakdown (retail, cicilan, biaya, saldo lalu) + due date badge.
+  - **Late Fee Rules:** Syariah (Ta'widh Rp75k/100k) vs Konvensional (1% max Rp100k).
+  - **Admin Fee Manager:** Kelola per akun CC dengan auto-create recurring transaction.
+  - **useDecimalFormat:** Checkbox di pengaturan otomasi untuk format 2 desimal.
 - **Rubah ke Cicilan (Convert to Installment):**
-    - **Tombol "Cicilan"** langsung terlihat di history transaksi (di tengah, sejajar dropdown).
-    - **Logika CIMB Niaga:** Cicilan/bulan = Nominal/Tenor (tanpa admin fee).
-    - Admin fee = transaksi terpisah one-time.
-    - Saldo kartu tidak di-reverse (transaksi asli tetap valid).
+  - **Tombol "Cicilan"** langsung terlihat di history transaksi (di tengah, sejajar dropdown).
+  - **Logika CIMB Niaga:** Cicilan/bulan = Nominal/Tenor (tanpa admin fee).
+  - Admin fee = transaksi terpisah one-time.
+  - Saldo kartu tidak di-reverse (transaksi asli tetap valid).
 - **Form Buat Akun:**
-    - Saldo Awal tersembunyi untuk kartu kredit.
-    - **Split Input Saldo:** 2 kotak terpisah (nominal + desimal) dengan preview real-time.
-    - Error handler menampilkan pesan validasi yang jelas per field.
-    - Pengaturan Otomasi tampil by default.
+  - Saldo Awal tersembunyi untuk kartu kredit.
+  - **Split Input Saldo:** 2 kotak terpisah (nominal + desimal) dengan preview real-time.
+  - Error handler menampilkan pesan validasi yang jelas per field.
+  - Pengaturan Otomasi tampil by default.
 - **Log Automasi Improvements:**
-    - Klik log → Dialog popup dengan pesan lengkap + daftar akun dengan pagination (5/halaman).
-    - Fix parsing nama akun (tidak ada koma di awal).
+  - Klik log → Dialog popup dengan pesan lengkap + daftar akun dengan pagination (5/halaman).
+  - Fix parsing nama akun (tidak ada koma di awal).
 - **UI Fixes:**
-    - Tombol aksi transaksi di-center (justify-center).
-    - Error display support multiline.
+  - Tombol aksi transaksi di-center (justify-center).
+  - Error display support multiline.
 - **Debug Menu:** Dipindah ke header (sejajar icon mata dan tema).
 - **Edit Akun:** `EditAccountForm` dengan field untuk CC (lengkap) dan Bank/E-Wallet (nama, warna, format desimal).
 - **Schema:** +useDecimalFormat (Boolean default false) di Akun.
 - **New Components:** PaymentCalculator, AdminFeeManager, ConvertToInstallmentDialog, DebugMenu, EditAccountForm.
 
-
 ### v0.4.2 (2026-01-02)
+
 - **Minimum Balance Interest Calculation (Refactor):**
-    - **Bunga Bank Presisi:** Implementasi metode "Saldo Terendah" (Minimum Balance) untuk bunga bank, meningkatkan akurasi dari ~60% ke 90%+ dengan sistem anti-manipulasi saldo akhir.
-    - **Engine Robust:** Penanganan otomatis untuk akun baru mid-month, akun tanpa transaksi, dan isolasi error per-akun.
-    - **Performance Optimized:** Penambahan database indexes dan optimasi query chronological replay (teruji <15ms untuk 1000 transaksi).
-    - **Safety First:** Sistem fallback otomatis ke metode Saldo Akhir jika terjadi timeout (>1 detik) atau error pada kalkulasi presisi.
-    - **Rollout Ready:** Feature flag `USE_MIN_BALANCE_METHOD` disiapkan untuk aktivasi bertahap.
-    - **Notifikasi Modern:** Integrasi library `sonner` untuk sistem toast notification yang lebih informatif dan modern (menggantikan browser alert).
-    - **Real-time Dashboard:** Log aktivitas otomasi di halaman Pengaturan kini langsung terupdate begitu tombol diklik tanpa refresh manual.
-    - **Database Inspector:** Tabel pengaturan kini transparan dan bisa dicek langsung di `/devdb`.
-    - **UI Detail:** Tooltip penjelasan metode perhitungan pada detail akun dan kalkulator bunga.
+  - **Bunga Bank Presisi:** Implementasi metode "Saldo Terendah" (Minimum Balance) untuk bunga bank, meningkatkan akurasi dari ~60% ke 90%+ dengan sistem anti-manipulasi saldo akhir.
+  - **Engine Robust:** Penanganan otomatis untuk akun baru mid-month, akun tanpa transaksi, dan isolasi error per-akun.
+  - **Performance Optimized:** Penambahan database indexes dan optimasi query chronological replay (teruji <15ms untuk 1000 transaksi).
+  - **Safety First:** Sistem fallback otomatis ke metode Saldo Akhir jika terjadi timeout (>1 detik) atau error pada kalkulasi presisi.
+  - **Rollout Ready:** Feature flag `USE_MIN_BALANCE_METHOD` disiapkan untuk aktivasi bertahap.
+  - **Notifikasi Modern:** Integrasi library `sonner` untuk sistem toast notification yang lebih informatif dan modern (menggantikan browser alert).
+  - **Real-time Dashboard:** Log aktivitas otomasi di halaman Pengaturan kini langsung terupdate begitu tombol diklik tanpa refresh manual.
+  - **Database Inspector:** Tabel pengaturan kini transparan dan bisa dicek langsung di `/devdb`.
+  - **UI Detail:** Tooltip penjelasan metode perhitungan pada detail akun dan kalkulator bunga.
 
 ### v0.4.1 (2026-01-02)
+
 - **Refactor Flexible Account Templates (Phase 1):**
   - Schema Update: Menambahkan field otomasi fleksibel (biayaAdminAktif, bungaAktif, bungaTiers, dll) ke model `Akun`.
   - Migrasi Data: Implementasi script migrasi untuk memindahkan data dari template global ke individual accounts.
   - Data Integrity: Berhasil melakukan migrasi pada akun existing dengan mode dry-run dan live.
 
 - **Refactor Flexible Account Templates (Phase 2):**
-    - Implementasi Reusable Components: `PatternBuilderUI`, `TierEditor`, `InterestCalculator`, dan `ComparisonTable`.
-    - Visualisasi: Penambahan preview jadwal tagihan (5 ke depan) dan range visual tier bunga.
-    - Simulasi: Kalkulator bunga otomatis dengan potongan pajak 20% untuk membantu user melakukan pengecekan data kustom.
+  - Implementasi Reusable Components: `PatternBuilderUI`, `TierEditor`, `InterestCalculator`, dan `ComparisonTable`.
+  - Visualisasi: Penambahan preview jadwal tagihan (5 ke depan) dan range visual tier bunga.
+  - Simulasi: Kalkulator bunga otomatis dengan potongan pajak 20% untuk membantu user melakukan pengecekan data kustom.
 
 - **Refactor Flexible Account Templates (Phase 3):**
-    - Server Actions Update: Memperbarui `akun.ts` dan `recurring-admin.ts` untuk mendukung kepemilikan data otomasi di tingkat Akun.
-    - Isolasi Transaksi: Implementasi `Prisma Transaction` per-akun untuk memastikan kegagalan pada satu akun tidak menghentikan proses akun lainnya.
-    - Robust Error Handling: Logging error mendalam ke `LogSistem` dengan context lengkap (akunId, context, error message).
-    - Fitur Reset: Penambahan fungsi `resetAccountToTemplate` untuk memudahkan user kembali ke pengaturan standar pabrikan.
+  - Server Actions Update: Memperbarui `akun.ts` dan `recurring-admin.ts` untuk mendukung kepemilikan data otomasi di tingkat Akun.
+  - Isolasi Transaksi: Implementasi `Prisma Transaction` per-akun untuk memastikan kegagalan pada satu akun tidak menghentikan proses akun lainnya.
+  - Robust Error Handling: Logging error mendalam ke `LogSistem` dengan context lengkap (akunId, context, error message).
+  - Fitur Reset: Penambahan fungsi `resetAccountToTemplate` untuk memudahkan user kembali ke pengaturan standar pabrikan.
 
 - **Refactor Flexible Account Templates (Phase 4):**
-    - UI Update: Halaman Detail Akun kini menggunakan sistem `Tabs` (Ringkasan vs Pengaturan).
-    - Account Settings: Implementasi full-featured settings page untuk kontrol per-akun terhadap biaya admin dan bunga.
-    - Starting Point UX: Form tambah akun kini mendukung auto-fill template yang tetap dapat diedit sepenuhnya sebelum disimpan.
-    - Audit Trail: Penambahan fitur `Comparison Table` untuk melihat deviasi dari template dan log histori perubahan.
+  - UI Update: Halaman Detail Akun kini menggunakan sistem `Tabs` (Ringkasan vs Pengaturan).
+  - Account Settings: Implementasi full-featured settings page untuk kontrol per-akun terhadap biaya admin dan bunga.
+  - Starting Point UX: Form tambah akun kini mendukung auto-fill template yang tetap dapat diedit sepenuhnya sebelum disimpan.
+  - Audit Trail: Penambahan fitur `Comparison Table` untuk melihat deviasi dari template dan log histori perubahan.
 
 - **Refactor Flexible Account Templates (Phase 5):**
-    - Dashboard Widget: Update `AdminFeeReminder` untuk menampilkan ringkasan hasil proses massal (Berhasil vs Gagal).
-    - Reporting: Integrasi navigasi cepat dari widget ke Log Sistem jika terjadi kegagalan proses.
-    - Log Filtering: Update halaman Pengaturan untuk memfilter log secara spesifik berdasarkan modul `ADMIN_FEE` dan `INTEREST` guna transparansi aktivitas otomasi.
+  - Dashboard Widget: Update `AdminFeeReminder` untuk menampilkan ringkasan hasil proses massal (Berhasil vs Gagal).
+  - Reporting: Integrasi navigasi cepat dari widget ke Log Sistem jika terjadi kegagalan proses.
+  - Log Filtering: Update halaman Pengaturan untuk memfilter log secara spesifik berdasarkan modul `ADMIN_FEE` dan `INTEREST` guna transparansi aktivitas otomasi.
 
 ### v0.4.0 (2026-01-02)
+
 - **NEW: Account Templates & Automasi Perbankan:**
   - Implementasi sistem template untuk otomatisasi biaya admin dan bunga bank.
   - Template bawaan: BCA Xpresi, BCA Tahapan, Mandiri, BNI, dan Custom.
@@ -350,11 +379,12 @@
   - **Technical:** Penggunaan Prisma Transaction dan row-level logic untuk menjamin integritas data saat proses automasi massal.
 
 ### v0.3.7 (2026-01-02)
+
 - **Database & Performance Optimization:**
   - Menambahkan index pada tabel `Transaksi` (tanggal, kategori, akun) untuk query yang lebih cepat.
   - Implementasi auto-pruning `LogSistem` (> 30 hari) saat aplikasi dibuka.
   - Optimasi query agregat analytics menggunakan Prisma `aggregate` dan `groupBy`.
-  - Optimasi kalkulasi trend saldo harian (mengurangi kompleksitas dari O(N*M) ke O(N)).
+  - Optimasi kalkulasi trend saldo harian (mengurangi kompleksitas dari O(N\*M) ke O(N)).
 - **Account Enhancements:**
   - **NEW: Halaman Detail Akun** (`/akun/[id]`) menampilkan trend saldo spesifik akun dan 10 transaksi terakhir.
   - Navigasi detail dari kartu akun dan dropdown menu.
@@ -364,6 +394,7 @@
   - **NEW: Budget Insights:** Menampilkan "Sisa Hari" dan "Saran Pengeluaran Harian" untuk membantu menjaga anggaran.
 
 ### v0.3.6 (2026-01-02)
+
 - **NEW: Drill-down Dashboard Terintegrasi**
   - Grafik `ExpensePieChart` di Dashboard sekarang interaktif (clickable).
   - Modal detail kategori menampilkan: Total, Jumlah Transaksi, Trend Mingguan (Bar Chart), dan Daftar Transaksi Terkini.
@@ -375,6 +406,7 @@
   - **UI:** Peningkatan styling dialog detail dengan standar Slate/Emerald.
 
 ### v0.3.5 (2025-12-29)
+
 - **NEW: Template Transaksi** (`/template`)
   - Simpan transaksi favorit sebagai template
   - Quick-add button untuk transaksi cepat
@@ -395,6 +427,7 @@
   - TemplateTransaksi, NetWorthSnapshot, CurrencyRate, AppSetting
 
 ### v0.3.4 (2025-12-29)
+
 - **NEW: Kalender Keuangan** (`/kalender`)
   - View bulanan dengan navigasi prev/next
   - Tampilkan event: cicilan, recurring, transaksi
@@ -409,6 +442,7 @@
   - Chart fill container di desktop, compact di mobile
 
 ### v0.3.3 (2025-12-29)
+
 - **Major Fix: Chart Mobile Display**
   - Hapus ResponsiveContainer (cause of width(-1) error)
   - Gunakan fixed dimensions + window.innerWidth calculation
@@ -419,6 +453,7 @@
   - Text Tersedia overflow → truncate
 
 ### v0.3.2 (2025-12-29)
+
 - **NEW: Halaman Statistik/Insight:**
   - Cash Flow Table (ringkasan income vs expense)
   - Income & Expense Book (breakdown per kategori)
@@ -436,6 +471,7 @@
   - Layout restructure untuk sticky sidebar
 
 ### v0.3.1 (2025-12-27)
+
 - **Fix Chart Visibility:**
   - Area Chart hijau gradient untuk Trend Saldo (lebih terlihat)
   - Bar Chart warna merah (bulan ini) vs biru (bulan lalu)
@@ -446,6 +482,7 @@
   - Header halaman Akun & Pengaturan responsive
 
 ### v0.3.0 (2025-12-27)
+
 - **Chart Improvements (Paket A + B):**
   - Area Chart: Trend saldo harian 30 hari
   - Bar Chart: Perbandingan bulan ini vs bulan lalu
@@ -454,6 +491,7 @@
 - Server actions: getSaldoTrend, getMonthlyComparison, getAccountComposition, getCategoryDetail
 
 ### v0.2.2 (2025-12-27)
+
 - **Stabilisasi UX:**
   - Loading skeletons untuk semua halaman
   - Error boundaries: global-error.tsx, error.tsx, not-found.tsx
@@ -461,12 +499,14 @@
 - All delete actions sudah ada konfirmasi dialog
 
 ### v0.2.1 (2025-12-27)
+
 - Filter: Remove individual per chip (X button)
 - Filter: PAGE_SIZE 10 → 25
 - Privacy: `data-private` di SEMUA halaman
 - Rule: standar-logging.md
 
 ### v0.2.0 (2025-12-27)
+
 - Fitur Cicilan & Budget lengkap
 - Backup/Restore fungsional
 - Mobile hamburger menu
@@ -479,7 +519,7 @@
   - Sorting by tanggal/nominal/kategori (asc/desc)
 
 ### v0.1.0 (2025-12-26)
+
 - Inisialisasi proyek, CRUD Akun & Transaksi
 - Dashboard grafik, Laporan bulanan
 - Recurring transaction, Transfer antar akun
-
