@@ -15,7 +15,12 @@ import { FAB } from "@/components/ui/fab";
 import { SWRegister } from "@/components/pwa/sw-register";
 import { RecurringTriggerProvider } from "@/components/pwa/recurring-trigger-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+// Optimized Inter font for mobile readability
+const inter = Inter({
+  subsets: ["latin"],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: "Dompetku - Personal Finance",
@@ -43,7 +48,7 @@ export default function RootLayout({
 
   return (
     <html lang="id" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased min-h-screen bg-background overflow-x-hidden`}>
+      <body className={`${inter.className} antialiased min-h-screen bg-background overflow-x-hidden text-sm md:text-base`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -55,12 +60,12 @@ export default function RootLayout({
             <Sidebar />
 
             {/* Main Content - Scrollable */}
-            <main className="flex-1 pb-20 md:pb-0 relative overflow-x-hidden w-full max-w-full md:h-screen md:overflow-y-auto">
+            <main className="flex-1 pb-24 md:pb-0 relative overflow-x-hidden w-full max-w-full md:h-screen md:overflow-y-auto">
               <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex h-14 items-center justify-between px-4 w-full">
                   <div className="flex items-center gap-2">
                     <DrawerNavigation />
-                    <div className="md:hidden font-bold text-primary text-xl">Dompetku</div>
+                    <div className="md:hidden font-bold text-primary text-lg">Dompetku</div>
                   </div>
                   <div className="flex-1 items-center hidden md:flex">
                     <LiveClock />
@@ -73,7 +78,7 @@ export default function RootLayout({
                   </div>
                 </div>
               </header>
-              <div className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
+              <div className="p-3 md:p-6 w-full max-w-full overflow-x-hidden">
                 {children}
               </div>
             </main>

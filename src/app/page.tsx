@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   TrendingDown,
-  CreditCard,
   Wallet,
-  PieChart as PieChartIcon,
-  BarChart3,
-  Plus,
   ArrowRight,
   Target,
+  Plus,
   RefreshCw,
+  CreditCard,
   Settings,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Calendar as CalendarIcon,
+  Tag
 } from "lucide-react";
 import { getAkun } from "@/lib/db/accounts-repo";
 import { getTransaksi } from "@/lib/db/transactions-repo";
@@ -22,12 +24,6 @@ import { getDashboardAnalytics, getSaldoTrend } from "@/lib/db/analytics-repo";
 import { getDueRecurringTransactions, getUpcomingAdminFees } from "@/lib/db/recurring-repo";
 import { formatRupiah } from "@/lib/format";
 import Link from "next/link";
-import { ExpensePieChart } from "@/components/charts/expense-pie-chart";
-import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart";
-import { SaldoTrendChart } from "@/components/charts/saldo-trend-chart";
-import { DrilldownPieChart } from "@/components/charts/drilldown-pie-chart";
-import { NetWorthChart } from "@/components/charts/net-worth-chart";
-import { AdminFeeReminder } from "@/components/charts/admin-fee-reminder";
 import { BudgetBanner } from "@/components/dashboard/budget-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -83,27 +79,23 @@ export default function Dashboard() {
     return <DashboardSkeleton />;
   }
 
-  const { accounts, analytics, transactions, saldoTrend, upcomingFees } = data;
+  const { accounts, analytics, transactions } = data;
 
   return (
-    <div className="space-y-6">
-      {/* Header dengan Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 pb-20">
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Ringkasan keuangan Anda bulan ini (PWA Offline).
+          <h2 className="text-xl font-bold tracking-tight">Dashboard</h2>
+          <p className="text-xs text-muted-foreground">
+            Ringkasan keuangan (PWA Offline).
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/transaksi">
-            <Button variant="outline" className="gap-2">
+        {/* Actions - hidden on mobile if FAB covers it, but good to have */}
+        <div className="hidden sm:flex gap-2">
+           <Link href="/transaksi">
+            <Button variant="outline" size="sm" className="gap-2">
               <Plus className="w-4 h-4" /> Transaksi
-            </Button>
-          </Link>
-          <Link href="/laporan">
-            <Button className="gap-2">
-              <BarChart3 className="w-4 h-4" /> Laporan
             </Button>
           </Link>
         </div>
@@ -112,187 +104,86 @@ export default function Dashboard() {
       {/* Budget Banner */}
       <BudgetBanner />
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Link href="/akun">
-          <Card className="border-l-4 border-l-primary hover:shadow-md transition-all hover:scale-[1.02]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Saldo</CardTitle>
-              <Wallet className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-private="true">{formatRupiah(analytics.totalSaldo)}</div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                {accounts.length} akun terdaftar
-                <ArrowRight className="w-3 h-3" />
-              </p>
+      {/* Summary Cards - Grid 2x2 on mobile for compactness */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Total Saldo - Full Width on Mobile if needed, or keeping 2 cols */}
+        <Link href="/akun" className="col-span-2">
+          <Card className="border-l-4 border-l-primary shadow-sm">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Total Saldo</p>
+                <div className="text-2xl font-bold mt-1" data-private="true">{formatRupiah(analytics.totalSaldo)}</div>
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
+                  {accounts.length} akun <ArrowRight className="w-3 h-3" />
+                </p>
+              </div>
+              <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-primary" />
+              </div>
             </CardContent>
           </Card>
         </Link>
+
         <Link href="/transaksi?tipe=MASUK">
-          <Card className="border-l-4 border-l-emerald-500 hover:shadow-md transition-all hover:scale-[1.02]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pemasukan Bulan Ini</CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-500" data-private="true">
+          <Card className="border-l-4 border-l-emerald-500 shadow-sm h-full">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase">Pemasukan</p>
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div className="text-lg font-bold text-emerald-500 truncate" data-private="true">
                 +{formatRupiah(analytics.pemasukanBulanIni)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total pemasukan
-              </p>
             </CardContent>
           </Card>
         </Link>
+
         <Link href="/transaksi?tipe=KELUAR">
-          <Card className="border-l-4 border-l-red-500 hover:shadow-md transition-all hover:scale-[1.02]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pengeluaran Bulan Ini</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-500" data-private="true">
+          <Card className="border-l-4 border-l-red-500 shadow-sm h-full">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase">Pengeluaran</p>
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              </div>
+              <div className="text-lg font-bold text-red-500 truncate" data-private="true">
                 -{formatRupiah(analytics.pengeluaranBulanIni)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total pengeluaran
-              </p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/anggaran">
-          <Card className={`border-l-4 hover:shadow-md transition-all hover:scale-[1.02] ${analytics.selisihBulanIni >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Selisih Bulan Ini</CardTitle>
-              <Target className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${analytics.selisihBulanIni >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
-                {analytics.selisihBulanIni >= 0 ? '+' : ''}{formatRupiah(analytics.selisihBulanIni)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Cek anggaran →
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
 
-      {/* Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-primary" />
-              <CardTitle>Pengeluaran per Kategori</CardTitle>
-            </div>
-            <Link href="/anggaran">
-              <Button variant="ghost" size="sm" className="text-xs">
-                Atur Anggaran →
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <ExpensePieChart data={analytics.pengeluaranPerKategori} />
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              <CardTitle>Trend 6 Bulan Terakhir</CardTitle>
-            </div>
-            <Link href="/laporan">
-              <Button variant="ghost" size="sm" className="text-xs">
-                Detail Laporan →
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <MonthlyTrendChart data={analytics.trendBulanan} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* NEW: Enhanced Charts Row */}
-      <div className="grid gap-4 md:grid-cols-1">
-        {/* Line Chart: Trend Saldo 30 Hari */}
-        <SaldoTrendChart data={saldoTrend} />
-      </div>
-
-      {/* Drill-down Pie Chart */}
-      <DrilldownPieChart
-        data={analytics.pengeluaranPerKategori as any}
-        title="Pengeluaran per Kategori (Klik untuk Detail)"
-      />
-
-      {/* Bottom Row - Accounts & Recent Transactions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Aset & Akun</CardTitle>
-            <Link href="/akun">
-              <Button variant="ghost" size="sm">Kelola Semua →</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {accounts.length === 0 ? (
-                <Link href="/akun">
-                  <div className="text-center py-8 border-2 border-dashed rounded-lg hover:bg-muted/50 transition-colors">
-                    <Wallet className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">Belum ada akun.</p>
-                    <p className="text-sm text-primary underline">Klik untuk menambahkan</p>
+        {/* Selisih - Full Width or keep 2 cols depending on layout pref. Let's make it full width for emphasis */}
+        <Link href="/anggaran" className="col-span-2">
+          <Card className={`border-l-4 shadow-sm ${analytics.selisihBulanIni >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
+            <CardContent className="p-3 flex items-center justify-between">
+               <div>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase">Cash Flow Bulan Ini</p>
+                  <div className={`text-xl font-bold mt-1 ${analytics.selisihBulanIni >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
+                    {analytics.selisihBulanIni >= 0 ? '+' : ''}{formatRupiah(analytics.selisihBulanIni)}
                   </div>
-                </Link>
-              ) : (
-                accounts.slice(0, 4).map((akun: any) => (
-                  <Link key={akun.id} href="/akun">
-                    <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="p-2 rounded-lg"
-                          style={{ backgroundColor: akun.warna ? `${akun.warna}20` : 'hsl(var(--primary) / 0.1)' }}
-                        >
-                          <Wallet className="w-4 h-4" style={{ color: akun.warna || 'hsl(var(--primary))' }} />
-                        </div>
-                        <div>
-                          <div className="font-semibold">{akun.nama}</div>
-                          <div className="text-xs text-muted-foreground uppercase">{akun.tipe.replace("_", " ")}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-bold ${akun.saldoSekarang < 0 ? 'text-red-500' : ''}`} data-private="true">
-                          {formatRupiah(akun.saldoSekarang)}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+               </div>
+               <Target className={`h-5 w-5 ${analytics.selisihBulanIni >= 0 ? 'text-emerald-500' : 'text-red-500'}`} />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
-        <Card className="col-span-3 hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Transaksi Terkini</CardTitle>
-            <Link href="/transaksi">
-              <Button variant="ghost" size="sm">Semua →</Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+      {/* Recent Transactions List */}
+      <div>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Transaksi Terkini</h3>
+          <Link href="/transaksi" className="text-xs text-primary font-medium hover:underline">
+            Lihat Semua
+          </Link>
+        </div>
+
+        <Card className="shadow-sm border-none sm:border">
+          <CardContent className="p-0">
+             <div className="divide-y">
               {transactions.length === 0 ? (
-                <Link href="/transaksi">
-                  <div className="text-center py-8 border-2 border-dashed rounded-lg hover:bg-muted/50 transition-colors">
-                    <Plus className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">Belum ada transaksi.</p>
-                    <p className="text-sm text-primary underline">Klik untuk menambahkan</p>
-                  </div>
-                </Link>
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">Belum ada transaksi.</p>
+                </div>
               ) : (
                 transactions.slice(0, 5).map((tx: any) => {
                   const isExpense = tx.debitAkun?.tipe === "EXPENSE" ||
@@ -300,14 +191,20 @@ export default function Dashboard() {
 
                   return (
                     <Link key={tx.id} href="/transaksi">
-                      <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                        <div>
-                          <div className="text-sm font-medium">{tx.deskripsi}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {tx.tanggal.toLocaleDateString('id-ID')} • {tx.kategori}
-                          </div>
+                      <div className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors active:bg-muted/80">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                           <div className={`p-2 rounded-full shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                              {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                           </div>
+                           <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{tx.deskripsi}</div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3" />
+                                {tx.tanggal.toLocaleDateString('id-ID')} • {tx.kategori}
+                              </div>
+                           </div>
                         </div>
-                        <div className={`font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
+                        <div className={`text-sm font-bold whitespace-nowrap pl-2 ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
                           {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
                         </div>
                       </div>
@@ -315,54 +212,50 @@ export default function Dashboard() {
                   )
                 })
               )}
-            </div>
+             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Links Footer */}
-      <Card className="bg-muted/30">
-        <CardContent className="py-4">
-          <div className="flex flex-wrap justify-center gap-4 text-sm">
-            <Link href="/recurring" className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
-              <RefreshCw className="w-4 h-4" /> Transaksi Berulang
-            </Link>
-            <Link href="/cicilan" className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
-              <CreditCard className="w-4 h-4" /> Cicilan
-            </Link>
-            <Link href="/anggaran" className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
-              <Target className="w-4 h-4" /> Anggaran
-            </Link>
-            <Link href="/pengaturan" className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
-              <Settings className="w-4 h-4" /> Pengaturan
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Links Grid (Mobile Friendly) */}
+      <div className="grid grid-cols-4 gap-2 pt-2">
+          <Link href="/recurring" className="flex flex-col items-center gap-1 p-2 bg-muted/30 rounded-lg hover:bg-muted active:scale-95 transition-all">
+             <RefreshCw className="w-5 h-5 text-muted-foreground" />
+             <span className="text-[10px] text-center font-medium">Berulang</span>
+          </Link>
+          <Link href="/cicilan" className="flex flex-col items-center gap-1 p-2 bg-muted/30 rounded-lg hover:bg-muted active:scale-95 transition-all">
+             <CreditCard className="w-5 h-5 text-muted-foreground" />
+             <span className="text-[10px] text-center font-medium">Cicilan</span>
+          </Link>
+          <Link href="/anggaran" className="flex flex-col items-center gap-1 p-2 bg-muted/30 rounded-lg hover:bg-muted active:scale-95 transition-all">
+             <Target className="w-5 h-5 text-muted-foreground" />
+             <span className="text-[10px] text-center font-medium">Anggaran</span>
+          </Link>
+          <Link href="/pengaturan" className="flex flex-col items-center gap-1 p-2 bg-muted/30 rounded-lg hover:bg-muted active:scale-95 transition-all">
+             <Settings className="w-5 h-5 text-muted-foreground" />
+             <span className="text-[10px] text-center font-medium">Setting</span>
+          </Link>
+      </div>
+
     </div>
   )
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-10 w-32" />
-        </div>
+        <Skeleton className="h-6 w-32" />
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-32 rounded-xl" />
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        <Skeleton className="h-24 col-span-2 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-16 col-span-2 rounded-xl" />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-[300px] rounded-xl" />
-        <Skeleton className="h-[300px] rounded-xl" />
+      <div className="space-y-2">
+         <Skeleton className="h-4 w-24" />
+         <Skeleton className="h-64 rounded-xl" />
       </div>
     </div>
   )
