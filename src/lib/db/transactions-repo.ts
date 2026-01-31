@@ -178,11 +178,24 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
         if (akun) {
             let runningBalanceInt = akun.saldoSekarangInt;
             if (startIndex > 0) {
-                // Efficiently iterate skipped items to calculate running balance
-                await collection.clone().limit(startIndex).each(skipped => {
-                    if (skipped.debitAkunId === akunId) runningBalanceInt -= skipped.nominalInt;
-                    else if (skipped.kreditAkunId === akunId) runningBalanceInt += skipped.nominalInt;
-                });
+                // Optimization: If deep pagination in descending order, calculate forward from initial balance
+                // instead of backward from current balance.
+                if (sortDir === "desc" && startIndex > total / 2) {
+                    runningBalanceInt = akun.saldoAwalInt;
+                    const limitCount = Math.max(0, total - startIndex);
+
+                    // collection is Desc. Reverse to get Asc (Oldest First).
+                    await collection.clone().reverse().limit(limitCount).each((item) => {
+                        if (item.debitAkunId === akunId) runningBalanceInt += item.nominalInt;
+                        else if (item.kreditAkunId === akunId) runningBalanceInt -= item.nominalInt;
+                    });
+                } else {
+                    // Efficiently iterate skipped items to calculate running balance (Backward from Current)
+                    await collection.clone().limit(startIndex).each((skipped) => {
+                        if (skipped.debitAkunId === akunId) runningBalanceInt -= skipped.nominalInt;
+                        else if (skipped.kreditAkunId === akunId) runningBalanceInt += skipped.nominalInt;
+                    });
+                }
             }
 
             for (const item of result) {
