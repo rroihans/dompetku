@@ -2,7 +2,7 @@
 
 import { icons, type LucideIcon, type LucideProps } from "lucide-react"
 
-interface DynamicIconProps extends LucideProps {
+interface DynamicIconProps extends Omit<LucideProps, "name"> {
     name: string | null | undefined
     fallback?: LucideIcon
 }
