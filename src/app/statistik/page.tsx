@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     BarChart3,
     TrendingUp,
@@ -14,12 +15,14 @@ import {
     PieChart,
     Calendar,
     Lightbulb,
-    AlertTriangle
+    AlertTriangle,
+    LineChart
 } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
-import { getCashFlowTable, getIncomeExpenseBook, getSpendingInsights, type CashFlowData, type IncomeExpenseBook as IEBook, type PeriodType } from "@/lib/db/analytics-repo"
-
-
+import { getCashFlowTable, getIncomeExpenseBook, getSpendingInsights, getDashboardAnalytics, getSaldoTrend, type CashFlowData, type IncomeExpenseBook as IEBook, type PeriodType } from "@/lib/db/analytics-repo"
+import { ExpensePieChart } from "@/components/charts/expense-pie-chart"
+import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart"
+import { SaldoTrendChart } from "@/components/charts/saldo-trend-chart"
 
 interface SpendingInsight {
     kategori: string
@@ -45,16 +48,24 @@ export default function StatisticsPage() {
     const [vsLastPeriod, setVsLastPeriod] = useState<{ income: number; expense: number } | null>(null)
     const [incomeExpense, setIncomeExpense] = useState<IEBook | null>(null)
     const [spending, setSpending] = useState<SpendingData | null>(null)
+
+    // Data for Visual Charts (from Dashboard)
+    const [analyticsData, setAnalyticsData] = useState<any>(null)
+    const [saldoTrendData, setSaldoTrendData] = useState<any[]>([])
+
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         async function fetchData() {
             setLoading(true)
             try {
-                const [cfResult, ieResult, spResult] = await Promise.all([
+                // Fetch data for both sections
+                const [cfResult, ieResult, spResult, analyticsResult, saldoTrendResult] = await Promise.all([
                     getCashFlowTable(period),
                     getIncomeExpenseBook(period),
-                    getSpendingInsights(period)
+                    getSpendingInsights(period),
+                    getDashboardAnalytics(), // This might need period adjustment if we want to sync charts
+                    getSaldoTrend(30) // Fixed to 30 for trend chart for now, or match period
                 ])
 
                 if (cfResult.success && cfResult.data) {
@@ -67,6 +78,12 @@ export default function StatisticsPage() {
                 if (spResult.success && spResult.data) {
                     setSpending(spResult.data as SpendingData)
                 }
+
+                setAnalyticsData(analyticsResult)
+                if (saldoTrendResult.success && saldoTrendResult.data) {
+                     setSaldoTrendData(saldoTrendResult.data)
+                }
+
             } catch (error) {
                 console.error("Error fetching statistics:", error)
             } finally {
@@ -101,7 +118,7 @@ export default function StatisticsPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto pb-20">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -110,21 +127,21 @@ export default function StatisticsPage() {
                         Statistik
                     </h2>
                     <p className="text-muted-foreground text-sm sm:text-base">
-                        Insight keuangan untuk keputusan lebih baik.
+                        Analisa visual dan laporan detail keuangan Anda.
                     </p>
                 </div>
             </div>
 
             {/* Period Selector */}
-            <div className="flex justify-center">
-                <div className="inline-flex items-center gap-1 p-1 bg-muted rounded-lg">
+            <div className="flex justify-center sticky top-14 z-10 bg-background/80 backdrop-blur py-2">
+                <div className="inline-flex items-center gap-1 p-1 bg-muted rounded-lg shadow-sm">
                     {periods.map(p => (
                         <Button
                             key={p.value}
                             variant={period === p.value ? "default" : "ghost"}
                             size="sm"
                             onClick={() => setPeriod(p.value)}
-                            className="px-4"
+                            className="px-3 h-8 text-xs font-medium rounded-md transition-all"
                         >
                             {p.label}
                         </Button>
@@ -132,288 +149,233 @@ export default function StatisticsPage() {
                 </div>
             </div>
 
-            {/* Cash Flow Table */}
-            {cashFlow && (
-                <Card className="border-l-4 border-l-primary">
-                    <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <ArrowUpDown className="w-5 h-5 text-primary" />
-                                Cash Flow Table
-                            </CardTitle>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Share2 className="w-4 h-4" />
-                            </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Apakah saya terlalu boros?</p>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-xs text-muted-foreground mb-4">{cashFlow.periode.toUpperCase()}</p>
+            <Tabs defaultValue="visual" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="visual" className="flex items-center gap-2">
+                        <PieChart className="w-4 h-4" /> Visual
+                    </TabsTrigger>
+                    <TabsTrigger value="report" className="flex items-center gap-2">
+                        <ArrowUpDown className="w-4 h-4" /> Laporan
+                    </TabsTrigger>
+                </TabsList>
 
-                        {/* Quick Overview Table */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left py-2 font-medium text-muted-foreground">Ringkasan</th>
-                                        <th className="text-right py-2 font-medium text-emerald-500">Pemasukan</th>
-                                        <th className="text-right py-2 font-medium text-red-500">Pengeluaran</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b">
-                                        <td className="py-2 text-muted-foreground">Jumlah Transaksi</td>
-                                        <td className="py-2 text-right">{cashFlow.income.count}</td>
-                                        <td className="py-2 text-right">{cashFlow.expense.count}</td>
-                                    </tr>
-                                    <tr className="border-b">
-                                        <td className="py-2 text-muted-foreground">Rata-rata/Hari</td>
-                                        <td className="py-2 text-right" data-private="true">{formatRupiah(cashFlow.income.avgPerDay)}</td>
-                                        <td className="py-2 text-right text-red-500" data-private="true">-{formatRupiah(cashFlow.expense.avgPerDay)}</td>
-                                    </tr>
-                                    <tr className="border-b">
-                                        <td className="py-2 text-muted-foreground">Rata-rata/Transaksi</td>
-                                        <td className="py-2 text-right" data-private="true">{formatRupiah(cashFlow.income.avgPerRecord)}</td>
-                                        <td className="py-2 text-right text-red-500" data-private="true">-{formatRupiah(cashFlow.expense.avgPerRecord)}</td>
-                                    </tr>
-                                    <tr className="font-bold">
-                                        <td className="py-2">Total</td>
-                                        <td className="py-2 text-right" data-private="true">{formatRupiah(cashFlow.income.total)}</td>
-                                        <td className="py-2 text-right text-red-500" data-private="true">-{formatRupiah(cashFlow.expense.total)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                {/* VISUAL TAB - Charts moved from Dashboard */}
+                <TabsContent value="visual" className="space-y-4">
+                     {/* Saldo Trend */}
+                     {saldoTrendData && (
+                        <Card className="hover:shadow-md transition-shadow">
+                             <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="flex items-center gap-2">
+                                    <LineChart className="w-5 h-5 text-primary" />
+                                    <CardTitle className="text-base">Trend Saldo (30 Hari)</CardTitle>
+                                </div>
+                             </CardHeader>
+                             <CardContent>
+                                <SaldoTrendChart data={saldoTrendData} />
+                             </CardContent>
+                        </Card>
+                     )}
 
-                        {/* Cash Flow Summary */}
-                        <div className="mt-4 p-4 bg-muted/50 rounded-lg flex items-center justify-between">
-                            <span className="font-medium">Cash Flow</span>
-                            <span className={`text-xl font-bold ${cashFlow.cashFlow >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
-                                {cashFlow.cashFlow >= 0 ? '+' : ''}{formatRupiah(cashFlow.cashFlow)}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                     {/* Expense Pie Chart */}
+                     {analyticsData && analyticsData.pengeluaranPerKategori && (
+                        <Card className="hover:shadow-md transition-shadow">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="flex items-center gap-2">
+                                    <PieChart className="w-5 h-5 text-primary" />
+                                    <CardTitle className="text-base">Komposisi Pengeluaran</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <ExpensePieChart data={analyticsData.pengeluaranPerKategori} />
+                            </CardContent>
+                        </Card>
+                     )}
 
-            {/* Income & Expense Book */}
-            {incomeExpense && (
-                <Card className="border-l-4 border-l-amber-500">
-                    <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <DollarSign className="w-5 h-5 text-amber-500" />
-                                Buku Pemasukan & Pengeluaran
-                            </CardTitle>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <Share2 className="w-4 h-4" />
-                            </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Ke mana uang Anda pergi?</p>
-                    </CardHeader>
-                    <CardContent>
-                        {/* Summary */}
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <p className="text-xs text-muted-foreground">{incomeExpense.periode.toUpperCase()}</p>
-                                <p className={`text-2xl font-bold ${incomeExpense.cashFlow >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
-                                    {incomeExpense.cashFlow >= 0 ? '+' : ''}{formatRupiah(incomeExpense.cashFlow)}
-                                </p>
-                            </div>
-                            <div className={`flex items-center gap-1 text-sm ${incomeExpense.vsLastPeriod >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {incomeExpense.vsLastPeriod >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                                {incomeExpense.vsLastPeriod >= 0 ? '+' : ''}{incomeExpense.vsLastPeriod}%
-                                <span className="text-muted-foreground text-xs ml-1">vs periode lalu</span>
-                            </div>
-                        </div>
+                     {/* Monthly Trend Bar Chart */}
+                     {analyticsData && analyticsData.trendBulanan && (
+                        <Card className="hover:shadow-md transition-shadow">
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <div className="flex items-center gap-2">
+                                    <BarChart3 className="w-5 h-5 text-primary" />
+                                    <CardTitle className="text-base">Trend Pemasukan vs Pengeluaran</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <MonthlyTrendChart data={analyticsData.trendBulanan} />
+                            </CardContent>
+                        </Card>
+                     )}
+                </TabsContent>
 
-                        {/* Income Section */}
-                        <div className="mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-emerald-500">Pemasukan</span>
-                                <span className="font-bold" data-private="true">{formatRupiah(incomeExpense.totalIncome)}</span>
-                            </div>
-                            <div className="space-y-2">
-                                {incomeExpense.incomeItems.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">Tidak ada pemasukan</p>
-                                ) : (
-                                    incomeExpense.incomeItems.map((item, i) => (
-                                        <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg">{item.icon}</span>
-                                                <span className="text-sm">{item.kategori}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium" data-private="true">{formatRupiah(item.nominal)}</span>
-                                                {item.vsLastPeriod !== 0 && (
-                                                    <span className={`text-xs ${item.vsLastPeriod > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                        {item.vsLastPeriod > 0 ? '+' : ''}{item.vsLastPeriod}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+                {/* REPORT TAB - Existing Detailed Tables */}
+                <TabsContent value="report" className="space-y-6">
+                    {/* Cash Flow Table */}
+                    {cashFlow && (
+                        <Card className="border-l-4 border-l-primary">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                    <ArrowUpDown className="w-5 h-5 text-primary" />
+                                    Cash Flow Table
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">Ringkasan arus kas periode ini.</p>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Quick Overview Table */}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b">
+                                                <th className="text-left py-2 font-medium text-muted-foreground">Ringkasan</th>
+                                                <th className="text-right py-2 font-medium text-emerald-500">Masuk</th>
+                                                <th className="text-right py-2 font-medium text-red-500">Keluar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr className="border-b">
+                                                <td className="py-2 text-muted-foreground">Jml Transaksi</td>
+                                                <td className="py-2 text-right">{cashFlow.income.count}</td>
+                                                <td className="py-2 text-right">{cashFlow.expense.count}</td>
+                                            </tr>
+                                            <tr className="border-b">
+                                                <td className="py-2 text-muted-foreground">Rata/Hari</td>
+                                                <td className="py-2 text-right" data-private="true">{formatRupiah(cashFlow.income.avgPerDay)}</td>
+                                                <td className="py-2 text-right text-red-500" data-private="true">-{formatRupiah(cashFlow.expense.avgPerDay)}</td>
+                                            </tr>
+                                            <tr className="font-bold">
+                                                <td className="py-2">Total</td>
+                                                <td className="py-2 text-right" data-private="true">{formatRupiah(cashFlow.income.total)}</td>
+                                                <td className="py-2 text-right text-red-500" data-private="true">-{formatRupiah(cashFlow.expense.total)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
+                                    <span className="font-medium text-sm">Net Cash Flow</span>
+                                    <span className={`text-lg font-bold ${cashFlow.cashFlow >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
+                                        {cashFlow.cashFlow >= 0 ? '+' : ''}{formatRupiah(cashFlow.cashFlow)}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
-                        {/* Expense Section */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-red-500">Pengeluaran</span>
-                                <span className="font-bold text-red-500" data-private="true">-{formatRupiah(incomeExpense.totalExpense)}</span>
-                            </div>
-                            <div className="space-y-2">
-                                {incomeExpense.expenseItems.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">Tidak ada pengeluaran</p>
-                                ) : (
-                                    incomeExpense.expenseItems.map((item, i) => (
-                                        <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg">{item.icon}</span>
-                                                <span className="text-sm">{item.kategori}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium" data-private="true">-{formatRupiah(item.nominal)}</span>
-                                                {item.vsLastPeriod !== 0 && (
-                                                    <span className={`text-xs ${item.vsLastPeriod > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                        {item.vsLastPeriod > 0 ? '↑' : '↓'}{Math.abs(item.vsLastPeriod)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Spending Insights */}
-            {spending && (
-                <Card className="border-l-4 border-l-purple-500">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <Lightbulb className="w-5 h-5 text-purple-500" />
-                            Insight Pengeluaran
-                        </CardTitle>
-                        <p className="text-xs text-muted-foreground">Pola pengeluaran Anda</p>
-                    </CardHeader>
-                    <CardContent>
-                        {/* Summary Stats */}
-                        <div className="grid grid-cols-3 gap-3 mb-4">
-                            <div className="text-center p-3 bg-muted/50 rounded-lg">
-                                <p className="text-xs text-muted-foreground">Total</p>
-                                <p className="font-bold text-red-500" data-private="true">-{formatRupiah(spending.totalSpending)}</p>
-                            </div>
-                            <div className="text-center p-3 bg-muted/50 rounded-lg">
-                                <p className="text-xs text-muted-foreground">Rata-rata/Hari</p>
-                                <p className="font-bold" data-private="true">{formatRupiah(spending.avgDaily)}</p>
-                            </div>
-                            <div className="text-center p-3 bg-muted/50 rounded-lg">
-                                <p className="text-xs text-muted-foreground">Transaksi</p>
-                                <p className="font-bold">{spending.transactionCount}x</p>
-                            </div>
-                        </div>
-
-                        {/* Top Categories */}
-                        <div className="mb-4">
-                            <h4 className="font-medium mb-2 flex items-center gap-2">
-                                <PieChart className="w-4 h-4" />
-                                Top Kategori
-                            </h4>
-                            <div className="space-y-2">
-                                {spending.topCategories.slice(0, 5).map((cat, i) => (
-                                    <div key={i} className="flex items-center gap-3">
-                                        <div className="w-8 text-center font-bold text-muted-foreground">#{i + 1}</div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-sm font-medium">{cat.kategori}</span>
-                                                <span className="text-sm" data-private="true">{formatRupiah(cat.nominal)}</span>
-                                            </div>
-                                            <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
-                                                    style={{ width: `${cat.persentase}%` }}
-                                                ></div>
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
-                                                <span>{cat.count}x transaksi</span>
-                                                <span className={cat.trend > 0 ? 'text-red-500' : cat.trend < 0 ? 'text-emerald-500' : ''}>
-                                                    {cat.trend > 0 ? '↑' : cat.trend < 0 ? '↓' : '='} {Math.abs(cat.trend)}% vs periode lalu
-                                                </span>
-                                            </div>
-                                        </div>
+                    {/* Income & Expense Book */}
+                    {incomeExpense && (
+                        <Card className="border-l-4 border-l-amber-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                    <DollarSign className="w-5 h-5 text-amber-500" />
+                                    Buku Besar
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">Rincian per kategori.</p>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Income Section */}
+                                <div className="mb-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-medium text-emerald-500 text-sm uppercase tracking-wide">Pemasukan</span>
+                                        <span className="font-bold text-sm" data-private="true">{formatRupiah(incomeExpense.totalIncome)}</span>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+                                    <div className="space-y-2">
+                                        {incomeExpense.incomeItems.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic">Tidak ada pemasukan</p>
+                                        ) : (
+                                            incomeExpense.incomeItems.map((item, i) => (
+                                                <div key={i} className="flex items-center justify-between py-2 border-b last:border-0 border-dashed">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-base">{item.icon}</span>
+                                                        <span className="text-sm">{item.kategori}</span>
+                                                    </div>
+                                                    <span className="font-medium text-sm" data-private="true">{formatRupiah(item.nominal)}</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
 
-                        {/* Spending by Day */}
-                        <div>
-                            <h4 className="font-medium mb-2 flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                Pengeluaran per Hari
-                            </h4>
-                            <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
-                                {spending.spendingByDay.map((day, i) => {
-                                    const maxSpending = Math.max(...spending.spendingByDay.map(d => d.nominal), 1)
-                                    const heightPixels = maxSpending > 0 ? Math.max((day.nominal / maxSpending) * 100, day.nominal > 0 ? 10 : 4) : 4
+                                {/* Expense Section */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-medium text-red-500 text-sm uppercase tracking-wide">Pengeluaran</span>
+                                        <span className="font-bold text-red-500 text-sm" data-private="true">-{formatRupiah(incomeExpense.totalExpense)}</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {incomeExpense.expenseItems.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic">Tidak ada pengeluaran</p>
+                                        ) : (
+                                            incomeExpense.expenseItems.map((item, i) => (
+                                                <div key={i} className="flex items-center justify-between py-2 border-b last:border-0 border-dashed">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-base">{item.icon}</span>
+                                                        <span className="text-sm">{item.kategori}</span>
+                                                    </div>
+                                                    <span className="font-medium text-sm" data-private="true">-{formatRupiah(item.nominal)}</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
-                                    return (
-                                        <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
-                                            <div
-                                                className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t transition-all"
-                                                style={{
-                                                    height: heightPixels,
-                                                    minWidth: 20,
-                                                    opacity: day.nominal > 0 ? 1 : 0.3
-                                                }}
-                                            ></div>
-                                            <span className="text-[10px] text-muted-foreground">{day.hari}</span>
+                    {/* Spending Insights */}
+                    {spending && (
+                        <Card className="border-l-4 border-l-purple-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                    <Lightbulb className="w-5 h-5 text-purple-500" />
+                                    Top Spending
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">Kategori pengeluaran terbesar.</p>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {spending.topCategories.slice(0, 5).map((cat, i) => (
+                                        <div key={i} className="flex items-center gap-3">
+                                            <div className="w-6 text-center font-bold text-muted-foreground text-xs">#{i + 1}</div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-sm font-medium">{cat.kategori}</span>
+                                                    <span className="text-xs font-bold" data-private="true">{formatRupiah(cat.nominal)}</span>
+                                                </div>
+                                                <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                                                        style={{ width: `${cat.persentase}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
+            </Tabs>
 
-            {/* Decision Helper */}
-            <Card className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 text-white border-0">
-                <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-amber-500/20 rounded-full">
-                            <Lightbulb className="w-6 h-6 text-amber-400" />
+            {/* Decision Helper - Always Visible at bottom */}
+            <Card className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 text-white border-0 mt-6">
+                <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-amber-500/20 rounded-full shrink-0">
+                            <Lightbulb className="w-5 h-5 text-amber-400" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="font-bold text-lg mb-2">💡 Rekomendasi</h3>
-                            {cashFlow && spending && (
-                                <div className="space-y-2 text-sm text-slate-300">
-                                    {cashFlow.cashFlow < 0 && (
-                                        <p className="flex items-center gap-2">
-                                            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                                            <span>Pengeluaran melebihi pemasukan. Pertimbangkan untuk mengurangi pengeluaran non-esensial.</span>
-                                        </p>
-                                    )}
-                                    {spending.topCategories[0] && (
-                                        <p className="flex items-center gap-2">
-                                            <TrendingUp className="w-4 h-4 text-amber-400 shrink-0" />
-                                            <span>
-                                                Kategori terbesar: <strong>{spending.topCategories[0].kategori}</strong> ({spending.topCategories[0].persentase}% dari total).
-                                                {spending.topCategories[0].trend > 20 && ' Naik signifikan dari periode lalu.'}
-                                            </span>
-                                        </p>
-                                    )}
-                                    {cashFlow.cashFlow > 0 && (
-                                        <p className="flex items-center gap-2">
-                                            <Wallet className="w-4 h-4 text-emerald-400 shrink-0" />
-                                            <span>
-                                                Bagus! Anda berhasil menyisihkan <strong data-private="true">{formatRupiah(cashFlow.cashFlow)}</strong> periode ini.
-                                            </span>
-                                        </p>
+                            <h3 className="font-bold text-sm mb-1">💡 Quick Insight</h3>
+                            {cashFlow && (
+                                <div className="text-xs text-slate-300">
+                                    {cashFlow.cashFlow < 0 ? (
+                                        <span className="flex items-center gap-1">
+                                            <AlertTriangle className="w-3 h-3 text-red-400" />
+                                            Warning: Pengeluaran &gt; Pemasukan.
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center gap-1">
+                                            <Wallet className="w-3 h-3 text-emerald-400" />
+                                            Good Job! Surplus <span data-private="true">{formatRupiah(cashFlow.cashFlow)}</span>.
+                                        </span>
                                     )}
                                 </div>
                             )}

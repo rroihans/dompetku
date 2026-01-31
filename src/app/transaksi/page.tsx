@@ -11,7 +11,8 @@ import {
     Tag,
     ChevronLeft,
     ChevronRight,
-    Filter
+    Filter,
+    Search
 } from "lucide-react"
 import { AddTransactionForm } from "@/components/forms/add-transaction-form"
 import { TransaksiActions } from "@/components/transaksi/transaksi-actions"
@@ -19,6 +20,20 @@ import { AdvancedFilterPanel } from "@/components/transaksi/advanced-filter-pane
 import { getTransaksi } from "@/lib/db/transactions-repo"
 import { formatRupiah } from "@/lib/format"
 import Link from "next/link"
+import { Input } from "@/components/ui/input"
+
+// Helper to group transactions by date
+function groupTransactionsByDate(transactions: any[]) {
+    const grouped: { [key: string]: any[] } = {}
+    transactions.forEach(tx => {
+        const dateKey = tx.tanggal.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+        if (!grouped[dateKey]) {
+            grouped[dateKey] = []
+        }
+        grouped[dateKey].push(tx)
+    })
+    return grouped
+}
 
 export default function TransaksiPage() {
     const searchParams = useSearchParams()
@@ -85,239 +100,138 @@ export default function TransaksiPage() {
         }
     }, [currentPage, params])
 
-    // Tampilkan kolom Saldo jika sedang memfilter per akun (single)
-    const showSaldoColumn = Boolean(currentAkunId && !Array.isArray(currentAkunId) && (params.sort === "tanggal" || !params.sort))
+    const groupedTransactions = groupTransactionsByDate(transactions)
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Riwayat Transaksi</h2>
-                    <p className="text-muted-foreground">
-                        Catatan detail setiap pemasukan dan pengeluaran Anda.
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="default"
+        <div className="space-y-4 pb-20">
+            <div className="flex flex-col gap-4 sticky top-14 bg-background z-20 pt-2 pb-2">
+                 <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold tracking-tight">Riwayat</h2>
+                         <p className="text-xs text-muted-foreground">
+                            {pagination.total} transaksi tercatat.
+                        </p>
+                    </div>
+                    <AddTransactionForm />
+                 </div>
+
+                 {/* Mobile Search & Filter Bar */}
+                 <div className="flex gap-2">
+                     <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="search"
+                          placeholder="Cari transaksi..."
+                          className="pl-8 h-9 text-sm bg-muted/50 border-none"
+                          defaultValue={params.search}
+                          onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                  const val = e.currentTarget.value
+                                  const newParams = new URLSearchParams(searchParams.toString())
+                                  if (val) newParams.set('search', val)
+                                  else newParams.delete('search')
+                                  window.history.pushState(null, '', `?${newParams.toString()}`)
+                              }
+                          }}
+                        />
+                     </div>
+                     <Button
+                        variant={showFilter ? "secondary" : "outline"}
+                        size="icon"
+                        className="h-9 w-9 shrink-0"
                         onClick={() => setShowFilter(!showFilter)}
-                        className="gap-2"
                     >
                         <Filter className="w-4 h-4" />
-                        {showFilter ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
                     </Button>
-                    <AddTransactionForm />
-                </div>
+                 </div>
             </div>
 
-            {showFilter && <AdvancedFilterPanel />}
+            {showFilter && (
+                <div className="animate-in slide-in-from-top-2 duration-200">
+                     <AdvancedFilterPanel />
+                </div>
+            )}
 
-            <Card>
-                <CardContent className="p-0">
-                    {/* Desktop: Table View */}
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b bg-muted/50">
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tanggal / Deskripsi</th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kategori</th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">Akun</th>
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Nominal</th>
-                                    {showSaldoColumn && (
-                                        <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Saldo</th>
-                                    )}
-                                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                                            Memuat transaksi...
-                                        </td>
-                                    </tr>
-                                ) : transactions.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                                            Belum ada transaksi tercatat.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    transactions.map((tx: any) => {
-                                        const isExpense = tx.debitAkun?.tipe === "EXPENSE" ||
-                                            ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe)
-
-                                        return (
-                                            <tr key={tx.id} className="hover:bg-accent/40 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`p-2 rounded-full ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                                            {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium">{tx.deskripsi}</div>
-                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                                                                <CalendarIcon className="w-3 h-3" />
-                                                                {tx.tanggal.toLocaleDateString('id-ID')}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-1 text-sm bg-secondary/50 px-2 py-1 rounded w-fit">
-                                                        <Tag className="w-3 h-3" />
-                                                        {tx.kategori}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
-                                                        {(() => {
-                                                            const isTransfer = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.debitAkun?.tipe) &&
-                                                                ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe);
-
-                                                            if (isTransfer) {
-                                                                return (
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-primary font-bold truncate max-w-[80px]" title={tx.kreditAkun?.nama}>{tx.kreditAkun?.nama}</span>
-                                                                        <ArrowUpRight className="w-3 h-3 text-muted-foreground" />
-                                                                        <span className="text-primary font-bold truncate max-w-[80px]" title={tx.debitAkun?.nama}>{tx.debitAkun?.nama}</span>
-                                                                    </div>
-                                                                );
-                                                            }
-                                                            return <span className="text-primary font-bold">{tx.kreditAkun?.nama || tx.debitAkun?.nama}</span>;
-                                                        })()}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className={`font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
-                                                        {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
-                                                    </div>
-                                                </td>
-                                                {showSaldoColumn && (
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="font-mono text-xs text-muted-foreground" data-private="true">
-                                                            {formatRupiah(tx.saldoSetelah ?? 0)}
-                                                        </div>
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4 text-center">
-                                                    <TransaksiActions transaksi={tx} />
-                                                </td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+            {/* Transaction List */}
+            <div className="space-y-4">
+                {loading ? (
+                     <div className="space-y-2">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-16 bg-muted/50 rounded-lg animate-pulse" />
+                        ))}
+                     </div>
+                ) : transactions.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                        <p>Belum ada transaksi.</p>
                     </div>
-
-                    {/* Mobile: Card List View */}
-                    <div className="md:hidden divide-y">
-                        {loading ? (
-                            <div className="px-4 py-12 text-center text-muted-foreground">
-                                Memuat transaksi...
+                ) : (
+                    Object.entries(groupedTransactions).map(([date, txs]) => (
+                        <div key={date} className="space-y-1">
+                            <div className="sticky top-[130px] z-10 bg-background/95 backdrop-blur py-1 px-2 text-xs font-semibold text-muted-foreground border-b w-full">
+                                {date}
                             </div>
-                        ) : transactions.length === 0 ? (
-                            <div className="px-4 py-12 text-center text-muted-foreground">
-                                Belum ada transaksi tercatat.
-                            </div>
-                        ) : (
-                            transactions.map((tx: any) => {
-                                const isExpense = tx.debitAkun?.tipe === "EXPENSE" ||
-                                    ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe)
+                            <div className="bg-card rounded-lg border shadow-sm divide-y">
+                                {txs.map((tx) => {
+                                    const isExpense = tx.debitAkun?.tipe === "EXPENSE" ||
+                                        ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe)
 
-                                return (
-                                    <div key={tx.id} className="p-4 hover:bg-accent/40 transition-colors">
-                                        {/* Row 1: Icon + Deskripsi + Nominal */}
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                                                <div className={`p-2 rounded-full shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                    return (
+                                        <div key={tx.id} className="p-3 hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 relative group">
+                                            {/* Left: Icon & Main Info */}
+                                            <div className="flex items-center gap-3 overflow-hidden flex-1">
+                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                                     {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="font-medium truncate">{tx.deskripsi}</div>
-                                                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                                                        <CalendarIcon className="w-3 h-3 shrink-0" />
-                                                        {tx.tanggal.toLocaleDateString('id-ID')}
-                                                    </div>
-                                                </div>
+                                                 </div>
+                                                 <div className="min-w-0 flex-1">
+                                                     <div className="text-sm font-medium truncate">{tx.deskripsi}</div>
+                                                     <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                         <span className="bg-secondary px-1.5 py-0.5 rounded text-[9px] font-medium">{tx.kategori}</span>
+                                                         <span>•</span>
+                                                         <span className="truncate max-w-[100px]">{tx.kreditAkun?.nama || tx.debitAkun?.nama}</span>
+                                                     </div>
+                                                 </div>
                                             </div>
-                                            <div className={`font-bold text-right shrink-0 ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
-                                                {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
+
+                                            {/* Right: Amount & Action */}
+                                            <div className="text-right shrink-0">
+                                                <div className={`text-sm font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
+                                                    {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
+                                                </div>
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 p-1 rounded-md shadow-sm">
+                                                    <TransaksiActions transaksi={tx} />
+                                                </div>
+                                                {/* Mobile visible action trigger area (invisible but clickable over the row, handled by TransaksiActions usually requiring a click. Here we just rely on the row click or specific action button if needed. For now, TransaksiActions is hidden on mobile unless we make it always visible or visible on swipe. Let's keep it simple: visible on click/tap or just keep the button visible.)
+                                                    Actually, let's make the action button always visible on mobile but subtle.
+                                                */}
+                                                 <div className="md:hidden mt-1 flex justify-end">
+                                                      <TransaksiActions transaksi={tx} />
+                                                 </div>
                                             </div>
                                         </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
 
-                                        {/* Row 2: Kategori + Akun + Aksi */}
-                                        <div className="flex items-center justify-between mt-3 pl-11">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 text-xs">
-                                                    <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded">
-                                                        <Tag className="w-3 h-3" />
-                                                        {tx.kategori}
-                                                    </span>
-                                                    <span className="text-muted-foreground">•</span>
-                                                    <span className="text-primary font-medium truncate max-w-[150px]">
-                                                        {(() => {
-                                                            const isTransfer = ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.debitAkun?.tipe) &&
-                                                                ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe);
-
-                                                            if (isTransfer) {
-                                                                return `${tx.kreditAkun?.nama} -> ${tx.debitAkun?.nama}`;
-                                                            }
-                                                            return tx.kreditAkun?.nama || tx.debitAkun?.nama;
-                                                        })()}
-                                                    </span>
-                                                </div>
-                                                {showSaldoColumn && (
-                                                    <div className="text-[10px] text-muted-foreground font-mono">
-                                                        Saldo: <span data-private="true">{formatRupiah(tx.saldoSetelah ?? 0)}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <TransaksiActions transaksi={tx} />
-                                        </div>
-                                    </div>
-                                )
-                            })
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Pagination */}
+            {/* Pagination - Compact */}
             {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                        Menampilkan {transactions.length} dari {pagination.total} transaksi
+                <div className="flex items-center justify-center gap-4 pt-4">
+                     <Link href={`/transaksi?page=${currentPage - 1}${params.search ? `&search=${params.search}` : ''}`}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" disabled={currentPage <= 1}>
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                        {pagination.page} / {pagination.totalPages}
                     </span>
-                    <div className="flex items-center gap-2">
-                        {currentPage > 1 ? (
-                            <Link href={`/transaksi?page=${currentPage - 1}${params.search ? `&search=${params.search}` : ''}`}>
-                                <Button variant="outline" size="sm" className="gap-1">
-                                    <ChevronLeft className="w-4 h-4" /> Sebelumnya
-                                </Button>
-                            </Link>
-                        ) : (
-                            <Button variant="outline" size="sm" className="gap-1" disabled>
-                                <ChevronLeft className="w-4 h-4" /> Sebelumnya
-                            </Button>
-                        )}
-                        <span className="text-sm px-2">
-                            {pagination.page} / {pagination.totalPages}
-                        </span>
-                        {currentPage < pagination.totalPages ? (
-                            <Link href={`/transaksi?page=${currentPage + 1}${params.search ? `&search=${params.search}` : ''}`}>
-                                <Button variant="outline" size="sm" className="gap-1">
-                                    Berikutnya <ChevronRight className="w-4 h-4" />
-                                </Button>
-                            </Link>
-                        ) : (
-                            <Button variant="outline" size="sm" className="gap-1" disabled>
-                                Berikutnya <ChevronRight className="w-4 h-4" />
-                            </Button>
-                        )}
-                    </div>
+                    <Link href={`/transaksi?page=${currentPage + 1}${params.search ? `&search=${params.search}` : ''}`}>
+                        <Button variant="outline" size="icon" className="h-8 w-8" disabled={currentPage >= pagination.totalPages}>
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </Link>
                 </div>
             )}
         </div>
