@@ -1,4 +1,3 @@
-mana ini yang lu tulis masih seperti ini:
 name: Automerge Jules PRs
 on:
   pull_request:
