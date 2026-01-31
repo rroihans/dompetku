@@ -1,3 +1,4 @@
+mana ini yang lu tulis masih seperti ini:
 name: Automerge Jules PRs
 on:
   pull_request:
@@ -10,7 +11,7 @@ permissions:
 jobs:
   automerge:
     runs-on: ubuntu-latest
-    if: github.actor == 'google-labs-jules[bot]' || github.actor == 'google-labs-jules'
+    if: github.actor == 'google-labs-jules[bot]' || github.actor == 'google-labs-jules' || github.actor == 'rroihans'
     steps:
       - name: Enable auto-merge for Jules PRs
         run: gh pr merge --auto --merge "$PR_URL"
