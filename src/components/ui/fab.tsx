@@ -6,6 +6,7 @@ import { Plus, ArrowRightLeft, FileText, X } from "lucide-react"
 import { AddTransactionForm } from "@/components/forms/add-transaction-form"
 import { TransferForm } from "@/components/forms/transfer-form"
 import { cn } from "@/lib/utils"
+import { DynamicIcon } from "@/components/ui/dynamic-icon"
 // import Link from "next/link" // Removed as we use buttons now
 import { getTransactionTemplates } from "@/lib/db/transaction-templates-repo"
 import type { TemplateTransaksiRecord } from "@/lib/db/app-db"
@@ -67,12 +68,7 @@ export function FAB() {
                                 size="icon"
                                 className="rounded-full shadow-lg h-11 w-11 bg-orange-100 text-orange-600 hover:bg-orange-200 border-none transition-transform hover:scale-105"
                             >
-                                {template.icon ? (
-                                    // Hacky icon render or default
-                                    <FileText className="h-5 w-5" />
-                                ) : (
-                                    <FileText className="h-5 w-5" />
-                                )}
+                                <DynamicIcon name={template.icon} fallback={FileText} className="h-5 w-5" />
                             </Button>
                         </div>
                     ))}
