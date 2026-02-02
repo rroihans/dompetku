@@ -8,16 +8,13 @@ import {
   ChevronDown, 
   ChevronUp, 
   TrendingUp, 
-  TrendingDown, 
-  ArrowUpRight, 
-  ArrowDownLeft,
-  Calendar as CalendarIcon
+  TrendingDown
 } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
 import Link from "next/link";
 import { EmptyState } from "./empty-state";
 import { cn } from "@/lib/utils";
-import { Money } from "@/lib/money";
+import { TodayTransactionCard } from "./today-transaction-card";
 
 interface TodaySectionProps {
   todayData: {
@@ -119,7 +116,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           </div>
 
           {/* Net */}
-          <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+          <div className="bg-muted/50 p-2 rounded-lg border border-border">
             <div className="flex justify-between items-start mb-1">
               <span className="text-[10px] font-bold">NET</span>
               {renderBadge(comparison.netChange)}
@@ -153,32 +150,11 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
               />
             ) : (
               <div className="space-y-2">
-                {todayData.transactions.map((tx) => {
-                   const isExpense = tx.debitAkun?.tipe === "EXPENSE" || 
-                                     ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe);
-                   
-                   return (
-                    <Link key={tx.id} href="/transaksi">
-                      <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                           <div className={cn("p-2 rounded-full shrink-0", isExpense ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500")}>
-                              {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                           </div>
-                           <div className="min-w-0">
-                              <div className="text-sm font-medium truncate">{tx.deskripsi}</div>
-                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <CalendarIcon className="w-3 h-3" />
-                                {new Date(tx.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {tx.kategori}
-                              </div>
-                           </div>
-                        </div>
-                        <div className={cn("text-sm font-bold whitespace-nowrap pl-2", isExpense ? "text-red-500" : "text-emerald-500")} data-private="true">
-                          {isExpense ? "-" : "+"}{formatRupiah(Money.toFloat(tx.nominalInt))}
-                        </div>
-                      </div>
-                    </Link>
-                   );
-                })}
+                {todayData.transactions.map((tx) => (
+                  <Link key={tx.id} href="/transaksi">
+                    <TodayTransactionCard transaction={tx} />
+                  </Link>
+                ))}
               </div>
             )}
           </div>

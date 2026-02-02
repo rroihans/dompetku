@@ -59,7 +59,7 @@ export function CategoryComparisonTable({ year1, year2, categories1, categories2
                             <TableCell className="whitespace-nowrap">
                                 {row.change > 0 ? <TrendingUp className="w-4 h-4 text-red-500" /> : 
                                  row.change < 0 ? <TrendingDown className="w-4 h-4 text-emerald-500" /> : 
-                                 <Minus className="w-4 h-4 text-gray-400" />}
+                                 <Minus className="w-4 h-4 text-muted-foreground" />}
                             </TableCell>
                         </TableRow>
                     ))}

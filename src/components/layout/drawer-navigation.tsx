@@ -47,13 +47,13 @@ export function DrawerNavigation() {
                     <Menu className="w-5 h-5" />
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] p-0 bg-slate-950 border-slate-800">
+            <SheetContent side="left" className="w-[280px] p-0 bg-background border-border">
                 <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
                 <div className="flex flex-col h-full py-6">
                     {/* Header */}
                     <div className="px-6 pb-4">
-                        <h2 className="text-xl font-bold text-white">Dompetku</h2>
-                        <p className="text-xs text-slate-400 mt-1">Kelola keuangan Anda</p>
+                        <h2 className="text-xl font-bold text-foreground">Dompetku</h2>
+                        <p className="text-xs text-muted-foreground mt-1">Kelola keuangan Anda</p>
                     </div>
 
                     {/* Menu Items */}
@@ -70,8 +70,8 @@ export function DrawerNavigation() {
                                         <button
                                             onClick={() => setExpandedMenu(isExpanded ? null : item.label)}
                                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${active
-                                                ? "bg-slate-800 text-white"
-                                                : "text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                                ? "bg-accent text-accent-foreground"
+                                                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                                                 }`}
                                         >
                                             <div
@@ -98,8 +98,8 @@ export function DrawerNavigation() {
                                             href={item.href}
                                             onClick={() => setOpen(false)}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${active
-                                                ? "bg-slate-800 text-white"
-                                                : "text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                                ? "bg-accent text-accent-foreground"
+                                                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                                                 }`}
                                         >
                                             <div
@@ -121,8 +121,8 @@ export function DrawerNavigation() {
                                                     href={sub.href}
                                                     onClick={() => setOpen(false)}
                                                     className={`block px-4 py-2 rounded text-sm ${pathname === sub.href
-                                                        ? "text-white bg-slate-800/50"
-                                                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                                                        ? "text-foreground bg-accent/50"
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
                                                         }`}
                                                 >
                                                     {sub.label}

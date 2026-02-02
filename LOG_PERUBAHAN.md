@@ -175,6 +175,21 @@
 
 ## Riwayat Versi
 
+### v0.9.3 (2026-02-02)
+
+- **Visual Consistency & Theme System:**
+  - **Drawer Navigation:** Migrasi dari hardcoded slate colors ke semantic tokens (`bg-background`, `border-border`, `text-muted-foreground`, `bg-accent`)
+  - **Drawer Header Fix:** Ganti `text-white` ke `text-foreground` agar terlihat di light mode
+  - **UI Components:** Update `select.tsx`, `input.tsx`, `dialog.tsx` untuk menggunakan theme tokens (`border-input`, `bg-popover`, `focus:ring-ring`)
+  - **FAB Button:** Ganti warna biru hardcoded ke `bg-primary` untuk konsistensi tema
+  - **FAB Transfer Button:** Ganti `bg-blue-100 text-blue-600` ke `bg-primary/10 text-primary`
+  - **New Component:** `TodayTransactionCard` dengan 3-row stacked layout (icon+desc, category+account, amount)
+  - **Today Section:** Integrasi `TodayTransactionCard` untuk rendering transaksi hari ini
+  - **Today Section NET Card:** Update ke `bg-muted/50` dan `border-border`
+  - **Recurring Page:** Update inactive badge ke `bg-muted text-muted-foreground`
+  - **YoY Table:** Update Minus icon ke `text-muted-foreground`
+  - **Dark Mode:** Semua komponen yang diupdate kini responsive terhadap light/dark mode toggle
+
 ### v0.9.2 (2026-02-01)
 
 - **Demo Mode Toggle:**

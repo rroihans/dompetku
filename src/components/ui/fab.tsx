@@ -86,7 +86,7 @@ export function FAB() {
                                 setIsOpen(false)
                             }}
                             size="icon"
-                            className="rounded-full shadow-lg h-11 w-11 bg-blue-100 text-blue-600 hover:bg-blue-200 border-none transition-transform hover:scale-105"
+                            className="rounded-full shadow-lg h-11 w-11 bg-primary/10 text-primary hover:bg-primary/20 border-none transition-transform hover:scale-105"
                         >
                             <ArrowRightLeft className="h-5 w-5" />
                         </Button>
@@ -112,7 +112,7 @@ export function FAB() {
                     size="icon"
                     className={cn(
                         "h-14 w-14 rounded-full shadow-xl transition-all duration-300 z-[56]",
-                        isOpen ? "rotate-45 bg-blue-600" : "bg-blue-500 hover:bg-blue-600"
+                        isOpen ? "rotate-45 bg-primary" : "bg-primary hover:bg-primary/90"
                     )}
                     onClick={() => setIsOpen(!isOpen)}
                 >

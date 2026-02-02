@@ -190,7 +190,7 @@ export default function RecurringPage() {
                                     </span>
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.aktif
                                         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
-                                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                                        : "bg-muted text-muted-foreground"
                                         }`}>
                                         {item.aktif ? "Aktif" : "Nonaktif"}
                                     </span>
