@@ -67,7 +67,6 @@
   https://tailwindcss.com/docs/upgrade-guide#review-border-color-utilites
 */
 @layer base {
-
   *,
   ::after,
   ::before,
@@ -153,7 +152,6 @@
 
   /* Mobile-specific fixes */
   @media (max-width: 768px) {
-
     /* Force all elements to respect viewport */
     *,
     *::before,
@@ -385,4 +383,49 @@ body.privacy-mode [data-private="true"]:hover {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ====================================
+   ACCESSIBILITY - Focus Visible Styles
+   ==================================== */
+
+/* Global focus-visible styles for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Remove default outline for mouse focus */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Ensure interactive elements have proper focus indicators */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Skip to main content link (screen reader) */
+.sr-only:focus {
+  position: absolute;
+  width: auto;
+  height: auto;
+  padding: 1rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  z-index: 9999;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }

@@ -175,6 +175,43 @@
 
 ## Riwayat Versi
 
+### v0.11.0 (2026-02-02)
+
+- **Routing Optimization:**
+  - **Root Redirect:** Halaman `/` sekarang redirect permanen ke `/dasbor` (server-side 301)
+  - **Performance:** Server component menggantikan client component untuk redirect
+- **Accessibility Enhancement (WCAG 2.1 AA):**
+  - **FAB Component:** ARIA labels, `aria-expanded`, `role="menu"`, keyboard navigation (Escape close, Enter/Space activate), focus management
+  - **TodaySection:** `aria-label` untuk Card, toggle button accessibility, `aria-live="polite"` untuk transaction list
+  - **TemplateCard:** `role="button"`, `tabIndex={0}`, keyboard activation (Enter/Space), focus-visible styles
+  - **QuickTemplateRow:** Keyboard scroll navigation (Arrow keys, Home/End), `role="list/listitem"`, screen reader instructions
+  - **DrawerNavigation:** `aria-label` trigger, `aria-current="page"`, `aria-expanded` submenu toggles
+  - **MonthlyOverview:** `role="progressbar"` dengan `aria-valuenow/min/max` pada category bars
+- **Focus Management:**
+  - Global `focus-visible` styles di `globals.css`
+  - 2px solid ring dengan offset untuk semua focusable elements
+  - Mouse focus tidak menampilkan outline (`:focus:not(:focus-visible)`)
+- **Documentation:**
+  - `validation-report.md` - Comprehensive validation report dengan test results
+
+### v0.10.0 (2026-02-02)
+
+- **User Onboarding Wizard:**
+  - **3-Step Wizard:** Halaman `/onboarding` dengan progres step indicator
+  - **Step 1 (Required):** Buat akun pertama dengan pilihan tipe (Bank/E-Wallet/Cash/Credit Card)
+  - **Step 2 (Optional):** Buat hingga 3 template transaksi untuk pengeluaran rutin
+  - **Step 3 (Optional):** Catat transaksi pertama dengan form sederhana
+  - **Onboarding Status:** Flag `onboarding_completed` tersimpan di appSetting
+  - **Auto-Redirect:** Dashboard redirect ke onboarding jika belum selesai
+- **Settings Cleanup:**
+  - **Removed:** Tombol teknis "Periksa Integritas Database", "Export Selektif", "Simpan Snapshot Kekayaan"
+  - **Kept:** Backup/Restore, Hapus Seluruh Data (core functionality)
+  - **Added:** Developer Tools card dengan "Reset Onboarding" (hanya muncul saat demo mode aktif)
+  - **Reset Flow:** Setelah reset data, user diarahkan ke onboarding (bukan homepage)
+- **New Files:**
+  - `src/lib/db/onboarding-repo.ts` - Helper functions untuk onboarding status
+  - `src/app/onboarding/page.tsx` - Full-page onboarding wizard
+
 ### v0.9.3 (2026-02-02)
 
 - **Visual Consistency & Theme System:**

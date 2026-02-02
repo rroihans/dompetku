@@ -20,16 +20,29 @@ export function TemplateCard({ template, onClick }: TemplateCardProps) {
   // Ideally we use style or valid classes. For now using style for custom hex colors if provided.
   const customStyle = template.warna ? { backgroundColor: `${template.warna}20`, color: template.warna } : {};
 
+  // Keyboard activation handler
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); // Prevent space from scrolling page
+      onClick?.();
+    }
+  };
+
   return (
     <div 
-      className="snap-start shrink-0 w-[160px] cursor-pointer"
+      className="snap-start shrink-0 w-[160px] cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 rounded-lg"
       onClick={onClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Template ${template.nama}, kategori ${template.kategori}, nominal ${formatRupiah(template.nominal)}`}
     >
       <Card className="h-full hover:scale-105 transition-transform duration-200 border shadow-sm">
         <CardContent className="p-3 flex flex-col h-full">
           <div 
             className={cn("h-10 w-10 rounded-full flex items-center justify-center mb-2", !template.warna && defaultColor)}
             style={customStyle}
+            aria-hidden="true"
           >
             <DynamicIcon name={template.icon} fallback={FileText} className="h-5 w-5" />
           </div>

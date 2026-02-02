@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getDashboardAnalytics } from "@/lib/db/analytics-repo";
 import { getTransactionTemplates } from "@/lib/db/transaction-templates-repo";
+import { getOnboardingStatus } from "@/lib/db/onboarding-repo";
 import { BudgetBanner } from "@/components/dashboard/budget-banner";
 import { TodaySection } from "@/components/dashboard/today-section";
 import { QuickTemplateRow } from "@/components/dashboard/quick-template-row";
@@ -11,13 +13,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TemplateTransaksiRecord } from "@/lib/db/app-db";
 
 export default function NewDashboardPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [data, setData] = useState<{
     analytics: any;
     templates: TemplateTransaksiRecord[];
   } | null>(null);
 
+  // Check onboarding status first
   useEffect(() => {
+    async function checkOnboarding() {
+      const completed = await getOnboardingStatus();
+      if (!completed) {
+        router.push("/onboarding");
+        return;
+      }
+      setOnboardingChecked(true);
+    }
+    checkOnboarding();
+  }, [router]);
+
+  // Load dashboard data only after onboarding check passes
+  useEffect(() => {
+    if (!onboardingChecked) return;
+
     async function loadData() {
       try {
         const [analytics, templatesResult] = await Promise.all([
@@ -37,7 +57,7 @@ export default function NewDashboardPage() {
     }
 
     loadData();
-  }, []);
+  }, [onboardingChecked]);
 
   if (loading || !data) {
     return <DashboardSkeleton />;

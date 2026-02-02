@@ -27,7 +27,7 @@ export function MonthlyOverview({ monthlyData }: MonthlyOverviewProps) {
   const totalCategoryExpense = categories.reduce((sum, cat) => sum + cat.total, 0);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-label="Ringkasan keuangan bulan ini">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Ringkasan Bulan Ini
@@ -39,10 +39,10 @@ export function MonthlyOverview({ monthlyData }: MonthlyOverviewProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Cash Flow Card */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm" aria-label="Arus kas bulan ini">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               Arus Kas
             </CardTitle>
           </CardHeader>
@@ -72,15 +72,15 @@ export function MonthlyOverview({ monthlyData }: MonthlyOverviewProps) {
         </Card>
 
         {/* Top Categories Card */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm" aria-label="Kategori pengeluaran teratas">
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-sm font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <PieChart className="h-4 w-4 text-muted-foreground" />
+                <PieChart className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 Top Pengeluaran
               </div>
-              <Link href="/kategori" className="text-xs text-muted-foreground hover:text-primary">
-                <ArrowRight className="h-3 w-3" />
+              <Link href="/kategori" className="text-xs text-muted-foreground hover:text-primary" aria-label="Lihat semua kategori">
+                <ArrowRight className="h-3 w-3" aria-hidden="true" />
               </Link>
             </CardTitle>
           </CardHeader>
@@ -89,7 +89,7 @@ export function MonthlyOverview({ monthlyData }: MonthlyOverviewProps) {
               <p className="text-xs text-muted-foreground text-center py-4">Belum ada data pengeluaran.</p>
             ) : (
               categories.slice(0, 3).map((cat, idx) => {
-                const percentage = totalCategoryExpense > 0 ? (cat.total / totalCategoryExpense) * 100 : 0;
+                const percentage = totalCategoryExpense > 0 ? Math.round((cat.total / totalCategoryExpense) * 100) : 0;
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between text-xs">
@@ -98,7 +98,14 @@ export function MonthlyOverview({ monthlyData }: MonthlyOverviewProps) {
                         {formatRupiah(cat.total)}
                       </span>
                     </div>
-                    <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                    <div 
+                      className="h-1.5 w-full bg-secondary rounded-full overflow-hidden"
+                      role="progressbar"
+                      aria-valuenow={percentage}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`${cat.kategori}: ${percentage}% dari total pengeluaran`}
+                    >
                       <div 
                         className="h-full bg-primary/70 rounded-full" 
                         style={{ width: `${percentage}%` }}

@@ -67,7 +67,10 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
   };
 
   return (
-    <Card className={cn("border-l-4 shadow-sm", netPositive ? "border-l-emerald-500" : "border-l-red-500")}>
+    <Card 
+      className={cn("border-l-4 shadow-sm", netPositive ? "border-l-emerald-500" : "border-l-red-500")}
+      aria-label="Ringkasan transaksi hari ini"
+    >
       <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-full">
@@ -83,6 +86,8 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           size="sm" 
           className="h-8 w-8 p-0" 
           onClick={() => setIsExpanded(!isExpanded)}
+          aria-label={isExpanded ? "Sembunyikan transaksi" : "Tampilkan transaksi"}
+          aria-expanded={isExpanded}
         >
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
@@ -92,10 +97,10 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
         {/* Summary Grid */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           {/* Income */}
-          <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+          <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100" aria-label="Pemasukan hari ini">
             <div className="flex justify-between items-start mb-1">
-              <TrendingUp className="h-3 w-3 text-emerald-500" />
-              {renderBadge(comparison.incomeChange)}
+              <TrendingUp className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+              <span aria-label="Perubahan pemasukan dibanding kemarin">{renderBadge(comparison.incomeChange)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">Masuk</p>
             <p className="text-sm font-bold text-emerald-600 truncate" data-private="true">
@@ -104,10 +109,10 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           </div>
 
           {/* Expense */}
-          <div className="bg-red-50/50 p-2 rounded-lg border border-red-100">
+          <div className="bg-red-50/50 p-2 rounded-lg border border-red-100" aria-label="Pengeluaran hari ini">
             <div className="flex justify-between items-start mb-1">
-              <TrendingDown className="h-3 w-3 text-red-500" />
-              {renderBadge(comparison.expenseChange, true)}
+              <TrendingDown className="h-3 w-3 text-red-500" aria-hidden="true" />
+              <span aria-label="Perubahan pengeluaran dibanding kemarin">{renderBadge(comparison.expenseChange, true)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">Keluar</p>
             <p className="text-sm font-bold text-red-600 truncate" data-private="true">
@@ -116,10 +121,10 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           </div>
 
           {/* Net */}
-          <div className="bg-muted/50 p-2 rounded-lg border border-border">
+          <div className="bg-muted/50 p-2 rounded-lg border border-border" aria-label="Selisih bersih hari ini">
             <div className="flex justify-between items-start mb-1">
               <span className="text-[10px] font-bold">NET</span>
-              {renderBadge(comparison.netChange)}
+              <span aria-label="Perubahan selisih dibanding kemarin">{renderBadge(comparison.netChange)}</span>
             </div>
             <p className="text-[10px] text-muted-foreground">Selisih</p>
             <p className={cn("text-sm font-bold truncate", todayData.net >= 0 ? "text-emerald-600" : "text-red-600")} data-private="true">
@@ -130,7 +135,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
 
         {/* Transaction List */}
         {isExpanded && (
-          <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+          <div className="space-y-3 animate-in slide-in-from-top-2 duration-200" role="region" aria-live="polite">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Transaksi ({todayData.transactionCount})
