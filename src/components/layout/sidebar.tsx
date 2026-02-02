@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { DummyDataToggle } from "./dummy-data-toggle"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -162,7 +163,8 @@ export function Sidebar() {
                     </div>
                 ))}
 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t space-y-1">
+                    <DummyDataToggle />
                     {bottomItems.map(item => renderItem(item))}
                 </div>
             </nav>

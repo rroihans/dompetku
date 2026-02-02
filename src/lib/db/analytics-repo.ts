@@ -1,5 +1,6 @@
 import { db } from "./app-db";
 import { Money } from "@/lib/money";
+import { toDayKey } from "./summary";
 
 export type PeriodType = '7D' | '30D' | '12W' | '6M' | '1Y';
 
@@ -149,6 +150,57 @@ async function fetchTransactionsWithAccounts(start: Date, end: Date) {
         debitAkun: accountMap.get(tx.debitAkunId),
         kreditAkun: accountMap.get(tx.kreditAkunId)
     }));
+}
+
+function getTodayDateRange() {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+function getYesterdayDateRange() {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setDate(end.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+function calculatePercentageChange(current: number, previous: number): number | null {
+    if (previous === 0) return null;
+    const percentage = ((current - previous) / previous) * 100;
+    return Math.round(percentage * 10) / 10;
+}
+
+async function getDailySummary(dateKey: string, dateRange: { start: Date, end: Date }) {
+    // Note: We ignore summaryHeatmapDay here because it only tracks expenses (totalOut).
+    // To get accurate Income and Net, we must fetch transactions.
+    
+    const txs = await fetchTransactionsWithAccounts(dateRange.start, dateRange.end);
+    let income = 0;
+    let expense = 0;
+    
+    for (const tx of txs) {
+        const nominal = Money.toFloat(tx.nominalInt);
+        if (tx.kreditAkun?.tipe === "INCOME") {
+            income += nominal;
+        } else if (tx.debitAkun?.tipe === "EXPENSE") {
+            expense += nominal;
+        }
+    }
+    
+    return {
+        income,
+        expense,
+        net: income - expense,
+        transactionCount: txs.length
+    };
 }
 
 // Cash Flow Table - ringkasan income vs expense
@@ -530,13 +582,59 @@ export async function getDashboardAnalytics() {
             }
         }
 
+        const todayRange = getTodayDateRange();
+        const yesterdayRange = getYesterdayDateRange();
+        
+        const todayKey = toDayKey(todayRange.start);
+        const yesterdayKey = toDayKey(yesterdayRange.start);
+        
+        const todaySummary = await getDailySummary(todayKey, todayRange);
+        const yesterdaySummary = await getDailySummary(yesterdayKey, yesterdayRange);
+        
+        const todayTransactions = await fetchTransactionsWithAccounts(todayRange.start, todayRange.end);
+        
+        // Recalculate today's stats from actual transactions to ensure accuracy (especially for income)
+        let todayIncome = 0;
+        let todayExpense = 0;
+        for (const tx of todayTransactions) {
+            const nominal = Money.toFloat(tx.nominalInt);
+            if (tx.kreditAkun?.tipe === "INCOME") {
+                todayIncome += nominal;
+            } else if (tx.debitAkun?.tipe === "EXPENSE") {
+                todayExpense += nominal;
+            }
+        }
+        
+        todayTransactions.sort((a, b) => b.tanggal.getTime() - a.tanggal.getTime());
+        const recentTransactions = todayTransactions.slice(0, 3);
+        
+        const comparison = {
+            incomeChange: calculatePercentageChange(todayIncome, yesterdaySummary.income),
+            expenseChange: calculatePercentageChange(todayExpense, yesterdaySummary.expense),
+            netChange: calculatePercentageChange(todayIncome - todayExpense, yesterdaySummary.net),
+            hasYesterdayData: yesterdaySummary.income !== 0 || yesterdaySummary.expense !== 0
+        };
+
         return {
             totalSaldo,
             pemasukanBulanIni: incomeTotal,
             pengeluaranBulanIni: expenseTotal,
             selisihBulanIni: incomeTotal - expenseTotal,
             pengeluaranPerKategori,
-            trendBulanan: Object.values(trendData)
+            trendBulanan: Object.values(trendData),
+            today: {
+                income: todayIncome,
+                expense: todayExpense,
+                net: todayIncome - todayExpense,
+                transactionCount: todayTransactions.length,
+                transactions: recentTransactions
+            },
+            yesterday: {
+                income: yesterdaySummary.income,
+                expense: yesterdaySummary.expense,
+                net: yesterdaySummary.net
+            },
+            comparison
         };
     } catch (error) {
         console.error("getDashboardAnalytics error:", error);
@@ -546,7 +644,25 @@ export async function getDashboardAnalytics() {
             pengeluaranBulanIni: 0,
             selisihBulanIni: 0,
             pengeluaranPerKategori: [],
-            trendBulanan: []
+            trendBulanan: [],
+            today: {
+                income: 0,
+                expense: 0,
+                net: 0,
+                transactionCount: 0,
+                transactions: []
+            },
+            yesterday: {
+                income: 0,
+                expense: 0,
+                net: 0
+            },
+            comparison: {
+                incomeChange: null,
+                expenseChange: null,
+                netChange: null,
+                hasYesterdayData: false
+            }
         };
     }
 }

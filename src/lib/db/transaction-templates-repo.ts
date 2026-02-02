@@ -4,10 +4,15 @@ function generateId() {
     return 'tpl_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
-export async function getTransactionTemplates() {
+export async function getTransactionTemplates(options?: { limit?: number }) {
     try {
-        const templates = await db.templateTransaksi.orderBy("usageCount").reverse().toArray();
-        return { success: true, data: templates };
+        const limit = options?.limit ?? 999
+        const templates = await db.templateTransaksi
+            .orderBy("usageCount")
+            .reverse()
+            .limit(limit)
+            .toArray()
+        return { success: true, data: templates }
     } catch (error) {
         console.error("getTransactionTemplates error:", error);
         return { success: false, data: [] };

@@ -175,6 +175,15 @@
 
 ## Riwayat Versi
 
+### v0.9.2 (2026-02-01)
+
+- **Demo Mode Toggle:**
+  - Fitur "Mode Demo" di sidebar untuk generate 2000+ dummy data dalam berbagai skenario.
+  - **Data Integrity:** Dummy data ditandai dengan flag `isDummy: true` dan terpisah dari data asli.
+  - **Performance:** Menggunakan `bulkAdd` dan `rebuildSummaries` untuk proses instan.
+  - **Database Update:** Schema v6 dengan index `isDummy` untuk clean-up cepat.
+  - **UI/UX:** Tombol toggle dengan dialog konfirmasi dan auto-reload.
+
 ### v0.9.1 (2026-01-30)
 
 - **Service Layer Architecture:**

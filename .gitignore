@@ -43,10 +43,12 @@ yarn-error.log*
 # /src/generated/prisma
 
 # AI Docs & Agent files
-/AI-DOCS-CONSULTANT
+/AI_CONTEXT
 /conductor
 GEMINI.md
 xx.md
+
+
 
 # PRD
 PROJECT_SYSTEM.md
