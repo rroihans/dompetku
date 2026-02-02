@@ -20,9 +20,9 @@ export function FAB() {
 
     useEffect(() => {
         if (isOpen) {
-            getTransactionTemplates().then(res => {
+            getTransactionTemplates({ limit: 10 }).then(res => {
                 if (res.success && res.data) {
-                    setTemplates(res.data.slice(0, 5)) // Limit to 5
+                    setTemplates(res.data) 
                 }
             })
         }
@@ -57,21 +57,23 @@ export function FAB() {
                     isOpen ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-50 translate-y-10 pointer-events-none"
                 )}>
 
-                    {/* Templates Dynamic List */}
-                    {templates.map((template, idx) => (
-                        <div key={template.id} className="flex items-center gap-3">
-                            <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200" style={{ animationDelay: `${idx * 50}ms` }}>
-                                Template: {template.nama}
-                            </span>
-                            <Button
-                                onClick={() => handleTemplateClick(template)}
-                                size="icon"
-                                className="rounded-full shadow-lg h-11 w-11 bg-orange-100 text-orange-600 hover:bg-orange-200 border-none transition-transform hover:scale-105"
-                            >
-                                <DynamicIcon name={template.icon} fallback={FileText} className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    ))}
+                    {/* Templates Scrollable List */}
+                    <div className="max-h-[50vh] overflow-y-auto flex flex-col items-end gap-3 pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20">
+                        {templates.map((template, idx) => (
+                            <div key={template.id} className="flex items-center gap-3">
+                                <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200" style={{ animationDelay: `${idx * 30}ms` }}>
+                                    {template.nama}
+                                </span>
+                                <Button
+                                    onClick={() => handleTemplateClick(template)}
+                                    size="icon"
+                                    className="rounded-full shadow-lg h-11 w-11 bg-orange-100 text-orange-600 hover:bg-orange-200 border-none transition-transform hover:scale-105 shrink-0"
+                                >
+                                    <DynamicIcon name={template.icon} fallback={FileText} className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
 
                     {/* Transfer */}
                     <div className="flex items-center gap-3">

@@ -1,0 +1,189 @@
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { 
+  Calendar, 
+  ChevronDown, 
+  ChevronUp, 
+  TrendingUp, 
+  TrendingDown, 
+  ArrowUpRight, 
+  ArrowDownLeft,
+  Calendar as CalendarIcon
+} from "lucide-react";
+import { formatRupiah } from "@/lib/format";
+import Link from "next/link";
+import { EmptyState } from "./empty-state";
+import { cn } from "@/lib/utils";
+import { Money } from "@/lib/money";
+
+interface TodaySectionProps {
+  todayData: {
+    income: number;
+    expense: number;
+    net: number;
+    transactionCount: number;
+    transactions: any[]; // Using any for enriched transactions with account details
+  };
+  yesterdayData: {
+    income: number;
+    expense: number;
+    net: number;
+  };
+  comparison: {
+    incomeChange: number | null;
+    expenseChange: number | null;
+    netChange: number | null;
+    hasYesterdayData: boolean;
+  };
+}
+
+export function TodaySection({ todayData, yesterdayData, comparison }: TodaySectionProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const todayDate = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const netPositive = todayData.net >= 0;
+  
+  // Helper to render percentage badge
+  const renderBadge = (change: number | null, inverse = false) => {
+    if (change === null) return <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>;
+    
+    // For expense: positive change (increase) is bad (red), negative change (decrease) is good (green)
+    // For income/net: positive change is good (green), negative change is bad (red)
+    const isGood = inverse ? change < 0 : change > 0;
+    const colorClass = isGood ? "text-emerald-600 bg-emerald-100" : "text-red-600 bg-red-100";
+    const arrow = change > 0 ? "↑" : "↓";
+    
+    return (
+      <span className={cn("text-[10px] px-1 rounded font-medium", colorClass)}>
+        {arrow} {Math.abs(change)}%
+      </span>
+    );
+  };
+
+  return (
+    <Card className={cn("border-l-4 shadow-sm", netPositive ? "border-l-emerald-500" : "border-l-red-500")}>
+      <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-primary/10 rounded-full">
+            <Calendar className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Hari Ini</h3>
+            <p className="text-xs text-muted-foreground">{todayDate}</p>
+          </div>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0" 
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      </CardHeader>
+      
+      <CardContent className="p-4 pt-2">
+        {/* Summary Grid */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {/* Income */}
+          <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+            <div className="flex justify-between items-start mb-1">
+              <TrendingUp className="h-3 w-3 text-emerald-500" />
+              {renderBadge(comparison.incomeChange)}
+            </div>
+            <p className="text-[10px] text-muted-foreground">Masuk</p>
+            <p className="text-sm font-bold text-emerald-600 truncate" data-private="true">
+              {formatRupiah(todayData.income)}
+            </p>
+          </div>
+
+          {/* Expense */}
+          <div className="bg-red-50/50 p-2 rounded-lg border border-red-100">
+            <div className="flex justify-between items-start mb-1">
+              <TrendingDown className="h-3 w-3 text-red-500" />
+              {renderBadge(comparison.expenseChange, true)}
+            </div>
+            <p className="text-[10px] text-muted-foreground">Keluar</p>
+            <p className="text-sm font-bold text-red-600 truncate" data-private="true">
+              {formatRupiah(todayData.expense)}
+            </p>
+          </div>
+
+          {/* Net */}
+          <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+            <div className="flex justify-between items-start mb-1">
+              <span className="text-[10px] font-bold">NET</span>
+              {renderBadge(comparison.netChange)}
+            </div>
+            <p className="text-[10px] text-muted-foreground">Selisih</p>
+            <p className={cn("text-sm font-bold truncate", todayData.net >= 0 ? "text-emerald-600" : "text-red-600")} data-private="true">
+              {formatRupiah(todayData.net)}
+            </p>
+          </div>
+        </div>
+
+        {/* Transaction List */}
+        {isExpanded && (
+          <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Transaksi ({todayData.transactionCount})
+              </h4>
+              {todayData.transactionCount > 3 && (
+                <Link href="/transaksi" className="text-xs text-primary hover:underline">
+                  Lihat Semua
+                </Link>
+              )}
+            </div>
+
+            {todayData.transactions.length === 0 ? (
+              <EmptyState 
+                icon={Calendar} 
+                title="Belum ada transaksi" 
+                description="Mulai hari ini dengan mencatat transaksi pertamamu."
+              />
+            ) : (
+              <div className="space-y-2">
+                {todayData.transactions.map((tx) => {
+                   const isExpense = tx.debitAkun?.tipe === "EXPENSE" || 
+                                     ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe);
+                   
+                   return (
+                    <Link key={tx.id} href="/transaksi">
+                      <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                           <div className={cn("p-2 rounded-full shrink-0", isExpense ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500")}>
+                              {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                           </div>
+                           <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{tx.deskripsi}</div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3" />
+                                {new Date(tx.tanggal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {tx.kategori}
+                              </div>
+                           </div>
+                        </div>
+                        <div className={cn("text-sm font-bold whitespace-nowrap pl-2", isExpense ? "text-red-500" : "text-emerald-500")} data-private="true">
+                          {isExpense ? "-" : "+"}{formatRupiah(Money.toFloat(tx.nominalInt))}
+                        </div>
+                      </div>
+                    </Link>
+                   );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
