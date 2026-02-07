@@ -8,19 +8,39 @@ import { Loader2 } from "lucide-react"
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState<NotificationDTO[]>([])
     const [loading, setLoading] = useState(true)
-
-    const loadData = useCallback(async () => {
-        setLoading(true)
-        const result = await getNotifications(50)
-        if (result.success && result.data) {
-            setNotifications(result.data)
-        }
-        setLoading(false)
-    }, [])
+    const [refreshKey, setRefreshKey] = useState(0)
 
     useEffect(() => {
+        let cancelled = false
+
+        async function loadData() {
+            if (!cancelled) {
+                setLoading(true)
+            }
+            try {
+                const result = await getNotifications(50)
+                if (!cancelled && result.success && result.data) {
+                    setNotifications(result.data)
+                }
+            } catch (error) {
+                console.error("Failed to load notifications:", error)
+            } finally {
+                if (!cancelled) {
+                    setLoading(false)
+                }
+            }
+        }
+
         loadData()
-    }, [loadData])
+
+        return () => {
+            cancelled = true
+        }
+    }, [refreshKey])
+
+    const loadData = useCallback(() => {
+        setRefreshKey(k => k + 1)
+    }, [])
 
     return (
         <div className="space-y-6">

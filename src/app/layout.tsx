@@ -11,7 +11,7 @@ import { NotificationBell } from "@/components/layout/notification-bell";
 import { LiveClock } from "@/components/layout/live-clock";
 import { DrawerNavigation } from "@/components/layout/drawer-navigation";
 import { Toaster } from "sonner";
-import { FAB } from "@/components/ui/fab";
+import { ConditionalFAB } from "@/components/layout/conditional-fab";
 import { SWRegister } from "@/components/pwa/sw-register";
 import { RecurringTriggerProvider } from "@/components/pwa/recurring-trigger-provider";
 
@@ -45,7 +45,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={`${inter.className} antialiased min-h-screen bg-background overflow-x-hidden text-sm md:text-base`}>
@@ -84,7 +83,7 @@ export default function RootLayout({
             </main>
           </div>
 
-          <FAB />
+          <ConditionalFAB />
           <Toaster position="top-center" richColors closeButton />
           <SWRegister />
           <RecurringTriggerProvider />
