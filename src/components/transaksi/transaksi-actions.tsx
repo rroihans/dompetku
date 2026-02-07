@@ -79,7 +79,7 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
             } else {
                 setError(res.error || "Gagal memperbarui transaksi")
             }
-        } catch (err) {
+        } catch {
             setError("Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
@@ -98,7 +98,7 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
             } else {
                 setError(res.error || "Gagal menghapus transaksi")
             }
-        } catch (err) {
+        } catch {
             setError("Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
@@ -112,8 +112,15 @@ export function TransaksiActions({ transaksi }: TransaksiActionsProps) {
                 <Button
                     variant="ghost"
                     size="sm"
+                    aria-label="Ubah transaksi menjadi cicilan kartu kredit"
                     className="h-7 px-2 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
                     onClick={() => setConvertOpen(true)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setConvertOpen(true);
+                        }
+                    }}
                 >
                     <RefreshCcw className="w-3.5 h-3.5 mr-1" />
                     <span className="text-xs">Cicilan</span>

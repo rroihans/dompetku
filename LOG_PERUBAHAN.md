@@ -190,6 +190,12 @@
   - **Fix:** Pemindahan fungsi impur (`Date.now`, `Math.random`) ke luar komponen untuk kompatibilitas React Compiler.
   - **Cleanup:** Menghapus unused variables and imports.
   - **Enhancement:** Migrasi `watch()` ke `useWatch()` untuk performa dan kepatuhan compiler.
+  - **Aksesibilitas:** Navigasi panah (ArrowUp/Down) pada daftar anggaran di `AnggaranPage`.
+  - **Aksesibilitas:** Shortcut keyboard (Enter/Space) dan `aria-label` untuk aksi transaksi.
+  - **Aksesibilitas:** Perbaikan urutan Tab dan `autoFocus` pada formulir cicilan.
+  - **Aksesibilitas:** Penambahan attribute ARIA (role list, listitem, region) untuk navigasi screen reader yang lebih baik.
+- **Type Safety:** Implementasi `MappedTransaksi` interface dan pembersihan `any` pada `transactions-repo.ts` serta `TransaksiPage`.
+- **Bug Fix:** Sinkronisasi property `catatan` (null vs undefined) pada mapping transaksi untuk konsistensi UI.
 
 ### v0.11.0 (2026-02-02)
 
@@ -322,6 +328,8 @@
 
 ### v0.8.0 (2026-01-28)
 
+- Accessibility: Navigasi keyboard & atribut ARIA (Anggaran, Transaksi, Cicilan)
+- Fix: Lint errors & warnings (type safety, unused variables, loop dependencies)
 - **Offline-First Transformation (PWA):**
   - **Local Database (Dexie):** Implementasi IndexedDB untuk penyimpanan data lokal tanpa server (Akun, Transaksi, Cicilan, Recurring).
   - **Incremental Summaries:** Sistem agregasi otomatis (SummaryMonth, Category, Account) saat transaksi dibuat/diedit/dihapus untuk performa dashboard O(1).

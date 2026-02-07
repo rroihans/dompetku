@@ -18,14 +18,37 @@ import { AddBudgetForm } from "@/components/forms/add-budget-form"
 import { BudgetActions } from "@/components/anggaran/budget-actions"
 import { BudgetChart } from "@/components/charts/budget-chart"
 import Link from "next/link"
-import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
+import { useEffect, useState, Suspense, useRef, useCallback } from "react"
 import { toast } from "sonner"
 
 const BULAN_LABEL = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
     "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ]
+
+interface BudgetItem {
+    id: string;
+    kategori: string;
+    bulan: number;
+    tahun: number;
+    nominal: number;
+    realisasi: number;
+    proyeksi: number;
+    persentase: number;
+    persentaseProyeksi: number;
+    sisa: number;
+    saranHarian: number;
+}
+
+interface BudgetRealizationData {
+    budgets: BudgetItem[];
+    unbudgeted: { kategori: string; realisasi: number }[];
+    totalBudget: number;
+    totalRealisasi: number;
+    totalProyeksi: number;
+    sisaHari: number;
+}
 
 export default function AnggaranPage() {
     return (
@@ -37,7 +60,6 @@ export default function AnggaranPage() {
 
 function AnggaranContent() {
     const searchParams = useSearchParams()
-    const router = useRouter()
 
     const now = new Date()
     const currentMonth = now.getMonth() + 1
@@ -50,12 +72,13 @@ function AnggaranContent() {
     const bulan = isNaN(paramBulan) ? currentMonth : paramBulan
     const tahun = isNaN(paramTahun) ? currentYear : paramTahun
 
-    const [data, setData] = useState<any>(null)
+    const [data, setData] = useState<BudgetRealizationData | null>(null)
     const [categories, setCategories] = useState<string[]>([])
     const [loading, setLoading] = useState(true)
     const [copying, setCopying] = useState(false)
+    const budgetRefs = useRef<(HTMLDivElement | null)[]>([])
 
-    async function loadData() {
+    const loadData = useCallback(async () => {
         setLoading(true)
         try {
             const [budgetResult, categoriesResult] = await Promise.all([
@@ -75,11 +98,11 @@ function AnggaranContent() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [bulan, tahun])
 
     useEffect(() => {
         loadData()
-    }, [bulan, tahun])
+    }, [loadData])
 
     async function handleCopyBudget() {
         setCopying(true)
@@ -91,8 +114,9 @@ function AnggaranContent() {
             } else {
                 toast.error(res.error || "Gagal menyalin anggaran")
             }
-        } catch (error: any) {
-            toast.error(error.message || "Terjadi kesalahan")
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Terjadi kesalahan"
+            toast.error(message)
         } finally {
             setCopying(false)
         }
@@ -101,6 +125,18 @@ function AnggaranContent() {
     const handleRefresh = () => {
         loadData()
     }
+
+    const handleBudgetKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = (currentIndex + 1) % safeData.budgets.length;
+            budgetRefs.current[nextIndex]?.focus();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = currentIndex === 0 ? safeData.budgets.length - 1 : currentIndex - 1;
+            budgetRefs.current[prevIndex]?.focus();
+        }
+    };
 
     // Hitung bulan sebelum dan sesudah
     let prevBulan = bulan - 1
@@ -141,8 +177,8 @@ function AnggaranContent() {
     const persentasePrediksiTotal = totalBudget > 0 ? Math.round((totalPrediksi / totalBudget) * 100) : 0
 
     // Kategori yang melebihi budget (berdasarkan prediksi total)
-    const overBudget = safeData.budgets.filter((b: any) => (b.persentaseProyeksi || 0) > 100)
-    const nearLimit = safeData.budgets.filter((b: any) => (b.persentaseProyeksi || 0) >= 80 && (b.persentaseProyeksi || 0) <= 100)
+    const overBudget = safeData.budgets.filter((b) => (b.persentaseProyeksi || 0) > 100)
+    const nearLimit = safeData.budgets.filter((b) => (b.persentaseProyeksi || 0) >= 80 && (b.persentaseProyeksi || 0) <= 100)
 
     return (
         <div className="space-y-6">
@@ -294,18 +330,24 @@ function AnggaranContent() {
 
             {/* Daftar Budget */}
             {safeData.budgets.length > 0 ? (
-                <div className="grid gap-4">
+                <div className="grid gap-4" role="list" aria-label="Daftar anggaran per kategori. Gunakan panah atas dan bawah untuk navigasi antar anggaran.">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold">Detail per Kategori</h3>
                     </div>
 
-                    {safeData.budgets.map((budget: any) => {
+                    {safeData.budgets.map((budget, index: number) => {
                         const isOver = (budget.persentaseProyeksi || 0) > 100
                         const isNear = (budget.persentaseProyeksi || 0) >= 80 && (budget.persentaseProyeksi || 0) <= 100
                         const realOver = (budget.persentase || 0) > 100
 
                         return (
-                            <Card key={budget.id} className={`border-l-4 ${realOver ? 'border-l-red-600' : isOver ? 'border-l-red-400' : isNear ? 'border-l-amber-500' : 'border-l-primary'
+                            <Card 
+                                key={budget.id} 
+                                ref={(el) => { budgetRefs.current[index] = el }}
+                                tabIndex={0}
+                                role="listitem"
+                                onKeyDown={(e) => handleBudgetKeyDown(e, index)}
+                                className={`border-l-4 outline-none focus-visible:ring-2 focus-visible:ring-primary ${realOver ? 'border-l-red-600' : isOver ? 'border-l-red-400' : isNear ? 'border-l-amber-500' : 'border-l-primary'
                                 }`}>
                                 <CardContent className="pt-4">
                                     <div className="flex items-start justify-between mb-3">
@@ -419,7 +461,7 @@ function AnggaranContent() {
                         Pengeluaran Tanpa Anggaran
                     </h3>
                     <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                        {safeData.unbudgeted.map((item: any) => (
+                        {safeData.unbudgeted.map((item) => (
                             <Card key={item.kategori} className="border-l-4 border-l-amber-500">
                                 <CardContent className="pt-4 flex justify-between items-center">
                                     <div>

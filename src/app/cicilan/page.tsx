@@ -1,7 +1,6 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import {
     CreditCard,
     Calendar,
@@ -19,9 +18,25 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { AccountDTO } from "@/lib/account-dto"
 
+import { RencanaCicilanRecord } from "@/lib/db/app-db"
+
+interface CicilanStats {
+    totalHutang: number;
+    tagihanBulanIni: number;
+    jumlahCicilanAktif: number;
+    rasioHutang: number;
+}
+
+interface CicilanWithFloats extends RencanaCicilanRecord {
+    totalPokok: number;
+    nominalPerBulan: number;
+    biayaAdmin: number;
+    bungaPersen: number;
+}
+
 export default function CicilanPage() {
-    const [cicilan, setCicilan] = useState<any[]>([])
-    const [stats, setStats] = useState({
+    const [cicilan, setCicilan] = useState<CicilanWithFloats[]>([])
+    const [stats, setStats] = useState<CicilanStats>({
         totalHutang: 0,
         tagihanBulanIni: 0,
         jumlahCicilanAktif: 0,
@@ -39,7 +54,12 @@ export default function CicilanPage() {
             ])
 
             if (cicilanResult.success) {
-                setCicilan(cicilanResult.data || [])
+                const dataFromRepo = (cicilanResult.data || []) as (RencanaCicilanRecord & { totalPokok: number; nominalPerBulan: number; biayaAdmin: number })[]
+                const mapped = dataFromRepo.map((c) => ({
+                    ...c,
+                    bungaPersen: c.bungaPersen || 0
+                })) as CicilanWithFloats[]
+                setCicilan(mapped)
             }
 
             if (statsResult.success) {
@@ -170,7 +190,7 @@ export default function CicilanPage() {
                         <Clock className="h-5 w-5 text-primary" />
                         Rencana Berjalan ({cicilanAktif.length})
                     </h3>
-                    <div className="grid gap-6">
+                    <div className="grid gap-6" role="list" aria-label="Daftar rencana cicilan aktif">
                         {cicilanAktif.map((item) => {
                             const progress = ((item.cicilanKe - 1) / item.tenor) * 100
                             const sisaTenor = item.tenor - item.cicilanKe + 1
@@ -179,7 +199,7 @@ export default function CicilanPage() {
                             const isJatuhTempoDekat = item.tanggalJatuhTempo - tanggalSekarang <= 3 && item.tanggalJatuhTempo >= tanggalSekarang
 
                             return (
-                                <Card key={item.id} className={`relative overflow-hidden border-l-4 ${isJatuhTempoDekat ? 'border-l-amber-500' : 'border-l-primary'
+                                <Card key={item.id} role="listitem" className={`relative overflow-hidden border-l-4 ${isJatuhTempoDekat ? 'border-l-amber-500' : 'border-l-primary'
                                     }`}>
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                                         <div>
@@ -256,9 +276,9 @@ export default function CicilanPage() {
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                         Sudah Lunas ({cicilanLunas.length})
                     </h3>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2" role="list" aria-label="Daftar cicilan yang sudah lunas">
                         {cicilanLunas.map((item) => (
-                            <Card key={item.id} className="opacity-70 border-l-4 border-l-emerald-500">
+                            <Card key={item.id} role="listitem" className="opacity-70 border-l-4 border-l-emerald-500">
                                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                                     <div>
                                         <CardTitle className="text-base flex items-center gap-2">

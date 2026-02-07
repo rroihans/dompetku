@@ -6,6 +6,7 @@ import type { ServerActionResult } from "@/types";
 import type { TransaksiFilter } from "@/lib/transaksi-utils";
 import type { AkunRecord, TransaksiRecord } from "./app-db";
 import { applyTransactionSummaryDelta, applyTransactionUpdateSummaryDelta } from "./summary";
+import { MappedTransaksi } from "@/types/transaksi";
 
 const PAGE_SIZE = 25;
 const LARGE_TX_THRESHOLD = 10_000_000;
@@ -219,7 +220,7 @@ export async function getTransaksi(filters: TransaksiFilter = {}) {
 
 export async function createTransaksiSimple(
     data: SimpleTransaksiData
-): Promise<ServerActionResult<any>> {
+): Promise<ServerActionResult<MappedTransaksi>> {
     const validation = TransaksiSchema.safeParse({
         ...data,
         tanggal: data.tanggal || new Date(),
@@ -325,7 +326,7 @@ export async function createTransaksi(data: {
     catatan?: string;
     idempotencyKey?: string;
     rencanaCicilanId?: string;
-}): Promise<ServerActionResult<any>> {
+}): Promise<ServerActionResult<MappedTransaksi>> {
     if (data.nominal <= 0) {
         return { success: false, error: "Nominal harus lebih dari 0" };
     }
@@ -403,7 +404,7 @@ export async function updateTransaksi(
         nominal?: number;
         tanggal?: Date;
     }
-): Promise<ServerActionResult<any>> {
+): Promise<ServerActionResult<MappedTransaksi>> {
     const existing = await db.transaksi.get(id);
     if (!existing) return { success: false, error: "Transaksi tidak ditemukan" };
 
@@ -557,6 +558,7 @@ function mapTransaksi(tx: TransaksiRecord, akunMap: Map<string, AkunRecord>) {
     const kreditAkun = akunMap.get(tx.kreditAkunId);
     return {
         ...tx,
+        catatan: tx.catatan ?? null,
         nominal: Money.toFloat(tx.nominalInt),
         debitAkun: debitAkun
             ? { id: debitAkun.id, nama: debitAkun.nama, tipe: debitAkun.tipe, isSyariah: debitAkun.isSyariah ?? undefined }

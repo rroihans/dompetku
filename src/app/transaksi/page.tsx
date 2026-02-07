@@ -2,13 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
     ArrowUpRight,
     ArrowDownLeft,
-    Calendar as CalendarIcon,
-    Tag,
     ChevronLeft,
     ChevronRight,
     Filter,
@@ -21,10 +18,11 @@ import { getTransaksi } from "@/lib/db/transactions-repo"
 import { formatRupiah } from "@/lib/format"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
+import { MappedTransaksi } from "@/types/transaksi"
 
 // Helper to group transactions by date
-function groupTransactionsByDate(transactions: any[]) {
-    const grouped: { [key: string]: any[] } = {}
+function groupTransactionsByDate(transactions: MappedTransaksi[]) {
+    const grouped: { [key: string]: MappedTransaksi[] } = {}
     transactions.forEach(tx => {
         const dateKey = tx.tanggal.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
         if (!grouped[dateKey]) {
@@ -37,7 +35,7 @@ function groupTransactionsByDate(transactions: any[]) {
 
 export default function TransaksiPage() {
     const searchParams = useSearchParams()
-    const [transactions, setTransactions] = useState<any[]>([])
+    const [transactions, setTransactions] = useState<MappedTransaksi[]>([])
     const [pagination, setPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 0 })
     const [loading, setLoading] = useState(true)
     const [showFilter, setShowFilter] = useState(false)
@@ -65,15 +63,15 @@ export default function TransaksiPage() {
     }, [searchParams])
 
     const currentPage = Number(params.page) || 1
-    const currentAkunId = params.akunId
 
     useEffect(() => {
         let active = true
-        setLoading(true)
+        // Defer to avoid cascading render warning
+        Promise.resolve().then(() => setLoading(true))
         getTransaksi({
             page: currentPage,
             search: params.search,
-            kategori: params.kategori as any,
+            kategori: params.kategori as string | string[],
             tipe: params.tipe,
             dateFrom: params.dateFrom,
             dateTo: params.dateTo,
@@ -81,11 +79,11 @@ export default function TransaksiPage() {
             maxNominal: params.maxNominal ? Number(params.maxNominal) : undefined,
             sort: params.sort,
             sortDir: params.sortDir,
-            akunId: params.akunId as any,
+            akunId: params.akunId as string | string[],
             complexFilter: params.complexFilter,
         }).then((result) => {
             if (!active) return
-            setTransactions(result.data)
+            setTransactions(result.data as MappedTransaksi[])
             setPagination(result.pagination)
             setLoading(false)
         }).catch(() => {
@@ -122,6 +120,7 @@ export default function TransaksiPage() {
                         <Input
                           type="search"
                           placeholder="Cari transaksi..."
+                          aria-label="Cari transaksi berdasarkan deskripsi atau catatan"
                           className="pl-8 h-9 text-sm bg-muted/50 border-none"
                           defaultValue={params.search}
                           onKeyDown={(e) => {
@@ -138,6 +137,7 @@ export default function TransaksiPage() {
                      <Button
                         variant={showFilter ? "secondary" : "outline"}
                         size="icon"
+                        aria-label={showFilter ? "Sembunyikan filter" : "Tampilkan filter lanjutan"}
                         className="h-9 w-9 shrink-0"
                         onClick={() => setShowFilter(!showFilter)}
                     >
@@ -166,20 +166,22 @@ export default function TransaksiPage() {
                     </div>
                 ) : (
                     Object.entries(groupedTransactions).map(([date, txs]) => (
-                        <div key={date} className="space-y-1">
+                        <div key={date} className="space-y-1" role="region" aria-label={`Transaksi pada ${date}`}>
                             <div className="sticky top-[130px] z-10 bg-background/95 backdrop-blur py-1 px-2 text-xs font-semibold text-muted-foreground border-b w-full">
                                 {date}
                             </div>
-                            <div className="bg-card rounded-lg border shadow-sm divide-y">
+                            <div className="bg-card rounded-lg border shadow-sm divide-y" role="list">
                                 {txs.map((tx) => {
                                     const isExpense = tx.debitAkun?.tipe === "EXPENSE" ||
-                                        ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe)
+                                        ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe || "")
 
                                     return (
-                                        <div key={tx.id} className="p-3 hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 relative group">
+                                        <div key={tx.id} role="listitem" className="p-3 hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 relative group">
                                             {/* Left: Icon & Main Info */}
                                             <div className="flex items-center gap-3 overflow-hidden flex-1">
-                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                 <div 
+                                                    aria-hidden="true"
+                                                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                                     {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                                                  </div>
                                                  <div className="min-w-0 flex-1">
@@ -197,12 +199,14 @@ export default function TransaksiPage() {
                                                 <div className={`text-sm font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
                                                     {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
                                                 </div>
-                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 p-1 rounded-md shadow-sm">
+                                                <div 
+                                                    aria-hidden="true" 
+                                                    tabIndex={-1} 
+                                                    className="hidden md:block absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 p-1 rounded-md shadow-sm"
+                                                >
                                                     <TransaksiActions transaksi={tx} />
                                                 </div>
-                                                {/* Mobile visible action trigger area (invisible but clickable over the row, handled by TransaksiActions usually requiring a click. Here we just rely on the row click or specific action button if needed. For now, TransaksiActions is hidden on mobile unless we make it always visible or visible on swipe. Let's keep it simple: visible on click/tap or just keep the button visible.)
-                                                    Actually, let's make the action button always visible on mobile but subtle.
-                                                */}
+                                                {/* Mobile visible action trigger area */}
                                                  <div className="md:hidden mt-1 flex justify-end">
                                                       <TransaksiActions transaksi={tx} />
                                                  </div>

@@ -159,6 +159,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                             placeholder="Contoh: iPhone 15 Pro, Laptop ASUS"
                             aria-label="Nama Produk atau Pembelian"
                             className={cn(errors.namaProduk && "border-red-500")}
+                            autoFocus
                             {...register("namaProduk")}
                         />
                         {errors.namaProduk && (
