@@ -175,6 +175,22 @@
 
 ## Riwayat Versi
 
+### v0.12.0 (2026-02-07)
+
+- **Accessibility Improvements (WCAG 2.1 AA):**
+  - **Form Accessibility:** Tambahkan ARIA labels pada semua form controls di `AddTransactionForm`, `TransferForm`, `AddBudgetForm`, dan `AddCicilanForm`.
+  - **Keyboard Navigation:** Implementasi navigasi keyboard (Enter/Space) untuk seleksi kategori dan template di form transaksi.
+  - **Focus Management:** Tingkatkan visibilitas focus ring (`focus-visible`) pada tombol numpad, kategori, dan template.
+  - **Skip Link:** Tambahkan link "Lewati ke konten utama" (Skip to Content) untuk navigasi keyboard yang lebih cepat.
+  - **ARIA Roles:** Gunakan role `listbox`, `option`, `list`, dan `listitem` untuk struktur daftar interaktif kustom.
+  - **Screen Reader Support:** Tambahkan `role="alert"` pada pesan error form dan `aria-live="assertive"` untuk notifikasi kritikal.
+  - **Focus Ring Enhancement:** Update `SelectTrigger` untuk menggunakan focus ring yang lebih kontras (`focus:ring-2`).
+- **Bug Fixes:**
+  - **Fix:** Typo `kateriValue` di `AddTransactionForm` (Accessibility selection state).
+  - **Fix:** Pemindahan fungsi impur (`Date.now`, `Math.random`) ke luar komponen untuk kompatibilitas React Compiler.
+  - **Cleanup:** Menghapus unused variables and imports.
+  - **Enhancement:** Migrasi `watch()` ke `useWatch()` untuk performa dan kepatuhan compiler.
+
 ### v0.11.0 (2026-02-02)
 
 - **Routing Optimization:**

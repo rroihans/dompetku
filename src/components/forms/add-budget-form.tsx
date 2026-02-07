@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Target } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
@@ -75,7 +75,7 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
         register,
         handleSubmit,
         setValue,
-        watch,
+        control,
         reset,
         formState: { errors },
     } = useForm<FormValues>({
@@ -88,9 +88,8 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
         },
     })
 
-    const kategori = watch("kategori")
-    const nominal = watch("nominal")
-    const customKategori = watch("customKategori")
+    const kategori = useWatch({ control, name: "kategori" })
+    const nominal = useWatch({ control, name: "nominal" })
 
     const BULAN_LABEL = [
         "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -119,7 +118,7 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
             } else {
                 toast.error(res.error || "Gagal menyimpan budget")
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error(err)
             toast.error("Terjadi kesalahan sistem")
         } finally {
@@ -158,7 +157,7 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                     <div className="grid gap-2">
                         <Label>Kategori Pengeluaran</Label>
                         <Select value={kategori} onValueChange={handleKategoriChange}>
-                            <SelectTrigger className={cn(errors.kategori && "border-red-500")}>
+                            <SelectTrigger aria-label="Pilih kategori pengeluaran" className={cn(errors.kategori && "border-red-500")}>
                                 <SelectValue placeholder="Pilih kategori" />
                             </SelectTrigger>
                             <SelectContent>
@@ -169,7 +168,7 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                             </SelectContent>
                         </Select>
                         {errors.kategori && (
-                            <p className="text-sm text-red-500">{errors.kategori.message}</p>
+                            <p className="text-sm text-red-500" role="alert">{errors.kategori.message}</p>
                         )}
                     </div>
 
@@ -180,11 +179,12 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                             <Input
                                 id="customKategori"
                                 placeholder="Contoh: Pendidikan, Asuransi"
+                                aria-label="Masukkan nama kategori baru"
                                 {...register("customKategori")}
                                 className={cn(errors.customKategori && "border-red-500")}
                             />
                             {errors.customKategori && (
-                                <p className="text-sm text-red-500">{errors.customKategori.message}</p>
+                                <p className="text-sm text-red-500" role="alert">{errors.customKategori.message}</p>
                             )}
                         </div>
                     )}
@@ -196,11 +196,12 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                             id="nominal"
                             type="number"
                             placeholder="0"
+                            aria-label="Masukkan batas anggaran"
                             {...register("nominal", { valueAsNumber: true })}
                             className={cn(errors.nominal && "border-red-500")}
                         />
                         {errors.nominal && (
-                            <p className="text-sm text-red-500">{errors.nominal.message}</p>
+                            <p className="text-sm text-red-500" role="alert">{errors.nominal.message}</p>
                         )}
                         {(nominal || 0) > 0 && (
                             <p className="text-xs text-muted-foreground">
@@ -219,6 +220,7 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
                                     type="button"
                                     variant={nominal === val ? "default" : "outline"}
                                     size="sm"
+                                    aria-label={`Set anggaran ${val} rupiah`}
                                     onClick={() => setValue("nominal", val)}
                                 >
                                     {val >= 1000000 ? `${val / 1000000}jt` : `${val / 1000}rb`}

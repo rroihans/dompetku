@@ -35,6 +35,8 @@ interface TransferFormProps {
     onOpenChange?: (open: boolean) => void;
 }
 
+const generateIdempotencyKey = () => `transfer_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
 export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: TransferFormProps) {
     const router = useRouter()
     const [internalOpen, setInternalOpen] = useState(false)
@@ -99,7 +101,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                 return
             }
 
-            const idempotencyKey = `transfer_${Date.now()}_${Math.random().toString(36).substring(7)}`
+            const idempotencyKey = generateIdempotencyKey()
 
             const res = await createTransfer({
                 dariAkunId,
@@ -152,7 +154,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                     <div className="grid gap-2">
                         <Label htmlFor="dariAkun">Dari Akun</Label>
                         <Select value={dariAkunId} onValueChange={setDariAkunId}>
-                            <SelectTrigger>
+                            <SelectTrigger aria-label="Pilih akun asal">
                                 <SelectValue placeholder="Pilih akun asal" />
                             </SelectTrigger>
                             <SelectContent>
@@ -186,7 +188,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                     <div className="grid gap-2">
                         <Label htmlFor="keAkun">Ke Akun</Label>
                         <Select value={keAkunId} onValueChange={setKeAkunId}>
-                            <SelectTrigger>
+                            <SelectTrigger aria-label="Pilih akun tujuan">
                                 <SelectValue placeholder="Pilih akun tujuan" />
                             </SelectTrigger>
                             <SelectContent>
@@ -216,6 +218,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                             id="nominal"
                             type="number"
                             placeholder="0"
+                            aria-label="Masukkan nominal transfer"
                             value={nominal || ""}
                             onChange={(e) => setNominal(e.target.value === "" ? 0 : Number(e.target.value))}
                             min={1}
@@ -228,6 +231,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                         <Input
                             id="tanggal"
                             type="date"
+                            aria-label="Pilih tanggal transfer"
                             value={tanggal}
                             onChange={(e) => setTanggal(e.target.value)}
                         />
@@ -241,6 +245,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                         <Input
                             id="catatan"
                             placeholder="Contoh: Top up e-wallet"
+                            aria-label="Masukkan catatan (opsional)"
                             value={catatan}
                             onChange={(e) => setCatatan(e.target.value)}
                         />
@@ -261,7 +266,7 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
                     )}
 
                     {error && (
-                        <p className="text-sm text-red-500">{error}</p>
+                        <p className="text-sm text-red-500" role="alert" aria-live="assertive">{error}</p>
                     )}
 
                     <DialogFooter>

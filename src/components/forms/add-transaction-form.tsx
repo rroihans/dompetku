@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { X, Check, Delete, ArrowRight, ArrowLeft, Search, LayoutGrid, List } from "lucide-react"
+import { X, Check, Delete, ArrowRight, ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -47,6 +47,8 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
+const generateIdempotencyKey = () => `txn_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
 interface AddTransactionFormProps {
     trigger?: React.ReactNode;
     initialValues?: Partial<FormValues>;
@@ -67,7 +69,6 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
 
     // Numpad State
     const [displayVal, setDisplayVal] = useState("0")
-    const [mathExpression, setMathExpression] = useState("")
 
     const open = controlledOpen ?? internalOpen
     const setOpen = (val: boolean) => {
@@ -81,9 +82,9 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
     const {
         handleSubmit,
         setValue,
-        watch,
         reset,
-        formState: { errors },
+        control,
+        formState: { },
     } = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -97,11 +98,10 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
         },
     })
 
-    const tipeTransaksi = watch("tipeTransaksi")
-    const kategoriValue = watch("kategori")
-    const akunIdValue = watch("akunId")
-    const keAkunIdValue = watch("keAkunId")
-    const nominalValue = watch("nominal")
+    const tipeTransaksi = useWatch({ control, name: "tipeTransaksi" })
+    const kategoriValue = useWatch({ control, name: "kategori" })
+    const akunIdValue = useWatch({ control, name: "akunId" })
+    const keAkunIdValue = useWatch({ control, name: "keAkunId" })
 
     // Effects for Data Loading and Reset
     useEffect(() => {
@@ -116,7 +116,6 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                     index === self.findIndex((a) => a.id === akun.id)
                 )
                 setAkunList(unique)
-                setAkunList(unique)
             }).catch(console.error)
 
             getAllKategori().then(setKategoriList).catch(console.error)
@@ -125,8 +124,11 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
             }).catch(console.error)
         } else {
             // Reset view when closed
-            setView("FORM")
-            setSearchQuery("")
+            // Defer to avoid cascading render warning from React Compiler
+            Promise.resolve().then(() => {
+                setView("FORM")
+                setSearchQuery("")
+            })
         }
     }, [open])
 
@@ -142,7 +144,9 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                     tanggal: initialValues.tanggal || new Date().toISOString().split('T')[0],
                     deskripsi: initialValues.deskripsi || "",
                 })
-                setDisplayVal((initialValues.nominal || 0).toString())
+                // Defer to avoid cascading render warning
+                const val = (initialValues.nominal || 0).toString()
+                Promise.resolve().then(() => setDisplayVal(val))
             } else {
                 reset({
                     nominal: 0,
@@ -153,7 +157,8 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                     tanggal: new Date().toISOString().split('T')[0],
                     deskripsi: "",
                 })
-                setDisplayVal("0")
+                // Defer to avoid cascading render warning
+                Promise.resolve().then(() => setDisplayVal("0"))
             }
         }
     }, [open, initialValues, reset])
@@ -227,7 +232,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
     async function onSubmit(values: FormValues) {
         setLoading(true)
         try {
-            const idempotencyKey = `txn_${Date.now()}_${Math.random().toString(36).substring(7)}`
+            const idempotencyKey = generateIdempotencyKey()
 
             if (values.tipeTransaksi === "TRANSFER") {
                 // Transfer Logic
@@ -290,7 +295,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-            <DialogContent className="p-0 gap-0 sm:max-w-md w-full overflow-hidden border-none shadow-none h-full sm:h-auto sm:rounded-xl">
+            <DialogContent aria-label="Buat Transaksi Baru" className="p-0 gap-0 sm:max-w-md w-full overflow-hidden border-none shadow-none h-full sm:h-auto sm:rounded-xl">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Buat Transaksi Baru</DialogTitle>
                     <DialogDescription>
@@ -311,7 +316,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                         >
                             {/* Top Bar */}
                             <div className="flex justify-between items-center mb-6">
-                                <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={() => setOpen(false)}>
+                                <Button variant="ghost" size="icon" aria-label="Tutup dialog" className="text-white hover:bg-white/20" onClick={() => setOpen(false)}>
                                     <X className="w-6 h-6" />
                                 </Button>
                                 <div className="flex gap-1 bg-black/20 p-1 rounded-lg">
@@ -319,8 +324,9 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                                         <button
                                             key={type}
                                             onClick={() => setValue("tipeTransaksi", type)}
+                                            aria-label={type === "MASUK" ? "Pilih tipe pemasukan" : type === "KELUAR" ? "Pilih tipe pengeluaran" : "Pilih tipe transfer"}
                                             className={cn(
-                                                "px-3 py-1 rounded-md text-xs font-bold transition-all",
+                                                "px-3 py-1 rounded-md text-xs font-bold transition-all focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent outline-none",
                                                 tipeTransaksi === type ? "bg-white text-black shadow-sm" : "text-white/70 hover:bg-white/10"
                                             )}
                                         >
@@ -331,6 +337,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                                 <Button
                                     variant="ghost"
                                     size="icon"
+                                    aria-label="Simpan transaksi"
                                     className="text-white hover:bg-white/20"
                                     onClick={handleSubmit(onSubmit)}
                                     disabled={loading}
@@ -358,7 +365,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                                     <div className="flex-1 space-y-1">
                                         <Label className="text-white/80 text-[10px] uppercase tracking-wider block text-center">From Account</Label>
                                         <Select value={akunIdValue} onValueChange={(val) => setValue("akunId", val, { shouldValidate: true })}>
-                                            <SelectTrigger className="bg-white/10 border-none text-white text-center h-10 font-bold text-xs p-0 px-1 focus:ring-0">
+                                            <SelectTrigger aria-label="Pilih akun asal" className="bg-white/10 border-none text-white text-center h-10 font-bold text-xs p-0 px-1 focus:ring-0">
                                                 <SelectValue placeholder="Select" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -374,7 +381,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                                     <div className="flex-1 space-y-1">
                                         <Label className="text-white/80 text-[10px] uppercase tracking-wider block text-center">To Account</Label>
                                         <Select value={keAkunIdValue} onValueChange={(val) => setValue("keAkunId", val, { shouldValidate: true })}>
-                                            <SelectTrigger className="bg-white/10 border-none text-white text-center h-10 font-bold text-xs p-0 px-1 focus:ring-0">
+                                            <SelectTrigger aria-label="Pilih akun tujuan" className="bg-white/10 border-none text-white text-center h-10 font-bold text-xs p-0 px-1 focus:ring-0">
                                                 <SelectValue placeholder="Select" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -391,7 +398,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                                     <div className="space-y-1">
                                         <Label className="text-white/80 text-xs uppercase tracking-wider block text-center">Account</Label>
                                         <Select value={akunIdValue} onValueChange={(val) => setValue("akunId", val, { shouldValidate: true })}>
-                                            <SelectTrigger className="bg-white/10 border-none text-white text-center h-10 font-semibold focus:ring-0 focus:ring-offset-0">
+                                            <SelectTrigger aria-label="Pilih akun" className="bg-white/10 border-none text-white text-center h-10 font-semibold focus:ring-0 focus:ring-offset-0">
                                                 <SelectValue placeholder="Select Account" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -406,6 +413,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                                         <Label className="text-white/80 text-xs uppercase tracking-wider block text-center">Category</Label>
                                         <Button
                                             variant="ghost"
+                                            aria-label="Pilih kategori"
                                             className="w-full bg-white/10 border-none text-white text-center h-10 font-semibold hover:bg-white/20"
                                             onClick={() => setView("CATEGORY")}
                                         >
@@ -441,29 +449,49 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
 
                         {/* Numpad Section */}
                         <div className="bg-background md:p-4 grid grid-cols-4 md:gap-2 text-center h-full">
-                            {[7, 8, 9, '÷'].map((btn, i) => (
-                                <Button key={i} variant="ghost" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted" onClick={() => typeof btn === 'number' ? handleNumClick(btn.toString()) : null /* Math not impl */}>
+                            {[7, 8, 9].map((btn) => (
+                                <Button
+                                    key={btn}
+                                    variant="ghost"
+                                    aria-label={`Angka ${btn}`}
+                                    className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+                                    onClick={() => handleNumClick(btn.toString())}
+                                >
                                     {btn}
                                 </Button>
                             ))}
-                            {[4, 5, 6, 'x'].map((btn, i) => (
-                                <Button key={i} variant="ghost" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted" onClick={() => typeof btn === 'number' ? handleNumClick(btn.toString()) : null}>
+                            <Button variant="ghost" aria-label="Operator bagi" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={() => null}>÷</Button>
+                            
+                            {[4, 5, 6].map((btn) => (
+                                <Button
+                                    key={btn}
+                                    variant="ghost"
+                                    aria-label={`Angka ${btn}`}
+                                    className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+                                    onClick={() => handleNumClick(btn.toString())}
+                                >
                                     {btn}
                                 </Button>
                             ))}
-                            {[1, 2, 3, '-'].map((btn, i) => (
-                                <Button key={i} variant="ghost" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted" onClick={() => typeof btn === 'number' ? handleNumClick(btn.toString()) : null}>
+                            <Button variant="ghost" aria-label="Operator kali" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={() => null}>x</Button>
+
+                            {[1, 2, 3].map((btn) => (
+                                <Button
+                                    key={btn}
+                                    variant="ghost"
+                                    aria-label={`Angka ${btn}`}
+                                    className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+                                    onClick={() => handleNumClick(btn.toString())}
+                                >
                                     {btn}
                                 </Button>
                             ))}
-                            {['.', 0, '⌫', '+'].map((btn, i) => (
-                                <Button key={i} variant="ghost" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted" onClick={() => {
-                                    if (btn === '⌫') handleDelete()
-                                    else if (typeof btn === 'number' || btn === '.') handleNumClick(btn.toString())
-                                }}>
-                                    {btn === '⌫' ? <Delete className="w-6 h-6" /> : btn}
-                                </Button>
-                            ))}
+                            <Button variant="ghost" aria-label="Operator kurang" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={() => null}>-</Button>
+
+                            <Button variant="ghost" aria-label="Titik desimal" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={() => handleNumClick(".")}>.</Button>
+                            <Button variant="ghost" aria-label="Angka 0" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={() => handleNumClick("0")}>0</Button>
+                            <Button variant="ghost" aria-label="Hapus digit terakhir" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={handleDelete}><Delete className="w-6 h-6" /></Button>
+                            <Button variant="ghost" aria-label="Operator tambah" className="h-16 text-2xl font-normal rounded-none md:rounded-md active:bg-muted focus-visible:ring-2 focus-visible:ring-primary" onClick={() => null}>+</Button>
                         </div>
                     </>
                 ) : view === "CATEGORY" ? (
@@ -475,38 +503,61 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                             </Button>
                             <Input
                                 placeholder="Search Category..."
-                                className="border-none bg-muted focus-visible:ring-0"
+                                aria-label="Cari kategori"
+                                className="border-none bg-muted focus-visible:ring-1 focus-visible:ring-primary"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 autoFocus
                             />
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 overflow-y-auto p-4" role="listbox">
                             <Label className="text-muted-foreground text-xs font-bold uppercase mb-4 block">Most Frequent</Label>
                             <div className="grid grid-cols-4 gap-4 mb-8">
                                 {/* Temporary: Just show top 4 from list */}
                                 {kategoriList.filter(k => k.show && !k.parentId).slice(0, 4).map(k => (
-                                    <button key={k.id} className="flex flex-col items-center gap-2" onClick={() => handleCategorySelect(k.nama)}>
+                                    <button 
+                                        key={k.id} 
+                                        className="flex flex-col items-center gap-2 group outline-none" 
+                                        aria-label={`Pilih kategori ${k.nama}`}
+                                        role="option"
+                                        aria-selected={kategoriValue === k.nama}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                handleCategorySelect(k.nama);
+                                            }
+                                        }}
+                                        onClick={() => handleCategorySelect(k.nama)}
+                                    >
                                         <div
-                                            className="w-12 h-12 rounded-full flex items-center justify-center text-white"
+                                            className="w-12 h-12 rounded-full flex items-center justify-center text-white ring-offset-background transition-all group-focus-visible:ring-2 group-focus-visible:ring-ring group-focus-visible:ring-offset-2"
                                             style={{ backgroundColor: k.warna || "#ccc" }}
                                         >
                                             <span className="text-lg font-bold">{k.nama[0]}</span>
                                         </div>
-                                        <span className="text-[10px] text-center leading-tight truncate w-full">{k.nama}</span>
+                                        <span className="text-[10px] text-center leading-tight truncate w-full group-focus-visible:text-primary font-medium">{k.nama}</span>
                                     </button>
                                 ))}
                             </div>
 
                             <Label className="text-muted-foreground text-xs font-bold uppercase mb-4 block">All Categories</Label>
-                            <div className="space-y-4">
+                            <div className="space-y-2">
                                 {kategoriList
                                     .filter(k => k.show && !k.parentId)
                                     .filter(k => k.nama.toLowerCase().includes(searchQuery.toLowerCase()))
                                     .map(k => (
                                         <button
                                             key={k.id}
-                                            className="flex items-center gap-4 w-full p-2 hover:bg-muted rounded-lg transition-colors"
+                                            role="option"
+                                            aria-selected={kategoriValue === k.nama}
+                                            aria-label={`Pilih kategori ${k.nama}`}
+                                            className="flex items-center gap-4 w-full p-2 hover:bg-muted rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleCategorySelect(k.nama);
+                                                }
+                                            }}
                                             onClick={() => handleCategorySelect(k.nama)}
                                         >
                                             <div
@@ -533,12 +584,20 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
                             <span className="font-bold text-lg">Select Template</span>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4">
-                            <div className="space-y-3">
+                            <div className="space-y-3" role="list">
                                 {templateList.length === 0 && <p className="text-center text-muted-foreground py-10">No templates found.</p>}
                                 {templateList.map(t => (
                                     <button
                                         key={t.id}
-                                        className="flex items-center justify-between w-full p-3 border rounded-lg hover:bg-muted transition-colors hover:shadow-sm"
+                                        role="listitem"
+                                        aria-label={`Gunakan template ${t.nama}`}
+                                        className="flex items-center justify-between w-full p-3 border rounded-lg hover:bg-muted transition-colors hover:shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                handleTemplateSelect(t);
+                                            }
+                                        }}
                                         onClick={() => handleTemplateSelect(t)}
                                     >
                                         <div className="flex items-center gap-3 text-left">

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plus, CreditCard, Calculator, HelpCircle } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { Plus, CreditCard, Calculator } from "lucide-react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 
@@ -63,9 +63,9 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
         register,
         handleSubmit,
         setValue,
-        watch,
+        control,
         reset,
-        formState: { errors, isValid },
+        formState: { errors },
     } = useForm<FormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         resolver: zodResolver(formSchema) as any,
@@ -80,12 +80,12 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
         },
     })
 
-    const totalPokok = watch("totalPokok")
-    const tenor = watch("tenor")
-    const bungaPersen = watch("bungaPersen")
-    const biayaAdmin = watch("biayaAdmin")
-    const akunKreditIdValue = watch("akunKreditId")
-    const tanggalJatuhTempoValue = watch("tanggalJatuhTempo")
+    const totalPokok = useWatch({ control, name: "totalPokok" })
+    const tenor = useWatch({ control, name: "tenor" })
+    const bungaPersen = useWatch({ control, name: "bungaPersen" })
+    const biayaAdmin = useWatch({ control, name: "biayaAdmin" })
+    const akunKreditIdValue = useWatch({ control, name: "akunKreditId" })
+    const tanggalJatuhTempoValue = useWatch({ control, name: "tanggalJatuhTempo" })
 
     // Derived values for calculation
     const hitungCicilanBulanan = () => {
@@ -157,11 +157,12 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                         <Input
                             id="namaProduk"
                             placeholder="Contoh: iPhone 15 Pro, Laptop ASUS"
+                            aria-label="Nama Produk atau Pembelian"
                             className={cn(errors.namaProduk && "border-red-500")}
                             {...register("namaProduk")}
                         />
                         {errors.namaProduk && (
-                            <p className="text-sm text-red-500">{errors.namaProduk.message}</p>
+                            <p className="text-sm text-red-500" role="alert">{errors.namaProduk.message}</p>
                         )}
                     </div>
 
@@ -180,7 +181,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 value={akunKreditIdValue}
                                 onValueChange={(val) => setValue("akunKreditId", val, { shouldValidate: true })}
                             >
-                                <SelectTrigger className={cn(errors.akunKreditId && "border-red-500")}>
+                                <SelectTrigger aria-label="Pilih kartu kredit sumber" className={cn(errors.akunKreditId && "border-red-500")}>
                                     <SelectValue placeholder="Pilih kartu kredit" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -198,7 +199,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                             </Select>
                         )}
                         {errors.akunKreditId && (
-                            <p className="text-sm text-red-500">{errors.akunKreditId.message}</p>
+                            <p className="text-sm text-red-500" role="alert">{errors.akunKreditId.message}</p>
                         )}
                     </div>
 
@@ -210,11 +211,12 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 id="totalPokok"
                                 type="number"
                                 placeholder="0"
+                                aria-label="Harga barang atau total pokok"
                                 className={cn(errors.totalPokok && "border-red-500")}
                                 {...register("totalPokok", { valueAsNumber: true })}
                             />
                             {errors.totalPokok && (
-                                <p className="text-sm text-red-500">{errors.totalPokok.message}</p>
+                                <p className="text-sm text-red-500" role="alert">{errors.totalPokok.message}</p>
                             )}
                         </div>
                         <div className="grid gap-2">
@@ -226,7 +228,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 value={String(tenor)}
                                 onValueChange={(val) => setValue("tenor", Number(val))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger aria-label="Pilih tenor atau jangka waktu cicilan">
                                     <SelectValue placeholder="Pilih tenor" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -250,6 +252,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 type="number"
                                 placeholder="0"
                                 step="0.1"
+                                aria-label="Persentase bunga"
                                 {...register("bungaPersen", { valueAsNumber: true })}
                             />
                         </div>
@@ -262,6 +265,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                                 id="biayaAdmin"
                                 type="number"
                                 placeholder="0"
+                                aria-label="Biaya admin"
                                 {...register("biayaAdmin", { valueAsNumber: true })}
                             />
                         </div>
@@ -274,7 +278,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
                             value={String(tanggalJatuhTempoValue)}
                             onValueChange={(val) => setValue("tanggalJatuhTempo", Number(val))}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger aria-label="Pilih tanggal jatuh tempo setiap bulan">
                                 <SelectValue placeholder="Pilih tanggal" />
                             </SelectTrigger>
                             <SelectContent>

@@ -131,7 +131,14 @@ export function Sidebar() {
     }
 
     return (
-        <aside className="hidden md:flex flex-col w-64 border-r bg-card h-screen sticky top-0 shrink-0 overflow-y-auto shadow-sm">
+        <>
+            <a 
+                href="#main-content" 
+                className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:shadow-lg"
+            >
+                Lewati ke konten utama
+            </a>
+            <aside className="hidden md:flex flex-col w-64 border-r bg-card h-screen sticky top-0 shrink-0 overflow-y-auto shadow-sm">
             <div className="p-6">
                 <Link href="/" className="flex items-center gap-2 group">
                     <div className="bg-primary p-1.5 rounded-lg text-primary-foreground transition-transform group-hover:scale-110">
@@ -172,5 +179,6 @@ export function Sidebar() {
                 <p className="text-[10px] text-muted-foreground text-center font-medium tracking-tight">© 2026 Dompetku Pro v0.7.1</p>
             </div>
         </aside>
+        </>
     )
 }
