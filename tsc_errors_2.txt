@@ -1,0 +1,4 @@
+src/lib/db/__tests__/transactions-repo.test.ts(244,53): error TS2339: Property 'data' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string[]> | Record<string, string> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(314,28): error TS2339: Property 'data' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string[]> | Record<string, string> | undefined; }'.

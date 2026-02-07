@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Plus, CreditCard, Info } from "lucide-react"
@@ -168,7 +168,7 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
         if (template) {
             setValue("templateId", template.id)
             setValue("nama", template.nama)
-            setValue("tipe", template.tipeAkun as any)
+            setValue("tipe", template.tipeAkun as "BANK" | "E_WALLET" | "CREDIT_CARD" | "CASH")
 
             // Auto-fill automation settings
             setValue("biayaAdminAktif", !!template.biayaAdmin)
@@ -244,7 +244,7 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
     }
 
     // Debug: Log form errors
-    const onError = (formErrors: any) => {
+    const onError = (formErrors: FieldErrors<AddAccountFormValues>) => {
         console.error("Form validation errors:", formErrors)
 
         // Build descriptive error message
@@ -262,7 +262,7 @@ export function AddAccountForm({ templates = [], trigger }: AddAccountFormProps)
 
         for (const [field, error] of Object.entries(formErrors)) {
             const fieldLabel = fieldNames[field] || field
-            const errorData = error as any
+            const errorData = error
             if (errorData?.message) {
                 errorMessages.push(`${fieldLabel}: ${errorData.message}`)
             } else {

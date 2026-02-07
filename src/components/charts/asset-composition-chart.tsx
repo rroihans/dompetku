@@ -62,45 +62,53 @@ export function AssetCompositionChart({ data, total }: AssetCompositionChartProp
         )
     }
 
-    // Custom tooltip
-    const CustomTooltip = ({ active, payload }: any) => {
-        if (active && payload && payload.length) {
-            const item = payload[0].payload
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg">
-                    <p className="font-medium">{item.nama}</p>
-                    <p className="text-xs text-muted-foreground mb-2">{getTipeLabel(item.tipe)}</p>
-                    <p className="text-lg font-bold" data-private="true">
-                        {formatRupiah(item.saldo)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        {item.persentase}% dari total
-                    </p>
-                </div>
-            )
-        }
-        return null
-    }
+interface TooltipPayloadItem {
+    payload: AccountComposition;
+}
 
-    // Custom legend - mobile friendly
-    const renderLegend = (props: any) => {
-        const { payload } = props
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayloadItem[];
+}
+
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
+    if (active && payload && payload.length) {
+        const item = payload[0].payload
         return (
-            <div className="grid grid-cols-2 gap-1 mt-2 px-2 text-[10px] sm:text-xs">
-                {payload.slice(0, 6).map((entry: any, index: number) => (
-                    <div key={index} className="flex items-center gap-1 truncate">
-                        <div
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: entry.color }}
-                        />
-                        <span className="text-muted-foreground truncate">
-                            {entry.value.length > 10 ? entry.value.substring(0, 10) + "..." : entry.value} ({entry.payload.persentase}%)
-                        </span>
-                    </div>
-                ))}
+            <div className="bg-popover border rounded-lg p-3 shadow-lg">
+                <p className="font-medium">{item.nama}</p>
+                <p className="text-xs text-muted-foreground mb-2">{getTipeLabel(item.tipe)}</p>
+                <p className="text-lg font-bold" data-private="true">
+                    {formatRupiah(item.saldo)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    {item.persentase}% dari total
+                </p>
             </div>
         )
     }
+    return null
+}
+
+const renderLegend = (props: unknown) => {
+    const { payload } = props as { payload?: Array<{ color?: string; value?: string; payload?: AccountComposition }> }
+    if (!payload) return null
+    return (
+        <div className="grid grid-cols-2 gap-1 mt-2 px-2 text-[10px] sm:text-xs">
+            {payload.slice(0, 6).map((entry, index: number) => (
+                <div key={index} className="flex items-center gap-1 truncate">
+                    <div
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: entry.color || '#ccc' }}
+                    />
+                    <span className="text-muted-foreground truncate">
+                        {entry.value && entry.value.length > 10 ? entry.value.substring(0, 10) + "..." : entry.value} ({entry.payload?.persentase}%)
+                    </span>
+                </div>
+            ))}
+        </div>
+    )
+}
 
     return (
         <Card>

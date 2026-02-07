@@ -63,45 +63,51 @@ export function NetWorthChart({
         tanggalLabel: new Date(d.tanggal).toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
     }))
 
-    // Custom tooltip
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg min-w-[180px]">
-                    <p className="text-sm text-muted-foreground mb-2">{label}</p>
-                    <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-emerald-500">Aset:</span>
-                            <span className="font-bold" data-private="true">
-                                {formatRupiah(payload[0]?.payload?.totalAset || 0)}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-red-500">Hutang:</span>
-                            <span className="font-bold" data-private="true">
-                                {formatRupiah(payload[0]?.payload?.totalHutang || 0)}
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-sm pt-1 border-t">
-                            <span className="font-medium">Net Worth:</span>
-                            <span className={`font-bold ${payload[0]?.value >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
-                                {formatRupiah(payload[0]?.value || 0)}
-                            </span>
-                        </div>
+interface NetWorthTooltipProps {
+    active?: boolean;
+    payload?: Array<{ value?: number; payload?: { totalAset?: number; totalHutang?: number } }>;
+    label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: NetWorthTooltipProps) => {
+    if (active && payload && payload.length) {
+        const item = payload[0]
+        return (
+            <div className="bg-popover border rounded-lg p-3 shadow-lg min-w-[180px]">
+                <p className="text-sm text-muted-foreground mb-2">{label}</p>
+                <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-emerald-500">Aset:</span>
+                        <span className="font-bold" data-private="true">
+                            {formatRupiah(item.payload?.totalAset ?? 0)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-red-500">Hutang:</span>
+                        <span className="font-bold" data-private="true">
+                            {formatRupiah(item.payload?.totalHutang ?? 0)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between text-sm pt-1 border-t">
+                        <span className="font-medium">Net Worth:</span>
+                        <span className={`font-bold ${(item.value ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`} data-private="true">
+                            {formatRupiah(item.value ?? 0)}
+                        </span>
                     </div>
                 </div>
-            )
-        }
-        return null
+            </div>
+        )
     }
+    return null
+}
 
-    // Format Y axis
-    const formatYAxis = (value: number) => {
-        if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}M`
-        if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
-        if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}rb`
-        return value.toString()
-    }
+const formatYAxis = (value: number) => {
+    if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}M`
+    if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}rb`
+    return value.toString()
+}
+
 
     const isPositiveChange = change >= 0
 

@@ -19,7 +19,7 @@ import {
     LineChart
 } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
-import { getCashFlowTable, getIncomeExpenseBook, getSpendingInsights, getDashboardAnalytics, getSaldoTrend, type CashFlowData, type IncomeExpenseBook as IEBook, type PeriodType } from "@/lib/db/analytics-repo"
+import { getCashFlowTable, getIncomeExpenseBook, getSpendingInsights, getDashboardAnalytics, getSaldoTrend, type CashFlowData, type IncomeExpenseBook as IEBook, type PeriodType, type DashboardAnalytics } from "@/lib/db/analytics-repo"
 import { ExpensePieChart } from "@/components/charts/expense-pie-chart"
 import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart"
 import { SaldoTrendChart } from "@/components/charts/saldo-trend-chart"
@@ -50,8 +50,8 @@ export default function StatisticsPage() {
     const [spending, setSpending] = useState<SpendingData | null>(null)
 
     // Data for Visual Charts (from Dashboard)
-    const [analyticsData, setAnalyticsData] = useState<any>(null)
-    const [saldoTrendData, setSaldoTrendData] = useState<any[]>([])
+    const [analyticsData, setAnalyticsData] = useState<DashboardAnalytics | null>(null)
+    const [saldoTrendData, setSaldoTrendData] = useState<{ tanggal: string; saldo: number }[]>([])
 
     const [loading, setLoading] = useState(true)
 

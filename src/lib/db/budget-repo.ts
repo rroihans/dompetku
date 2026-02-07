@@ -206,7 +206,7 @@ export async function getBudgetWithRealization(bulan: number, tahun: number) {
         console.error("getBudgetWithRealization error", error);
         return {
             success: false,
-            data: { budgets: [], unbudgeted: [], totalBudget: 0, totalRealisasi: 0 }
+            data: { budgets: [], unbudgeted: [], totalBudget: 0, totalRealisasi: 0, totalProyeksi: 0, sisaHari: 0 }
         };
     }
 }

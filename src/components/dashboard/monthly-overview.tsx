@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRupiah } from "@/lib/format";
 import Link from "next/link";
-import { ArrowRight, PieChart, TrendingUp, TrendingDown } from "lucide-react";
+import { PieChart, TrendingUp, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MonthlyOverviewProps {
@@ -104,7 +104,6 @@ export function MonthlyOverview({ monthlyData }: MonthlyOverviewProps) {
                       aria-valuenow={percentage}
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-label={`${cat.kategori}: ${percentage}% dari total pengeluaran`}
                     >
                       <div 
                         className="h-full bg-primary/70 rounded-full" 

@@ -510,7 +510,43 @@ export async function getSpendingInsights(period: PeriodType = '30D') {
 }
 // Dashboard Specific Analytics
 
-export async function getDashboardAnalytics() {
+export interface DashboardAnalytics {
+    totalSaldo: number;
+    pemasukanBulanIni: number;
+    pengeluaranBulanIni: number;
+    selisihBulanIni: number;
+    pengeluaranPerKategori: {
+        kategori: string;
+        total: number;
+        jumlah: number;
+        fill: string;
+    }[];
+    trendBulanan: {
+        bulanNama: string;
+        pemasukan: number;
+        pengeluaran: number;
+    }[];
+    today: {
+        income: number;
+        expense: number;
+        net: number;
+        transactionCount: number;
+        transactions: any[];
+    };
+    yesterday: {
+        income: number;
+        expense: number;
+        net: number;
+    };
+    comparison: {
+        incomeChange: number | null;
+        expenseChange: number | null;
+        netChange: number | null;
+        hasYesterdayData: boolean;
+    };
+}
+
+export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
     try {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

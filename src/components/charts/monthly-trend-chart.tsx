@@ -13,7 +13,6 @@ import {
 import { formatRupiah } from "@/lib/format"
 
 interface TrendBulanan {
-    bulan: string
     bulanNama: string
     pemasukan: number
     pengeluaran: number

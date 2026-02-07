@@ -50,9 +50,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
   const netPositive = todayData.net >= 0;
   
   // Helper to render percentage badge
-  const renderBadge = (change: number | null, inverse = false) => {
-    if (change === null) return <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>;
-    
+  const renderBadge = (change: number, inverse = false) => {
     // For expense: positive change (increase) is bad (red), negative change (decrease) is good (green)
     // For income/net: positive change is good (green), negative change is bad (red)
     const isGood = inverse ? change < 0 : change > 0;
@@ -100,7 +98,9 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100" aria-label="Pemasukan hari ini">
             <div className="flex justify-between items-start mb-1">
               <TrendingUp className="h-3 w-3 text-emerald-500" aria-hidden="true" />
-              <span aria-label="Perubahan pemasukan dibanding kemarin">{renderBadge(comparison.incomeChange)}</span>
+              <span aria-label="Perubahan pemasukan dibanding kemarin">
+                {comparison.incomeChange !== null ? renderBadge(comparison.incomeChange) : <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>}
+              </span>
             </div>
             <p className="text-[10px] text-muted-foreground">Masuk</p>
             <p className="text-sm font-bold text-emerald-600 truncate" data-private="true">
@@ -112,7 +112,9 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           <div className="bg-red-50/50 p-2 rounded-lg border border-red-100" aria-label="Pengeluaran hari ini">
             <div className="flex justify-between items-start mb-1">
               <TrendingDown className="h-3 w-3 text-red-500" aria-hidden="true" />
-              <span aria-label="Perubahan pengeluaran dibanding kemarin">{renderBadge(comparison.expenseChange, true)}</span>
+              <span aria-label="Perubahan pengeluaran dibanding kemarin">
+                {comparison.expenseChange !== null ? renderBadge(comparison.expenseChange, true) : <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>}
+              </span>
             </div>
             <p className="text-[10px] text-muted-foreground">Keluar</p>
             <p className="text-sm font-bold text-red-600 truncate" data-private="true">
@@ -124,7 +126,9 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
           <div className="bg-muted/50 p-2 rounded-lg border border-border" aria-label="Selisih bersih hari ini">
             <div className="flex justify-between items-start mb-1">
               <span className="text-[10px] font-bold">NET</span>
-              <span aria-label="Perubahan selisih dibanding kemarin">{renderBadge(comparison.netChange)}</span>
+              <span aria-label="Perubahan selisih dibanding kemarin">
+                {comparison.netChange !== null ? renderBadge(comparison.netChange) : <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>}
+              </span>
             </div>
             <p className="text-[10px] text-muted-foreground">Selisih</p>
             <p className={cn("text-sm font-bold truncate", todayData.net >= 0 ? "text-emerald-600" : "text-red-600")} data-private="true">

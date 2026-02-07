@@ -1,26 +1,26 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { getNotifications } from "@/lib/db/notifications-repo"
+import { useEffect, useState, useCallback } from "react"
+import { getNotifications, type NotificationDTO } from "@/lib/db/notifications-repo"
 import { NotificationList } from "./notification-list"
 import { Loader2 } from "lucide-react"
 
 export default function NotificationsPage() {
-    const [notifications, setNotifications] = useState<any[]>([])
+    const [notifications, setNotifications] = useState<NotificationDTO[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        loadData()
-    }, [])
-
-    async function loadData() {
+    const loadData = useCallback(async () => {
         setLoading(true)
         const result = await getNotifications(50)
         if (result.success && result.data) {
             setNotifications(result.data)
         }
         setLoading(false)
-    }
+    }, [])
+
+    useEffect(() => {
+        loadData()
+    }, [loadData])
 
     return (
         <div className="space-y-6">

@@ -1,13 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
-import { notFound, useRouter, useSearchParams } from "next/navigation";
-import { getAkunById } from "@/lib/db/accounts-repo";
-import { getActiveAccountTemplates, type AccountTemplateDTO } from "@/lib/db/templates-repo";
-import { getTransaksi } from "@/lib/db/transactions-repo";
-import { getSaldoTrend } from "@/lib/db/analytics-repo";
 import { formatRupiah } from "@/lib/format";
-import { Money } from "@/lib/money";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,8 +30,15 @@ import { calculateNextBillingDate } from "@/lib/template-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AccountDTO } from "@/lib/account-dto";
 import { toast } from "sonner";
+import type { MappedTransaksi } from "@/types/transaksi";
+import { useEffect, useState } from "react";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
+import { getAkunById } from "@/lib/db/accounts-repo";
+import { getActiveAccountTemplates, type AccountTemplateDTO } from "@/lib/db/templates-repo";
+import { getTransaksi } from "@/lib/db/transactions-repo";
+import { getSaldoTrend } from "@/lib/db/analytics-repo";
 
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, React.ElementType> = {
     'BANK': Wallet,
     'E_WALLET': Smartphone,
     'CREDIT_CARD': CreditCard,
@@ -53,9 +53,9 @@ export default function AkunDetailPage() {
     const [loading, setLoading] = useState(true);
     const [akun, setAkun] = useState<AccountDTO | null>(null);
     const [templates, setTemplates] = useState<AccountTemplateDTO[]>([]);
-    const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
-    const [trendData, setTrendData] = useState<any[]>([]);
-    const [adminFees, setAdminFees] = useState<any[]>([]);
+    const [recentTransactions, setRecentTransactions] = useState<MappedTransaksi[]>([]);
+    const [trendData, setTrendData] = useState<{ tanggal: string; saldo: number }[]>([]);
+    const [adminFees, setAdminFees] = useState<MappedTransaksi[]>([]);
 
     useEffect(() => {
         if (!id) {
@@ -242,7 +242,7 @@ export default function AkunDetailPage() {
                                             </p>
                                             <p className="font-bold text-primary">
                                                 {calculateNextBillingDate(
-                                                    (akun.biayaAdminPola as any) || 'FIXED_DATE',
+                                                    akun.biayaAdminPola || 'FIXED_DATE',
                                                     akun.biayaAdminTanggal || 1,
                                                     new Date()
                                                 ).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -308,7 +308,7 @@ export default function AkunDetailPage() {
                                 {recentTransactions.length === 0 ? (
                                     <p className="text-center py-8 text-muted-foreground italic">Belum ada transaksi di akun ini.</p>
                                 ) : (
-                                    recentTransactions.map((tx: any) => {
+                                    recentTransactions.map((tx) => {
                                         const isDebit = tx.debitAkunId === akun.id
                                         return (
                                             <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors border">
@@ -328,7 +328,7 @@ export default function AkunDetailPage() {
                                                         {isDebit ? '+' : '-'}{formatRupiah(tx.nominal)}
                                                     </p>
                                                     <p className="text-[10px] text-muted-foreground">
-                                                        {isDebit ? `Dari: ${tx.kreditAkun.nama}` : `Ke: ${tx.debitAkun.nama}`}
+                                                        {isDebit ? `Dari: ${tx.kreditAkun?.nama ?? '-'}` : `Ke: ${tx.debitAkun?.nama ?? '-'}`}
                                                     </p>
                                                 </div>
                                             </div>

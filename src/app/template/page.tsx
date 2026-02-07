@@ -21,9 +21,11 @@ import { DeleteTemplateButton } from "@/components/template/delete-template-butt
 import type { AccountDTO } from "@/lib/account-dto"
 import { Skeleton } from "@/components/ui/skeleton"
 
+import type { TemplateTransaksiRecord } from "@/lib/db/app-db";
+
 export default function TemplatePage() {
     const [loading, setLoading] = useState(true)
-    const [templates, setTemplates] = useState<any[]>([])
+    const [templates, setTemplates] = useState<TemplateTransaksiRecord[]>([])
     const [akuns, setAkuns] = useState<AccountDTO[]>([])
     const [kategoris, setKategoris] = useState<string[]>([])
     const [kategoriIncome, setKategoriIncome] = useState<string[]>([])

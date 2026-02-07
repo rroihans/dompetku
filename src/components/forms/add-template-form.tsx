@@ -23,6 +23,7 @@ import { Plus, TrendingUp, TrendingDown } from "lucide-react"
 import { createTransactionTemplate } from "@/lib/db/transaction-templates-repo"
 import { useRouter } from "next/navigation"
 import { AccountDTO } from "@/lib/account-dto"
+import { toast } from "sonner"
 
 interface AddTemplateFormProps {
     akuns: AccountDTO[]
@@ -67,7 +68,7 @@ export function AddTemplateForm({ akuns, kategoriExpense, kategoriIncome, onSucc
             if (onSuccess) onSuccess()
             else router.refresh()
         } else {
-            alert(result.error || "Gagal membuat template")
+            toast.error(result.error || "Gagal membuat template")
         }
     }
 

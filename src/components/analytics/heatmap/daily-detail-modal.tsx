@@ -11,17 +11,46 @@ interface Props {
     onClose: () => void
 }
 
+interface DailyTransaction {
+    id: string;
+    deskripsi: string;
+    kategori: string;
+    nominal: number;
+    debitAkun?: { nama: string };
+}
+
 export function DailyDetailModal({ date, onClose }: Props) {
-    const [loading, setLoading] = useState(false);
-    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [transactions, setTransactions] = useState<DailyTransaction[]>([]);
 
     useEffect(() => {
-        if (date) {
-            setLoading(true);
-            getDailyTransactions(date).then(res => {
-                if (res.success && res.data) setTransactions(res.data);
-                setLoading(false);
-            });
+        let cancelled = false
+
+        async function loadData() {
+            if (!date) return
+            
+            if (!cancelled) {
+                setLoading(true)
+            }
+            
+            try {
+                const res = await getDailyTransactions(date)
+                if (!cancelled && res.success && res.data) {
+                    setTransactions(res.data as unknown as DailyTransaction[])
+                }
+            } catch (error) {
+                console.error("Failed to load daily transactions:", error)
+            } finally {
+                if (!cancelled) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        loadData()
+
+        return () => {
+            cancelled = true
         }
     }, [date]);
 
@@ -50,7 +79,7 @@ export function DailyDetailModal({ date, onClose }: Props) {
                                 <div key={tx.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-muted/50">
                                     <div>
                                         <div className="font-medium">{tx.deskripsi}</div>
-                                        <div className="text-xs text-muted-foreground">{tx.kategori} • {tx.debitAkun.nama}</div>
+                                        <div className="text-xs text-muted-foreground">{tx.kategori} • {tx.debitAkun?.nama ?? '-'}</div>
                                     </div>
                                     <div className="font-bold text-red-500">
                                         -{formatRupiah(tx.nominal)}

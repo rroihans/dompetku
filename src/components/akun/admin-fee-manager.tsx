@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Plus, Trash2, Link, Loader2, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,20 +50,38 @@ export function AdminFeeManager({ akunId, akunNama }: AdminFeeManagerProps) {
     const [deskripsi, setDeskripsi] = useState("")
     const [nominal, setNominal] = useState("")
     const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)
 
     // Load admin fees on mount
     useEffect(() => {
-        loadAdminFees()
-    }, [akunId])
+        let cancelled = false
 
-    async function loadAdminFees() {
-        setLoadingFees(true)
-        const result = await getAdminFeesByAkun(akunId)
-        if (result.success && result.data) {
-            setAdminFees(result.data as AdminFee[])
+        async function loadData() {
+            setLoadingFees(true)
+            try {
+                const result = await getAdminFeesByAkun(akunId)
+                if (!cancelled && result.success && result.data) {
+                    setAdminFees(result.data as AdminFee[])
+                }
+            } catch (error) {
+                console.error("Failed to load admin fees:", error)
+            } finally {
+                if (!cancelled) {
+                    setLoadingFees(false)
+                }
+            }
         }
-        setLoadingFees(false)
-    }
+
+        loadData()
+
+        return () => {
+            cancelled = true
+        }
+    }, [akunId, refreshKey])
+
+    const loadAdminFees = useCallback(() => {
+        setRefreshKey(k => k + 1)
+    }, [])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -110,21 +128,28 @@ export function AdminFeeManager({ akunId, akunNama }: AdminFeeManagerProps) {
 
     return (
         <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="text-base">Biaya Admin</CardTitle>
-                        <CardDescription>
+            <CardHeader className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                        <CardTitle className="text-base font-semibold">Biaya Admin</CardTitle>
+                        <CardDescription className="text-sm">
                             Kelola biaya admin bulanan untuk {akunNama}
                         </CardDescription>
                     </div>
                     <Button
                         size="sm"
-                        variant={showForm ? "secondary" : "default"}
+                        variant={showForm ? "outline" : "default"}
+                        className={showForm ? "bg-background hover:bg-muted" : ""}
                         onClick={() => setShowForm(!showForm)}
                     >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {showForm ? "Batal" : "Tambah Admin Fee"}
+                        {showForm ? (
+                             "Batal"
+                        ) : (
+                            <>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Tambah
+                            </>
+                        )}
                     </Button>
                 </div>
             </CardHeader>
@@ -155,16 +180,18 @@ export function AdminFeeManager({ akunId, akunNama }: AdminFeeManagerProps) {
                                 💡 Admin fee ini akan otomatis membuat recurring transaction bulanan yang terhubung.
                             </p>
                         </div>
-                        <Button type="submit" disabled={loading} className="w-full">
-                            {loading ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Menyimpan...
-                                </>
-                            ) : (
-                                "Simpan & Buat Recurring"
-                            )}
-                        </Button>
+                        <div className="flex justify-end pt-2">
+                             <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Menyimpan...
+                                    </>
+                                ) : (
+                                    "Simpan & Buat Recurring"
+                                )}
+                            </Button>
+                        </div>
                     </form>
                 )}
 
@@ -212,9 +239,9 @@ export function AdminFeeManager({ akunId, akunNama }: AdminFeeManagerProps) {
                 )}
             </CardContent>
 
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-                <AlertDialogContent>
+                {/* Delete Confirmation Dialog */}
+                <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                    <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Hapus Admin Fee?</AlertDialogTitle>
                         <AlertDialogDescription>

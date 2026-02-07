@@ -9,6 +9,7 @@ import {
     isDummyDataActive 
 } from "@/lib/db/dummy-data-repo"
 import { Button } from "@/components/ui/button"
+import { useCallback } from "react"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,18 +27,18 @@ export function DummyDataToggle() {
     const [isActive, setIsActive] = useState(false)
     const [open, setOpen] = useState(false)
 
-    useEffect(() => {
-        checkStatus()
-    }, [])
-
-    const checkStatus = async () => {
+    const checkStatus = useCallback(async () => {
         try {
             const status = await isDummyDataActive()
             setIsActive(status)
         } catch (error) {
             console.error("Failed to check dummy status", error)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        checkStatus()
+    }, [checkStatus])
 
     const handleToggle = async () => {
         setIsLoading(true)

@@ -12,7 +12,10 @@ interface TransferData {
     idempotencyKey?: string;
 }
 
-export async function createTransfer(data: TransferData) {
+import type { ServerActionResult } from "@/types";
+import type { TransaksiRecord } from "./app-db";
+
+export async function createTransfer(data: TransferData): Promise<ServerActionResult<TransaksiRecord>> {
     if (!data.dariAkunId || !data.keAkunId) {
         return { success: false, error: "Akun asal dan tujuan wajib diisi" };
     }

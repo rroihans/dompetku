@@ -10,13 +10,39 @@ import { YoYCharts } from "@/components/analytics/yoy/charts"
 import { InsightList } from "@/components/analytics/yoy/insight-list"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import type { Insight, CategoryData } from "@/lib/analytics/insights"
+
+interface YoYInsight {
+    title: string;
+    message: string;
+    type: string;
+}
+
+interface CategoryDataItem {
+    name: string;
+    amount: number;
+    type: 'income' | 'essential' | 'discretionary';
+}
+
+interface YearData {
+    year: number;
+    monthly: { month: number; expense: number; income: number }[];
+    categories: CategoryDataItem[];
+    summary: { month: number; year: number; categories: CategoryDataItem[]; totalIncome: number; totalExpense: number };
+}
+
+interface YoYData {
+    year1: YearData;
+    year2: YearData;
+    insights: YoYInsight[];
+}
 
 export default function PerbandinganClient() {
     const currentYear = new Date().getFullYear();
     const [year1, setYear1] = useState<string>((currentYear - 1).toString());
     const [year2, setYear2] = useState<string>(currentYear.toString());
     const [loading, setLoading] = useState(true);
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<YoYData | null>(null);
 
     // Generate years 2020 - 2030
     const years = Array.from({ length: 11 }, (_, i) => (2020 + i).toString());
@@ -25,8 +51,8 @@ export default function PerbandinganClient() {
         async function load() {
             setLoading(true);
             const res = await getYearOverYearComparison(parseInt(year1), parseInt(year2));
-            if (res.success) {
-                setData(res.data);
+            if (res.success && res.data) {
+                setData(res.data as unknown as YoYData);
             }
             setLoading(false);
         }
@@ -86,14 +112,14 @@ export default function PerbandinganClient() {
                         year2={parseInt(year2)}
                     />
 
-                    <InsightList insights={data.insights} />
+                    <InsightList insights={data.insights as unknown as Insight[]} />
 
                     <div className="grid gap-6 lg:grid-cols-2">
                         <CategoryComparisonTable
                             year1={parseInt(year1)}
                             year2={parseInt(year2)}
-                            categories1={data.year1.categories}
-                            categories2={data.year2.categories}
+                            categories1={data.year1.categories as unknown as CategoryData[]}
+                            categories2={data.year2.categories as unknown as CategoryData[]}
                         />
                         <YoYCharts
                             year1={parseInt(year1)}

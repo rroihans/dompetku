@@ -29,17 +29,16 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
         [`${year2}_inc`]: monthly2[i].income,
     }));
 
-    let cum1 = 0;
-    let cum2 = 0;
-    const lineData = MONTHS.map((m, i) => {
-        cum1 += monthly1[i].expense;
-        cum2 += monthly2[i].expense;
-        return {
+    const lineData = MONTHS.reduce<Array<{ name: string } & Record<number, number>>>((acc, m, i) => {
+        const prevCum1 = i > 0 ? (acc[i - 1][year1] as number) : 0;
+        const prevCum2 = i > 0 ? (acc[i - 1][year2] as number) : 0;
+        acc.push({
             name: m,
-            [year1]: cum1,
-            [year2]: cum2
-        };
-    });
+            [year1]: prevCum1 + monthly1[i].expense,
+            [year2]: prevCum2 + monthly2[i].expense
+        });
+        return acc;
+    }, []);
 
     return (
         <Tabs defaultValue="monthly" className="w-full">
@@ -66,7 +65,7 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
                                         axisLine={false}
                                         width={40}
                                     />
-                                    <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
+                                    <Tooltip formatter={(val: number | undefined) => formatRupiah(val ?? 0)} />
                                     <Legend wrapperStyle={{ fontSize: '10px' }} />
                                     <Bar dataKey={year1} name={`Tahun ${year1}`} fill="#94a3b8" radius={[4, 4, 0, 0]} />
                                     <Bar dataKey={year2} name={`Tahun ${year2}`} fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -92,7 +91,7 @@ export function YoYCharts({ year1, year2, monthly1, monthly2 }: Props) {
                                         axisLine={false}
                                         width={40}
                                     />
-                                    <Tooltip formatter={(val: any) => formatRupiah(Number(val))} />
+                                    <Tooltip formatter={(val: number | undefined) => formatRupiah(val ?? 0)} />
                                     <Legend wrapperStyle={{ fontSize: '10px' }} />
                                     <Line type="monotone" dataKey={year1} name={`Kumulatif ${year1}`} stroke="#94a3b8" strokeWidth={2} dot={false} />
                                     <Line type="monotone" dataKey={year2} name={`Kumulatif ${year2}`} stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />

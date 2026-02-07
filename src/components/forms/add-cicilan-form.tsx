@@ -41,15 +41,23 @@ interface AddCicilanFormProps {
 
 const formSchema = z.object({
     namaProduk: z.string().min(1, "Nama produk wajib diisi"),
-    totalPokok: z.coerce.number().min(1, "Harga barang harus lebih dari 0"),
-    tenor: z.coerce.number().min(1, "Tenor minimal 1 bulan"),
-    bungaPersen: z.coerce.number().min(0).default(0),
-    biayaAdmin: z.coerce.number().min(0).default(0),
-    tanggalJatuhTempo: z.coerce.number().min(1).max(31).default(5),
+    totalPokok: z.number().min(1, "Harga barang harus lebih dari 0"),
+    tenor: z.number().min(1, "Tenor minimal 1 bulan"),
+    bungaPersen: z.number().min(0),
+    biayaAdmin: z.number().min(0),
+    tanggalJatuhTempo: z.number().min(1).max(31),
     akunKreditId: z.string().min(1, "Pilih kartu kredit sumber"),
 })
 
-type FormValues = z.infer<typeof formSchema>
+interface FormValues {
+    namaProduk: string
+    totalPokok: number
+    tenor: number
+    bungaPersen: number
+    biayaAdmin: number
+    tanggalJatuhTempo: number
+    akunKreditId: string
+}
 
 export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
     const router = useRouter()
@@ -68,7 +76,7 @@ export function AddCicilanForm({ accounts, onRefresh }: AddCicilanFormProps) {
         formState: { errors },
     } = useForm<FormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolver: zodResolver(formSchema) as any,
+        resolver: zodResolver(formSchema),
         defaultValues: {
             namaProduk: "",
             totalPokok: 0,

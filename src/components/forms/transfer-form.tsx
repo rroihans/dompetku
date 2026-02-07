@@ -126,9 +126,9 @@ export function TransferForm({ trigger, open: controlledOpen, onOpenChange }: Tr
             } else {
                 setError(res.error || "Gagal melakukan transfer")
             }
-        } catch (err) {
+        } catch (err: unknown) {
             console.error(err)
-            setError("Terjadi kesalahan sistem")
+            toast.error("Terjadi kesalahan sistem")
         } finally {
             setLoading(false)
         }

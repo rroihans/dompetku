@@ -190,7 +190,6 @@ describe('🏷️ CATEGORY REPO - Validation & Logic', () => {
                 tanggal: new Date(),
                 nominal: 10000,
                 kategori: cat.data!.nama, // Stores name string unfortunately, not ID relation strictly in current schema
-                tipeTransaksi: 'KELUAR',
                 deskripsi: 'Test',
                 debitAkunId: accounts.foodExpense.id,
                 kreditAkunId: accounts.wallet.id

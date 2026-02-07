@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, ReferenceLine } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Target, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
@@ -13,6 +13,8 @@ interface BudgetItem {
     persentase: number
     sisa: number
     noBudget?: boolean
+    proyeksi?: number
+    persentaseProyeksi?: number
 }
 
 interface BudgetChartProps {
@@ -68,61 +70,71 @@ export function BudgetChart({ budgets, unbudgeted = [], totalBudget, totalRealis
         }))
     ].slice(0, 8)
 
-    // Custom tooltip
-    const CustomTooltip = ({ active, payload }: any) => {
-        if (active && payload && payload.length) {
-            const item = payload[0].payload
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg min-w-[180px]">
-                    <p className="font-medium mb-2">{item.fullName}</p>
-                    <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Anggaran:</span>
-                            <span className="font-bold text-blue-500" data-private="true">
-                                {item.budget === 0 ? '-' : formatRupiah(item.budget)}
-                            </span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Realisasi:</span>
-                            <span className="font-bold text-emerald-500" data-private="true">
-                                {formatRupiah(item.realisasi)}
-                            </span>
-                        </div>
-                        <div className={`flex items-center justify-between pt-1 border-t ${item.status === 'over' ? 'text-red-500' :
-                                item.status === 'warning' ? 'text-amber-500' :
-                                    item.status === 'noBudget' ? 'text-muted-foreground' : 'text-emerald-500'
-                            }`}>
-                            <span>Status:</span>
-                            <span className="flex items-center gap-1 font-bold">
-                                {item.status === 'over' && <><TrendingUp className="w-3 h-3" /> Melebihi</>}
-                                {item.status === 'warning' && <><AlertTriangle className="w-3 h-3" /> Hampir</>}
-                                {item.status === 'ok' && <><TrendingDown className="w-3 h-3" /> Aman</>}
-                                {item.status === 'noBudget' && 'Tanpa Anggaran'}
-                            </span>
-                        </div>
+interface BudgetChartData {
+    fullName: string;
+    budget: number;
+    realisasi: number;
+    status: string;
+}
+
+interface BudgetTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: BudgetChartData }>;
+}
+
+const CustomTooltip = ({ active, payload }: BudgetTooltipProps) => {
+    if (active && payload && payload.length) {
+        const item = payload[0].payload
+        return (
+            <div className="bg-popover border rounded-lg p-3 shadow-lg min-w-[180px]">
+                <p className="font-medium mb-2">{item.fullName}</p>
+                <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Anggaran:</span>
+                        <span className="font-bold text-blue-500" data-private="true">
+                            {item.budget === 0 ? '-' : formatRupiah(item.budget)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Realisasi:</span>
+                        <span className="font-bold text-emerald-500" data-private="true">
+                            {formatRupiah(item.realisasi)}
+                        </span>
+                    </div>
+                    <div className={`flex items-center justify-between pt-1 border-t ${item.status === 'over' ? 'text-red-500' :
+                            item.status === 'warning' ? 'text-amber-500' :
+                                item.status === 'noBudget' ? 'text-muted-foreground' : 'text-emerald-500'
+                        }`}>
+                        <span>Status:</span>
+                        <span className="flex items-center gap-1 font-bold">
+                            {item.status === 'over' && <><TrendingUp className="w-3 h-3" /> Melebihi</>}
+                            {item.status === 'warning' && <><AlertTriangle className="w-3 h-3" /> Hampir</>}
+                            {item.status === 'ok' && <><TrendingDown className="w-3 h-3" /> Aman</>}
+                            {item.status === 'noBudget' && 'Tanpa Anggaran'}
+                        </span>
                     </div>
                 </div>
-            )
-        }
-        return null
+            </div>
+        )
     }
+    return null
+}
 
-    // Format Y axis
-    const formatYAxis = (value: number) => {
-        if (value >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
-        if (value >= 1000) return `${(value / 1000).toFixed(0)}rb`
-        return value.toString()
-    }
+const formatYAxis = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}rb`
+    return value.toString()
+}
 
-    // Status color for realisasi bar
-    const getRealisasiColor = (status: string) => {
-        switch (status) {
-            case 'over': return '#ef4444' // red
-            case 'warning': return '#f59e0b' // amber
-            case 'noBudget': return '#6b7280' // gray
-            default: return '#22c55e' // green
-        }
+// Status color for realisasi bar
+const getRealisasiColor = (status: string) => {
+    switch (status) {
+        case 'over': return '#ef4444' // red
+        case 'warning': return '#f59e0b' // amber
+        case 'noBudget': return '#6b7280' // gray
+        default: return '#22c55e' // green
     }
+}
 
     const totalPersentase = totalBudget > 0 ? Math.round((totalRealisasi / totalBudget) * 100) : 0
 

@@ -60,7 +60,7 @@ export function SaldoTrendChart({ data, title = "Trend Saldo 30 Hari" }: SaldoTr
 
     // Format tanggal untuk display
     const formattedData = data.map(d => {
-        const dateStr = d.tanggal || (d as any).date;
+        const dateStr = d.tanggal || (d as { date?: string }).date;
         const dateObj = dateStr ? new Date(dateStr) : new Date();
         const label = isNaN(dateObj.getTime())
             ? "---"
@@ -83,27 +83,32 @@ export function SaldoTrendChart({ data, title = "Trend Saldo 30 Hari" }: SaldoTr
     const yMin = Math.max(0, minSaldo - padding)
     const yMax = maxSaldo + padding
 
-    // Custom tooltip
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg">
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="text-lg font-bold text-emerald-500" data-private="true">
-                        {formatRupiah(payload[0].value)}
-                    </p>
-                </div>
-            )
-        }
-        return null
-    }
+interface TrendTooltipProps {
+    active?: boolean;
+    payload?: Array<{ value?: number }>;
+    label?: string;
+}
 
-    // Format Y axis
-    const formatYAxis = (value: number) => {
-        if (value >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
-        if (value >= 1000) return `${(value / 1000).toFixed(0)}rb`
-        return value.toString()
+const CustomTooltip = ({ active, payload, label }: TrendTooltipProps) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-popover border rounded-lg p-3 shadow-lg">
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="text-lg font-bold text-emerald-500" data-private="true">
+                    {formatRupiah(payload[0].value ?? 0)}
+                </p>
+            </div>
+        )
     }
+    return null
+}
+
+const formatYAxis = (value: number) => {
+    if (Math.abs(value) >= 1000000000) return `${(value / 1000000000).toFixed(0)}M`
+    if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}rb`
+    return value.toString()
+}
 
     return (
         <Card>

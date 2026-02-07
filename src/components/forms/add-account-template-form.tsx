@@ -58,7 +58,8 @@ export function AddAccountTemplateForm({ onSuccess }: AddAccountTemplateFormProp
         const val = value === "" ? 0 : parseFloat(value)
 
         if (field === "max_saldo") {
-            newTiers[index][field] = value === "" ? null : val
+            const valOrNull = value === "" ? null : val
+            newTiers[index][field] = valOrNull
         } else {
             (newTiers[index][field] as number) = val
         }
@@ -72,7 +73,7 @@ export function AddAccountTemplateForm({ onSuccess }: AddAccountTemplateFormProp
 
         const result = await createAccountTemplate({
             nama: formData.nama,
-            tipeAkun: formData.tipeAkun,
+            tipeAkun: formData.tipeAkun as "BANK" | "E_WALLET" | "CREDIT_CARD",
             biayaAdmin: formData.biayaAdmin ? parseFloat(formData.biayaAdmin) : null,
             polaTagihan: pola,
             tanggalTagihan: pola === "TANGGAL_TETAP" ? parseInt(formData.tanggalTagihan) : null,

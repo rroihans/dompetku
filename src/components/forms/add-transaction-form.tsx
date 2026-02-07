@@ -32,6 +32,7 @@ import { type TemplateTransaksiRecord } from "@/lib/db/app-db"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { AccountDTO } from "@/lib/account-dto"
+import type { ServerActionResult, AlertType } from "@/types"
 import { formatRupiah } from "@/lib/format"
 
 // Schema includes Transfer fields now
@@ -84,7 +85,6 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
         setValue,
         reset,
         control,
-        formState: { },
     } = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -272,8 +272,7 @@ export function AddTransactionForm({ trigger, initialValues, open: controlledOpe
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    function handleResult(res: any, successMsg: string) {
+    function handleResult(res: ServerActionResult<any>, successMsg: string) {
         if (res.success) {
             setOpen(false)
             reset()

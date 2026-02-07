@@ -25,16 +25,7 @@ import { Tag } from "lucide-react";
  */
 
 interface TodayTransactionCardProps {
-  transaction: {
-    id: string;
-    deskripsi: string;
-    kategori: string;
-    nominalInt: number;
-    tanggal: string | Date;
-    debitAkun?: { nama: string; tipe: string } | null;
-    kreditAkun?: { nama: string; tipe: string } | null;
-    categoryIcon?: string | null;
-  };
+  transaction: any; // Using any for now as the type is complex and varies
   onClick?: () => void;
 }
 

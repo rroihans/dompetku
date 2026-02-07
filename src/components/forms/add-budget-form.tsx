@@ -50,7 +50,7 @@ const PRESET_BUDGETS = [
 const formSchema = z.object({
     kategori: z.string().min(1, "Pilih kategori"),
     customKategori: z.string().optional(),
-    nominal: z.coerce.number().min(1, "Nominal harus lebih dari 0"),
+    nominal: z.number().min(1, "Nominal harus lebih dari 0"),
 }).refine(data => {
     if (data.kategori === 'custom' && (!data.customKategori || data.customKategori.trim() === '')) {
         return false
@@ -79,8 +79,7 @@ export function AddBudgetForm({ categories, bulan, tahun, onRefresh }: AddBudget
         reset,
         formState: { errors },
     } = useForm<FormValues>({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolver: zodResolver(formSchema) as any,
+        resolver: zodResolver(formSchema),
         defaultValues: {
             kategori: "",
             customKategori: "",

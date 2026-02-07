@@ -123,8 +123,8 @@ describe('🔴 CRITICAL - Transaction Repository', () => {
                 debitAkunId: testAccounts.foodExpense.id,
                 kreditAkunId: testAccounts.wallet.id
             })
-            if (!res.success) throw new Error(res.error as string)
-            const tx = res.data!
+            if (!res.success) throw new Error((res as any).error)
+            const tx = (res as any).data!
 
             // Act: Delete transaction
             await deleteTransaksi(tx.id!)
@@ -150,7 +150,7 @@ describe('🔴 CRITICAL - Transaction Repository', () => {
                 kreditAkunId: testAccounts.wallet.id
             })
             expect(res.success).toBe(false)
-            expect(res.error).toMatch(/lebih dari 0|positive/i)
+            expect((res as any).error).toMatch(/lebih dari 0|positive/i)
         })
 
         it('should reject zero transaction amounts', async () => {
@@ -200,7 +200,7 @@ describe('🔴 CRITICAL - Transaction Repository', () => {
                 })
 
                 expect(res.success).toBe(true)
-                const tx = res.data!
+                const tx = (res as any).data!
                 expect(tx.nominalInt).toBeValidRupiah()
                 // nominalInt = nominal * 100
                 expect(tx.nominalInt).toBe(amount * 100)
@@ -241,7 +241,7 @@ describe('🔴 CRITICAL - Transaction Repository', () => {
             })
 
             expect(res2.success).toBe(true)
-            expect(res2.data.id).toBe(res1.data!.id)
+            expect((res2 as any).data.id).toBe((res1 as any).data!.id)
             expect((res2 as any).duplicated).toBe(true)
         })
     })
@@ -311,7 +311,7 @@ describe('🔴 CRITICAL - Transaction Repository', () => {
                 debitAkunId: testAccounts.foodExpense.id,
                 kreditAkunId: testAccounts.wallet.id
             })
-            const tx = res.data!
+            const tx = (res as any).data!
 
             const walletAfterCreate = await db.akun.get(testAccounts.wallet.id as any)
             const foodAfterCreate = await db.akun.get(testAccounts.foodExpense.id as any)

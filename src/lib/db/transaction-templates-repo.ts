@@ -1,5 +1,7 @@
 import { db, type TemplateTransaksiRecord } from "./app-db";
 
+export type TemplatTransaksiDTO = TemplateTransaksiRecord;
+
 function generateId() {
     return 'tpl_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }

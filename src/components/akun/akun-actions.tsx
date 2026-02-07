@@ -32,9 +32,14 @@ import {
 import { updateAkun, deleteAkun } from "@/lib/db"
 import type { AccountDTO } from "@/lib/account-dto"
 
+interface TemplateItem {
+    id: string;
+    nama: string;
+}
+
 interface AkunActionsProps {
     akun: AccountDTO
-    templates?: any[]
+    templates?: TemplateItem[]
 }
 
 export function AkunActions({ akun, templates = [] }: AkunActionsProps) {

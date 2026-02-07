@@ -43,7 +43,7 @@ interface BudgetItem {
 
 interface BudgetRealizationData {
     budgets: BudgetItem[];
-    unbudgeted: { kategori: string; realisasi: number }[];
+    unbudgeted: BudgetItem[];
     totalBudget: number;
     totalRealisasi: number;
     totalProyeksi: number;

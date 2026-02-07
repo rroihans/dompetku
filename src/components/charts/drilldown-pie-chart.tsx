@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { PieChart, Pie, Cell, Tooltip } from "recharts"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +12,7 @@ import {
 import { PieChartIcon, X, ArrowLeft, Calendar } from "lucide-react"
 import { formatRupiah } from "@/lib/format"
 import { getCategoryDetail } from "@/lib/db/analytics-repo"
+import { PieChart, Pie, Cell, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis } from "recharts"
 
 interface KategoriData {
     kategori: string
@@ -37,10 +36,16 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
     const containerRef = useRef<HTMLDivElement>(null)
     const [isMounted, setIsMounted] = useState(false)
     const [containerWidth, setContainerWidth] = useState(300)
-    const [activeIndex, setActiveIndex] = useState<number | null>(null)
+    // const [activeIndex, setActiveIndex] = useState<number | null>(null) // Unused
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-    const [detailData, setDetailData] = useState<any>(null)
+    interface DetailData {
+        total: number;
+        jumlahTransaksi: number;
+        weeklyBreakdown: { minggu: string; nominal: number }[];
+        transaksi: { id: string; deskripsi: string; tanggal: Date; akun: string; nominal: number }[];
+    }
+    const [detailData, setDetailData] = useState<DetailData | null>(null)
     const [loading, setLoading] = useState(false)
 
     useEffect(() => {
@@ -88,8 +93,8 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
 
         try {
             const result = await getCategoryDetail(kategori)
-            if (result.success) {
-                setDetailData(result.data)
+            if (result.success && result.data) {
+                setDetailData(result.data as unknown as DetailData)
             }
         } catch (error) {
             console.error("Error fetching category detail:", error)
@@ -100,28 +105,34 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
 
     // Remove unused active shape (simplifed for mobile)
 
-    // Custom tooltip
-    const CustomTooltip = ({ active, payload }: any) => {
-        if (active && payload && payload.length) {
-            const item = payload[0].payload
-            const persen = ((item.total / total) * 100).toFixed(1)
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg">
-                    <p className="font-medium">{item.kategori}</p>
-                    <p className="text-lg font-bold" data-private="true">
-                        {formatRupiah(item.total)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                        {item.jumlah} transaksi • {persen}%
-                    </p>
-                    <p className="text-xs text-primary mt-2">
-                        Klik untuk lihat detail →
-                    </p>
-                </div>
-            )
-        }
-        return null
+interface DrilldownTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: KategoriData }>;
+    total?: number;
+}
+
+const CustomTooltip = ({ active, payload, total }: DrilldownTooltipProps) => {
+    if (active && payload && payload.length) {
+        const item = payload[0].payload
+        const totalValue = total ?? 0
+        const persen = totalValue > 0 ? ((item.total / totalValue) * 100).toFixed(1) : "0.0"
+        return (
+            <div className="bg-popover border rounded-lg p-3 shadow-lg">
+                <p className="font-medium">{item.kategori}</p>
+                <p className="text-lg font-bold" data-private="true">
+                    {formatRupiah(item.total)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    {item.jumlah} transaksi • {persen}%
+                </p>
+                <p className="text-xs text-primary mt-2">
+                    Klik untuk lihat detail →
+                </p>
+            </div>
+        )
     }
+    return null
+}
 
     return (
         <>
@@ -141,7 +152,7 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
                         <div className="flex justify-center">
                             <PieChart width={containerWidth} height={260}>
                                 <Pie
-                                    data={data as any}
+                                    data={data}
                                     dataKey="total"
                                     nameKey="kategori"
                                     cx={containerWidth / 2}
@@ -161,7 +172,7 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
                                         />
                                     ))}
                                 </Pie>
-                                <Tooltip content={<CustomTooltip />} />
+                                <Tooltip content={<CustomTooltip total={total} />} />
                             </PieChart>
                         </div>
                     )}
@@ -233,7 +244,7 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
                                     <XAxis dataKey="minggu" tick={{ fontSize: 10 }} />
                                     <YAxis
-                                        tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(0)}jt` : v >= 1000 ? `${(v / 1000).toFixed(0)}rb` : v}
+                                        tickFormatter={(v: any) => v >= 1000000 ? `${(v / 1000000).toFixed(0)}jt` : v >= 1000 ? `${(v / 1000).toFixed(0)}rb` : v}
                                         tick={{ fontSize: 10 }}
                                         width={40}
                                     />
@@ -245,7 +256,7 @@ export function DrilldownPieChart({ data, title = "Pengeluaran per Kategori" }: 
                             <div>
                                 <p className="text-sm font-medium mb-2">Transaksi Terbesar</p>
                                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                                    {detailData.transaksi.slice(0, 10).map((tx: any) => (
+                                    {detailData.transaksi.slice(0, 10).map((tx) => (
                                         <div key={tx.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
                                             <div>
                                                 <p className="text-sm font-medium">{tx.deskripsi}</p>

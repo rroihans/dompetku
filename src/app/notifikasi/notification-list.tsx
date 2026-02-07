@@ -19,8 +19,9 @@ import { id } from "date-fns/locale"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import type { NotificationDTO } from "@/lib/db/notifications-repo"
 
-export function NotificationList({ initialNotifications }: { initialNotifications: any[] }) {
+export function NotificationList({ initialNotifications }: { initialNotifications: NotificationDTO[] }) {
     const router = useRouter()
     const [notifications, setNotifications] = useState(initialNotifications)
 

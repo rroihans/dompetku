@@ -15,8 +15,7 @@ import {
   Banknote,
   Bookmark,
   Receipt,
-  Sparkles,
-  ArrowRight
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +31,7 @@ import { createTransaksiSimple } from "@/lib/db/transactions-repo";
 import { setOnboardingCompleted, getOnboardingStatus } from "@/lib/db/onboarding-repo";
 import { formatRupiah } from "@/lib/format";
 import type { AccountDTO } from "@/lib/account-dto";
+import type { TemplatTransaksiDTO } from "@/lib/db/transaction-templates-repo";
 
 // ============================================
 // FORM SCHEMAS
@@ -99,7 +99,7 @@ export default function OnboardingPage() {
   const [createdAccount, setCreatedAccount] = useState<AccountDTO | null>(null);
   
   // Step 2 state
-  const [createdTemplates, setCreatedTemplates] = useState<any[]>([]);
+  const [createdTemplates, setCreatedTemplates] = useState<TemplatTransaksiDTO[]>([]);
   
   // Step 3 state
   const [accounts, setAccounts] = useState<AccountDTO[]>([]);
@@ -438,7 +438,7 @@ export default function OnboardingPage() {
                             <button
                               key={type.value}
                               type="button"
-                              onClick={() => accountForm.setValue("tipe", type.value as any)}
+                              onClick={() => accountForm.setValue("tipe", type.value as "BANK" | "E_WALLET" | "CASH" | "CREDIT_CARD")}
                               className={cn(
                                 "flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left",
                                 isSelected
@@ -523,7 +523,7 @@ export default function OnboardingPage() {
                         <Label>Tipe</Label>
                         <Select
                           value={templateForm.watch("tipeTransaksi")}
-                          onValueChange={(v) => templateForm.setValue("tipeTransaksi", v as any)}
+                          onValueChange={(v) => templateForm.setValue("tipeTransaksi", v as "MASUK" | "KELUAR")}
                         >
                           <SelectTrigger>
                             <SelectValue />

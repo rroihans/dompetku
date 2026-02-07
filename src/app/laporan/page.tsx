@@ -39,7 +39,19 @@ function LaporanContent() {
     const bulan = Number(searchParams.get("bulan")) || currentMonth
     const tahun = Number(searchParams.get("tahun")) || currentYear
 
-    const [ringkasan, setRingkasan] = useState<any>(null)
+    interface RingkasanBulanan {
+        bulanNama: string;
+        tahun: number;
+        totalPemasukan: number;
+        totalPengeluaran: number;
+        selisih: number;
+        rataRataHarian: number;
+        jumlahTransaksi: number;
+        pengeluaranPerKategori: { kategori: string; total: number; persentase: number }[];
+        pemasukanPerKategori: { kategori: string; total: number; persentase: number }[];
+        transaksiTerbesar: { deskripsi: string; kategori: string; tanggal: Date; nominal: number }[];
+    }
+    const [ringkasan, setRingkasan] = useState<RingkasanBulanan | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -169,7 +181,7 @@ function LaporanContent() {
                             </p>
                         ) : (
                             <div className="space-y-4">
-                                {ringkasan.pengeluaranPerKategori.map((item: any) => (
+                                {ringkasan.pengeluaranPerKategori.map((item) => (
                                     <div key={item.kategori}>
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-sm font-medium">{item.kategori}</span>
@@ -206,7 +218,7 @@ function LaporanContent() {
                             </p>
                         ) : (
                             <div className="space-y-4">
-                                {ringkasan.pemasukanPerKategori.map((item: any) => (
+                                {ringkasan.pemasukanPerKategori.map((item) => (
                                     <div key={item.kategori}>
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-sm font-medium">{item.kategori}</span>
@@ -244,7 +256,7 @@ function LaporanContent() {
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {ringkasan.transaksiTerbesar.map((tx: any, i: number) => (
+                            {ringkasan.transaksiTerbesar.map((tx, i: number) => (
                                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 font-bold">

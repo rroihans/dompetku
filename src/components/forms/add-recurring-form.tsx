@@ -44,16 +44,25 @@ const KATEGORI_EXPENSE = [
 
 const formSchema = z.object({
     nama: z.string().min(1, "Nama transaksi wajib diisi"),
-    nominal: z.coerce.number().min(1, "Nominal harus lebih dari 0"),
+    nominal: z.number().min(1, "Nominal harus lebih dari 0"),
     kategori: z.string().min(1, "Pilih kategori"),
     tipeTransaksi: z.enum(["MASUK", "KELUAR"]),
     akunId: z.string().min(1, "Pilih akun"),
     frekuensi: z.enum(["HARIAN", "MINGGUAN", "BULANAN", "TAHUNAN"]),
-    hariDalamBulan: z.coerce.number().min(1).max(28).default(1),
-    hariDalamMinggu: z.coerce.number().min(0).max(6).default(1),
+    hariDalamBulan: z.number().min(1).max(28),
+    hariDalamMinggu: z.number().min(0).max(6),
 })
 
-type FormValues = z.infer<typeof formSchema>
+interface FormValues {
+    nama: string
+    nominal: number
+    kategori: string
+    tipeTransaksi: "MASUK" | "KELUAR"
+    akunId: string
+    frekuensi: "HARIAN" | "MINGGUAN" | "BULANAN" | "TAHUNAN"
+    hariDalamBulan: number
+    hariDalamMinggu: number
+}
 
 export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps) {
     const router = useRouter()
@@ -69,7 +78,7 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
         formState: { errors },
     } = useForm<FormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolver: zodResolver(formSchema) as any,
+        resolver: zodResolver(formSchema),
         defaultValues: {
             nama: "",
             nominal: 0,
@@ -116,9 +125,9 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
             } else {
                 toast.error(res.error || "Gagal membuat transaksi berulang")
             }
-        } catch (err: any) {
-            console.error(err)
-            toast.error(err.message || "Terjadi kesalahan sistem")
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Terjadi kesalahan sistem"
+            toast.error(message)
         } finally {
             setLoading(false)
         }
@@ -247,7 +256,7 @@ export function AddRecurringForm({ accounts, onRefresh }: AddRecurringFormProps)
                         <Label>Frekuensi</Label>
                         <Select
                             value={frekuensi}
-                            onValueChange={(v: any) => setValue("frekuensi", v)}
+                            onValueChange={(v) => setValue("frekuensi", v as "HARIAN" | "MINGGUAN" | "BULANAN" | "TAHUNAN")}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Pilih frekuensi" />

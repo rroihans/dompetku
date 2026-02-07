@@ -18,22 +18,18 @@ export default function KategoriPage() {
     const [loading, setLoading] = useState(true)
     const [showCreate, setShowCreate] = useState(false)
 
-    useEffect(() => {
-        loadKategori()
-    }, [])
-
-    async function loadKategori() {
+    const loadKategori = useState(() => async () => {
         setLoading(true)
-
-        // Seed default if empty
         await seedDefaultKategori()
-
-        // Load all
         const data = await getAllKategori()
         setFullData(data)
-        setKategoriList(data.filter(k => k.parentId === null)) // Only main categories
+        setKategoriList(data.filter(k => k.parentId === null))
         setLoading(false)
-    }
+    })[0]
+
+    useEffect(() => {
+        loadKategori()
+    }, [loadKategori])
 
     function handleCreated() {
         setShowCreate(false)
@@ -69,13 +65,14 @@ export default function KategoriPage() {
             ) : kategoriList.length === 0 ? (
                 <Card>
                     <CardContent className="py-12 text-center text-muted-foreground">
-                        Belum ada kategori. Klik tombol "Tambah Kategori" untuk mulai.
+                    Belum ada kategori. Klik tombol &quot;Tambah Kategori&quot; untuk mulai.
                     </CardContent>
                 </Card>
             ) : (
                 <div className="grid gap-3">
                     {kategoriList.map((kategori) => {
-                        const IconComponent = (LucideIcons as any)[kategori.icon] || LucideIcons.Tag
+                        const IconName = kategori.icon as keyof typeof LucideIcons
+                        const IconComponent = (LucideIcons[IconName] as React.ElementType) || LucideIcons.Tag
                         const childrenCount = fullData.filter(k => k.parentId === kategori.id).length
 
                         return (

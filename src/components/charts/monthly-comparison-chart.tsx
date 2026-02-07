@@ -66,45 +66,61 @@ export function MonthlyComparisonChart({ data, limit = 8 }: MonthlyComparisonCha
         kategoriShort: d.kategori.length > 8 ? d.kategori.substring(0, 6) + "..." : d.kategori
     }))
 
-    // Custom tooltip
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            const item = data.find(d => d.kategori.startsWith(label.replace("...", "")))
-            const perubahan = item?.persentasePerubahan || 0
+interface ComparisonChartData {
+    kategori: string;
+    kategoriShort: string;
+    persentasePerubahan: number;
+}
 
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg min-w-[180px]">
-                    <p className="font-medium mb-2">{item?.kategori || label}</p>
-                    <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Bulan ini:</span>
-                            <span className="font-bold" data-private="true">{formatRupiah(payload[0]?.value || 0)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Bulan lalu:</span>
-                            <span className="font-bold" data-private="true">{formatRupiah(payload[1]?.value || 0)}</span>
-                        </div>
-                        <div className={`flex items-center justify-between pt-1 border-t ${perubahan > 0 ? "text-red-500" : perubahan < 0 ? "text-emerald-500" : "text-muted-foreground"
-                            }`}>
-                            <span>Perubahan:</span>
-                            <span className="flex items-center gap-1 font-bold">
-                                {perubahan > 0 ? <TrendingUp className="w-3 h-3" /> : perubahan < 0 ? <TrendingDown className="w-3 h-3" /> : null}
-                                {perubahan > 0 ? "+" : ""}{perubahan}%
-                            </span>
-                        </div>
+interface ComparisonTooltipProps {
+    active?: boolean;
+    payload?: Array<{ value?: number }>;
+    label?: string;
+    data?: ComparisonChartData[];
+}
+
+const CustomTooltip = ({ active, payload, label, data }: ComparisonTooltipProps) => {
+    if (active && payload && payload.length && data) {
+        // Find full item data
+        const item = data.find((d) => d.kategoriShort === label) || 
+                     data.find((d) => d.kategori.startsWith(label?.replace("...", "") ?? ""))
+        
+        const perubahan = item?.persentasePerubahan || 0
+
+        return (
+            <div className="bg-popover border rounded-lg p-3 shadow-lg min-w-[180px]">
+                <p className="font-medium mb-2">{item?.kategori || label}</p>
+                <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Bulan ini:</span>
+                        <span className="font-bold" data-private="true">{formatRupiah(payload[0]?.value || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Bulan lalu:</span>
+                        <span className="font-bold" data-private="true">{formatRupiah(payload[1]?.value || 0)}</span>
+                    </div>
+                    <div className={`flex items-center justify-between pt-1 border-t ${perubahan > 0 ? "text-red-500" : perubahan < 0 ? "text-emerald-500" : "text-muted-foreground"
+                        }`}>
+                        <span>Perubahan:</span>
+                        <span className="flex items-center gap-1 font-bold">
+                            {perubahan > 0 ? <TrendingUp className="w-3 h-3" /> : perubahan < 0 ? <TrendingDown className="w-3 h-3" /> : null}
+                            {perubahan > 0 ? "+" : ""}{perubahan}%
+                        </span>
                     </div>
                 </div>
-            )
-        }
-        return null
+            </div>
+        )
     }
+    return null
+}
+
+const formatYAxis = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}rb`
+    return value.toString()
+}
 
     // Format Y axis
-    const formatYAxis = (value: number) => {
-        if (value >= 1000000) return `${(value / 1000000).toFixed(0)}jt`
-        if (value >= 1000) return `${(value / 1000).toFixed(0)}rb`
-        return value.toString()
-    }
 
     return (
         <Card>
@@ -144,7 +160,7 @@ export function MonthlyComparisonChart({ data, limit = 8 }: MonthlyComparisonCha
                             axisLine={false}
                             width={45}
                         />
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<CustomTooltip data={chartData} />} />
                         <Legend
                             verticalAlign="top"
                             height={30}

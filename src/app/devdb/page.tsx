@@ -124,7 +124,7 @@ export default function DebugDatabasePage() {
 }
 
 function DataTable({ tab, page }: { tab: string; page: number }) {
-    const [data, setData] = useState<any[]>([])
+    const [data, setData] = useState<Record<string, unknown>[]>([])
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
     const [columns, setColumns] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
@@ -134,7 +134,7 @@ function DataTable({ tab, page }: { tab: string; page: number }) {
             if (tab === "stats") return;
 
             setLoading(true)
-            let result: any = { success: false, data: [] }
+            let result: { success: boolean; data?: Record<string, unknown>[]; pagination?: { page: number; totalPages: number; total: number } } = { success: false }
             let cols: string[] = []
 
             try {
@@ -165,7 +165,7 @@ function DataTable({ tab, page }: { tab: string; page: number }) {
             } catch (e) { console.error(e) }
 
             if (result && result.success) {
-                setData(result.data)
+                setData(result.data || [])
                 setPagination(result.pagination || { page: 1, totalPages: 1, total: 0 })
                 setColumns(cols)
             }
@@ -216,8 +216,8 @@ function DataTable({ tab, page }: { tab: string; page: number }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data.map((row: any, i: number) => (
-                                        <tr key={row.id || i} className="border-b hover:bg-secondary/50">
+                                    {data.map((row, i: number) => (
+                                        <tr key={(row.id as string | number) || i} className="border-b hover:bg-secondary/50">
                                             {columns.map((col) => (
                                                 <td key={col} className="p-2 max-w-xs truncate">
                                                     {formatCell(row, col)}
@@ -249,7 +249,7 @@ function DataTable({ tab, page }: { tab: string; page: number }) {
     )
 }
 
-function formatCell(row: any, col: string): string {
+function formatCell(row: Record<string, unknown>, col: string): string {
     const value = row[col]
 
     if (value === null || value === undefined) return "-"

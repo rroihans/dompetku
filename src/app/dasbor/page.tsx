@@ -9,6 +9,7 @@ import { BudgetBanner } from "@/components/dashboard/budget-banner";
 import { TodaySection } from "@/components/dashboard/today-section";
 import { QuickTemplateRow } from "@/components/dashboard/quick-template-row";
 import { MonthlyOverview } from "@/components/dashboard/monthly-overview";
+import type { DashboardAnalytics } from "@/lib/db/analytics-repo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TemplateTransaksiRecord } from "@/lib/db/app-db";
 
@@ -17,7 +18,7 @@ export default function NewDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [data, setData] = useState<{
-    analytics: any;
+    analytics: DashboardAnalytics;
     templates: TemplateTransaksiRecord[];
   } | null>(null);
 

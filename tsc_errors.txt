@@ -1,0 +1,18 @@
+src/app/anggaran/page.tsx(90,25): error TS2345: Argument of type '{ budgets: { realisasi: number; proyeksi: number; persentase: number; persentaseProyeksi: number; sisa: number; saranHarian: number; id: string; kategori: string; bulan: number; tahun: number; nominal: number; isDummy?: number | undefined; createdAt: Date; updatedAt: Date; }[]; ... 4 more ...; sisaHari: number; } | ...' is not assignable to parameter of type 'SetStateAction<BudgetRealizationData | null>'.
+  Type '{ budgets: never[]; unbudgeted: never[]; totalBudget: number; totalRealisasi: number; totalProyeksi?: undefined; sisaHari?: undefined; }' is not assignable to type 'SetStateAction<BudgetRealizationData | null>'.
+    Type '{ budgets: never[]; unbudgeted: never[]; totalBudget: number; totalRealisasi: number; totalProyeksi?: undefined; sisaHari?: undefined; }' is not assignable to type 'BudgetRealizationData'.
+      Types of property 'totalProyeksi' are incompatible.
+        Type 'undefined' is not assignable to type 'number'.
+src/app/anggaran/page.tsx(325,21): error TS2322: Type '{ kategori: string; realisasi: number; }[]' is not assignable to type 'BudgetItem[]'.
+  Type '{ kategori: string; realisasi: number; }' is missing the following properties from type 'BudgetItem': nominal, persentase, sisa
+src/lib/db/__tests__/kategori-repo.test.ts(193,17): error TS2353: Object literal may only specify known properties, and 'tipeTransaksi' does not exist in type '{ deskripsi: string; nominal: number; kategori: string; debitAkunId: string; kreditAkunId: string; tanggal?: Date | undefined; catatan?: string | undefined; idempotencyKey?: string | undefined; rencanaCicilanId?: string | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(153,24): error TS2339: Property 'error' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'error' does not exist on type '{ success: true; data?: MappedTransaksi | undefined; duplicated?: boolean | undefined; alert?: any; message?: string | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(203,32): error TS2339: Property 'data' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(244,25): error TS2339: Property 'data' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(244,44): error TS2339: Property 'data' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.
+src/lib/db/__tests__/transactions-repo.test.ts(314,28): error TS2339: Property 'data' does not exist on type 'ServerActionResult<MappedTransaksi>'.
+  Property 'data' does not exist on type '{ success: false; error: string; errors?: Record<string, string> | Record<string, string[]> | undefined; }'.

@@ -7,24 +7,60 @@ import { quickDebugAdminFee } from "@/lib/db/debug-repo"
 import { ArrowLeft, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
-export default function DebugAutomationPage() {
-    const [data, setData] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
+interface AccountDebug {
+    nama: string;
+    nominal: number;
+    pola?: string | null;
+    tanggalPola?: number | null;
+    calculatedBillingDate?: string;
+    lastCharged?: string;
+    willProcess: boolean;
+    issues: string[];
+}
 
-    const fetchData = async () => {
-        setLoading(true)
-        try {
-            const result = await quickDebugAdminFee()
-            setData(result)
-        } catch (e) {
-            console.error(e)
-        }
-        setLoading(false)
-    }
+interface DebugData {
+    totalBankEWallet: number;
+    withAdminFeeActive: number;
+    willBeProcessed: number;
+    currentMonth: string;
+    accounts: AccountDebug[];
+    recentLogs: { id: string; level: string; pesan: string; createdAt: Date }[];
+}
+
+export default function DebugAutomationPage() {
+    const [data, setData] = useState<DebugData | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [refreshKey, setRefreshKey] = useState(0)
 
     useEffect(() => {
-        fetchData()
-    }, [])
+        let cancelled = false
+        
+        async function loadData() {
+            setLoading(true)
+            try {
+                const result = await quickDebugAdminFee()
+                if (!cancelled) {
+                    setData(result)
+                }
+            } catch (e) {
+                console.error(e)
+            } finally {
+                if (!cancelled) {
+                    setLoading(false)
+                }
+            }
+        }
+        
+        loadData()
+        
+        return () => {
+            cancelled = true
+        }
+    }, [refreshKey])
+
+    const fetchData = () => {
+        setRefreshKey(k => k + 1)
+    }
 
     return (
         <div className="space-y-6 p-6">
@@ -86,7 +122,7 @@ export default function DebugAutomationPage() {
                                 </p>
                             ) : (
                                 <div className="space-y-4">
-                                    {data.accounts.map((acc: any, i: number) => (
+                                    {data.accounts.map((acc, i: number) => (
                                         <div key={i} className={`p-4 rounded border ${acc.willProcess ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20' : 'border-amber-500 bg-amber-50 dark:bg-amber-950/20'}`}>
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -116,7 +152,7 @@ export default function DebugAutomationPage() {
                                                 <div className="mt-2 text-sm text-amber-700 dark:text-amber-400">
                                                     <strong>Alasan Skip:</strong>
                                                     <ul className="list-disc list-inside">
-                                                        {acc.issues.map((issue: string, j: number) => (
+                                                        {acc.issues.map((issue, j: number) => (
                                                             <li key={j}>{issue}</li>
                                                         ))}
                                                     </ul>
@@ -139,7 +175,7 @@ export default function DebugAutomationPage() {
                                 <p className="italic text-muted-foreground">Belum ada log automasi.</p>
                             ) : (
                                 <div className="space-y-2">
-                                    {data.recentLogs.map((log: any) => (
+                                    {data.recentLogs.map((log) => (
                                         <div key={log.id} className="p-2 bg-muted rounded text-sm">
                                             <div className="flex justify-between">
                                                 <span className={log.level === 'ERROR' ? 'text-red-500' : 'text-emerald-500'}>

@@ -19,12 +19,16 @@ import { DeleteAccountTemplateButton } from "@/components/template/delete-accoun
 import { useEffect, useState } from "react"
 
 // Helper to format Interest Tiers
+interface InterestTier {
+    bunga_pa: number;
+}
+
 function formatInterestTiers(jsonStr: string | null) {
     if (!jsonStr) return 'Tidak ada';
     try {
-        const tiers = JSON.parse(jsonStr);
+        const tiers = JSON.parse(jsonStr) as InterestTier[];
         if (!Array.isArray(tiers) || tiers.length === 0) return 'Tidak ada';
-        const rates = tiers.map((t: any) => t.bunga_pa);
+        const rates = tiers.map((t) => t.bunga_pa);
         const min = Math.min(...rates);
         const max = Math.max(...rates);
 
@@ -38,13 +42,17 @@ function formatInterestTiers(jsonStr: string | null) {
 }
 
 // Helper to get Min Saldo from tiers
+interface MinSaldoTier {
+    min_saldo: number;
+}
+
 function formatMinSaldo(jsonStr: string | null) {
     if (!jsonStr) return null;
     try {
-        const tiers = JSON.parse(jsonStr);
+        const tiers = JSON.parse(jsonStr) as MinSaldoTier[];
         if (!Array.isArray(tiers) || tiers.length === 0) return null;
         // Assuming sorted or we need to find min
-        const minSaldos = tiers.map((t: any) => t.min_saldo);
+        const minSaldos = tiers.map((t) => t.min_saldo);
         const min = Math.min(...minSaldos);
         return formatRupiah(min);
     } catch {
@@ -274,8 +282,8 @@ export default function AccountTemplatePage() {
                                         <TableBody>
                                             {(() => {
                                                 try {
-                                                    const tiers = JSON.parse(selectedTemplate.bungaTier);
-                                                    return tiers.map((tier: any, i: number) => (
+                                                    const tiers = JSON.parse(selectedTemplate.bungaTier) as { min_saldo: number; bunga_pa: number }[];
+                                                    return tiers.map((tier, i: number) => (
                                                         <TableRow key={i} className="hover:bg-muted/50">
                                                             <TableCell className="py-2 text-xs font-medium">
                                                                 {formatRupiah(tier.min_saldo)}

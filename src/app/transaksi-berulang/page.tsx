@@ -21,6 +21,7 @@ import { RecurringActions } from "@/components/recurring/recurring-actions"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { AccountDTO } from "@/lib/account-dto"
+import type { RecurringTransactionDTO } from "@/lib/db/recurring-repo"
 
 const FREKUENSI_LABEL: Record<string, string> = {
     HARIAN: "Setiap Hari",
@@ -32,7 +33,7 @@ const FREKUENSI_LABEL: Record<string, string> = {
 const HARI_LABEL = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"]
 
 export default function RecurringPage() {
-    const [recurring, setRecurring] = useState<any[]>([])
+    const [recurring, setRecurring] = useState<RecurringTransactionDTO[]>([])
     const [accounts, setAccounts] = useState<AccountDTO[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -172,7 +173,7 @@ export default function RecurringPage() {
                                             })()}
                                         </span>
                                     )}
-                                    {item.frekuensi === "MINGGUAN" && item.hariDalamMinggu !== null && (
+                                    {item.frekuensi === "MINGGUAN" && item.hariDalamMinggu != null && (
                                         <span className="text-foreground font-medium">
                                             • {HARI_LABEL[item.hariDalamMinggu]}
                                         </span>

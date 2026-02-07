@@ -53,7 +53,13 @@ export function ExpensePieChart({ data }: ExpensePieChartProps) {
     // State for drill-down
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-    const [detailData, setDetailData] = useState<any>(null)
+    interface DetailData {
+        total: number;
+        jumlahTransaksi: number;
+        weeklyBreakdown: { minggu: string; nominal: number }[];
+        transaksi: { id: string; deskripsi: string; tanggal: Date; akun: string; nominal: number }[];
+    }
+    const [detailData, setDetailData] = useState<DetailData | null>(null)
     const [loading, setLoading] = useState(false)
 
     useEffect(() => {
@@ -106,8 +112,8 @@ export function ExpensePieChart({ data }: ExpensePieChartProps) {
         try {
             // Kita asumsikan drill-down untuk bulan/tahun saat ini
             const result = await getCategoryDetail(kategori)
-            if (result.success) {
-                setDetailData(result.data)
+            if (result.success && result.data) {
+                setDetailData(result.data as unknown as DetailData)
             }
         } catch (error) {
             console.error("Error fetching category detail:", error)
@@ -116,28 +122,34 @@ export function ExpensePieChart({ data }: ExpensePieChartProps) {
         }
     }
 
-    // Custom Tooltip
-    const CustomTooltip = ({ active, payload }: any) => {
-        if (active && payload && payload.length) {
-            const item = payload[0].payload
-            const persen = ((item.value / totalPengeluaran) * 100).toFixed(1)
-            return (
-                <div className="bg-popover border rounded-lg p-3 shadow-lg">
-                    <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-base font-bold text-red-500" data-private="true">
-                        {formatRupiah(item.value)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                        {item.count} transaksi • {persen}%
-                    </p>
-                    <p className="text-[10px] text-primary mt-2 font-medium">
-                        Klik untuk lihat detail →
-                    </p>
-                </div>
-            )
-        }
-        return null
+interface ExpenseTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: { name: string; value: number; count: number } }>;
+    totalPengeluaran?: number;
+}
+
+const CustomTooltip = ({ active, payload, totalPengeluaran }: ExpenseTooltipProps) => {
+    if (active && payload && payload.length) {
+        const item = payload[0].payload
+        const total = totalPengeluaran ?? 0
+        const persen = total > 0 ? ((item.value / total) * 100).toFixed(1) : "0.0"
+        return (
+            <div className="bg-popover border rounded-lg p-3 shadow-lg">
+                <p className="font-medium text-sm">{item.name}</p>
+                <p className="text-base font-bold text-red-500" data-private="true">
+                    {formatRupiah(item.value)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                    {item.count} transaksi • {persen}%
+                </p>
+                <p className="text-[10px] text-primary mt-2 font-medium">
+                    Klik untuk lihat detail →
+                </p>
+            </div>
+        )
     }
+    return null
+}
 
     return (
         <div ref={containerRef} className="w-full">
@@ -168,7 +180,7 @@ export function ExpensePieChart({ data }: ExpensePieChartProps) {
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<CustomTooltip totalPengeluaran={totalPengeluaran} />} />
                     </PieChart>
 
                     {/* Legend interaktif */}
@@ -268,7 +280,7 @@ export function ExpensePieChart({ data }: ExpensePieChartProps) {
                                             {detailData.transaksi.length === 0 ? (
                                                 <p className="text-center py-4 text-sm text-muted-foreground">Tidak ada transaksi detail.</p>
                                             ) : (
-                                                detailData.transaksi.map((tx: any) => (
+                                                detailData.transaksi.map((tx) => (
                                                     <div key={tx.id} className="flex items-center justify-between p-2.5 bg-muted/20 border rounded-lg hover:bg-muted/40 transition-colors">
                                                         <div className="min-w-0 flex-1 mr-2">
                                                             <p className="text-sm font-medium truncate">{tx.deskripsi}</p>

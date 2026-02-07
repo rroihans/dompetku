@@ -2,6 +2,17 @@ import { db } from "./app-db";
 import { type NotificationRecord } from "./app-db";
 import { Money } from "@/lib/money";
 
+export interface NotificationDTO {
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    severity: "INFO" | "WARNING" | "ERROR";
+    read: boolean;
+    actionUrl?: string;
+    createdAt: Date;
+}
+
 export async function getNotifications(limit: number = 20) {
     try {
         const notifications = await db.notification
@@ -188,7 +199,7 @@ export async function runSystemAlertChecks() {
     }
 }
 
-function mapNotificationToDTO(n: NotificationRecord) {
+function mapNotificationToDTO(n: NotificationRecord): NotificationDTO {
     return {
         id: n.id,
         type: n.type,
