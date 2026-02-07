@@ -88,7 +88,7 @@ export function FAB() {
                 />
             )}
 
-            <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3">
+            <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3 pb-safe pr-safe">
                 {/* Menu Items Container */}
                 <div 
                     id="fab-menu"
@@ -104,7 +104,7 @@ export function FAB() {
                     <div className="max-h-[50vh] overflow-y-auto flex flex-col items-end gap-3 pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20">
                         {templates.map((template, idx) => (
                             <div key={template.id} className="flex items-center gap-3" role="menuitem">
-                                <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200" style={{ animationDelay: `${idx * 30}ms` }}>
+                                <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-full text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200" style={{ animationDelay: `${idx * 30}ms` }}>
                                     {template.nama}
                                 </span>
                                 <Button
@@ -113,7 +113,7 @@ export function FAB() {
                                     onKeyDown={(e) => handleMenuItemKeyDown(e, () => handleTemplateClick(template))}
                                     size="icon"
                                     aria-label={`Gunakan template ${template.nama}`}
-                                    className="rounded-full shadow-lg h-11 w-11 bg-orange-100 text-orange-600 hover:bg-orange-200 border-none transition-transform hover:scale-105 shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="rounded-full shadow-lg h-12 w-12 bg-amber-100 text-amber-600 hover:bg-amber-200 border-2 border-amber-200/50 transition-all hover:scale-110 hover:shadow-amber-500/20 shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
                                     <DynamicIcon name={template.icon} fallback={FileText} className="h-5 w-5" />
                                 </Button>
@@ -123,7 +123,7 @@ export function FAB() {
 
                     {/* Transfer */}
                     <div className="flex items-center gap-3" role="menuitem">
-                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-100">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-full text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-100">
                             Transfer
                         </span>
                         <Button
@@ -138,7 +138,7 @@ export function FAB() {
                             })}
                             size="icon"
                             aria-label="Transfer antar akun"
-                            className="rounded-full shadow-lg h-11 w-11 bg-primary/10 text-primary hover:bg-primary/20 border-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="rounded-full shadow-lg h-12 w-12 bg-blue-100 text-blue-600 hover:bg-blue-200 border-2 border-blue-200/50 transition-all hover:scale-110 hover:shadow-blue-500/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             <ArrowRightLeft className="h-5 w-5" />
                         </Button>
@@ -146,7 +146,7 @@ export function FAB() {
 
                     {/* New Record */}
                     <div className="flex items-center gap-3" role="menuitem">
-                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-md text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-150">
+                        <span className="bg-popover text-popover-foreground px-3 py-1.5 rounded-full text-sm font-medium shadow-md border animate-in fade-in slide-in-from-right-4 duration-200 delay-150">
                             New record
                         </span>
                         <Button
@@ -154,7 +154,7 @@ export function FAB() {
                             onKeyDown={(e) => handleMenuItemKeyDown(e, handleNewRecord)}
                             size="icon"
                             aria-label="Buat transaksi baru"
-                            className="rounded-full shadow-lg h-11 w-11 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 border-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="rounded-full shadow-lg h-12 w-12 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 border-2 border-emerald-200/50 transition-all hover:scale-110 hover:shadow-emerald-500/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                             <Plus className="h-5 w-5" />
                         </Button>
@@ -170,12 +170,14 @@ export function FAB() {
                     aria-controls="fab-menu"
                     aria-haspopup="menu"
                     className={cn(
-                        "h-14 w-14 rounded-full shadow-xl transition-all duration-300 z-[56] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                        isOpen ? "rotate-45 bg-primary" : "bg-primary hover:bg-primary/90"
+                        "h-14 w-14 rounded-full shadow-lg shadow-emerald-500/30 transition-all duration-300 z-[56] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border-2 border-emerald-400/30",
+                        isOpen 
+                            ? "rotate-45 bg-emerald-600 shadow-emerald-600/40" 
+                            : "bg-emerald-500 hover:bg-emerald-600 hover:shadow-emerald-500/40 hover:scale-105"
                     )}
                     onClick={() => setIsOpen(!isOpen)}
                 >
-                    <Plus className="h-6 w-6 text-white" />
+                    <Plus className="h-6 w-6 text-white drop-shadow-md" />
                 </Button>
             </div>
 

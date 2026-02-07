@@ -54,7 +54,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
     // For expense: positive change (increase) is bad (red), negative change (decrease) is good (green)
     // For income/net: positive change is good (green), negative change is bad (red)
     const isGood = inverse ? change < 0 : change > 0;
-    const colorClass = isGood ? "text-emerald-600 bg-emerald-100" : "text-red-600 bg-red-100";
+    const colorClass = isGood ? "text-emerald-500 bg-emerald-500/20" : "text-red-500 bg-red-500/20";
     const arrow = change > 0 ? "↑" : "↓";
     
     return (
@@ -95,7 +95,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
         {/* Summary Grid */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           {/* Income */}
-          <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100" aria-label="Pemasukan hari ini">
+          <div className="bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20" aria-label="Pemasukan hari ini">
             <div className="flex justify-between items-start mb-1">
               <TrendingUp className="h-3 w-3 text-emerald-500" aria-hidden="true" />
               <span aria-label="Perubahan pemasukan dibanding kemarin">
@@ -103,13 +103,13 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground">Masuk</p>
-            <p className="text-sm font-bold text-emerald-600 truncate" data-private="true">
+            <p className="text-sm font-bold text-emerald-500 truncate" data-private="true">
               {formatRupiah(todayData.income)}
             </p>
           </div>
 
           {/* Expense */}
-          <div className="bg-red-50/50 p-2 rounded-lg border border-red-100" aria-label="Pengeluaran hari ini">
+          <div className="bg-red-500/10 p-2 rounded-lg border border-red-500/20" aria-label="Pengeluaran hari ini">
             <div className="flex justify-between items-start mb-1">
               <TrendingDown className="h-3 w-3 text-red-500" aria-hidden="true" />
               <span aria-label="Perubahan pengeluaran dibanding kemarin">
@@ -117,7 +117,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground">Keluar</p>
-            <p className="text-sm font-bold text-red-600 truncate" data-private="true">
+            <p className="text-sm font-bold text-red-500 truncate" data-private="true">
               {formatRupiah(todayData.expense)}
             </p>
           </div>
@@ -131,7 +131,7 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground">Selisih</p>
-            <p className={cn("text-sm font-bold truncate", todayData.net >= 0 ? "text-emerald-600" : "text-red-600")} data-private="true">
+            <p className={cn("text-sm font-bold truncate", todayData.net >= 0 ? "text-emerald-500" : "text-red-500")} data-private="true">
               {formatRupiah(todayData.net)}
             </p>
           </div>

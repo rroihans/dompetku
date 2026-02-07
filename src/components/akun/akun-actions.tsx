@@ -219,23 +219,35 @@ export function AkunActions({ akun, templates = [] }: AkunActionsProps) {
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-                <DialogContent className="sm:max-w-[400px]">
-                    <DialogHeader>
-                        <DialogTitle>Hapus Akun</DialogTitle>
-                        <DialogDescription>
-                            Apakah Anda yakin ingin menghapus akun <strong>{akun.nama}</strong>?
-                            Tindakan ini tidak dapat dibatalkan.
+                <DialogContent className="sm:max-w-[400px] w-[calc(100%-2rem)] mx-4 rounded-2xl p-6">
+                    <DialogHeader className="space-y-3">
+                        <DialogTitle className="text-xl font-semibold">Hapus Akun</DialogTitle>
+                        <DialogDescription className="text-base leading-relaxed">
+                            Apakah Anda yakin ingin menghapus akun <strong className="text-foreground">{akun.nama}</strong>?
+                            <br /><br />
+                            <span className="text-red-500 font-medium">Tindakan ini tidak dapat dibatalkan.</span>
                         </DialogDescription>
                     </DialogHeader>
                     {error && (
-                        <p className="text-sm text-red-500">{error}</p>
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                            <p className="text-sm text-red-500">{error}</p>
+                        </div>
                     )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                            Batal
+                    <DialogFooter className="flex-col gap-3 sm:flex-col mt-6">
+                        <Button 
+                            variant="destructive" 
+                            onClick={handleDelete} 
+                            disabled={loading}
+                            className="w-full h-12 text-base font-semibold rounded-xl"
+                        >
+                            {loading ? "Menghapus..." : "Ya, Hapus Akun"}
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-                            {loading ? "Menghapus..." : "Hapus"}
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setDeleteOpen(false)}
+                            className="w-full h-12 text-base rounded-xl border-2"
+                        >
+                            Batal
                         </Button>
                     </DialogFooter>
                 </DialogContent>

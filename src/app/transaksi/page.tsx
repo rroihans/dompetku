@@ -166,50 +166,53 @@ export default function TransaksiPage() {
                     </div>
                 ) : (
                     Object.entries(groupedTransactions).map(([date, txs]) => (
-                        <div key={date} className="space-y-1" role="region" aria-label={`Transaksi pada ${date}`}>
-                            <div className="sticky top-[130px] z-10 bg-background/95 backdrop-blur py-1 px-2 text-xs font-semibold text-muted-foreground border-b w-full">
-                                {date}
+                        <div key={date} className="space-y-3" role="region" aria-label={`Transaksi pada ${date}`}>
+                            <div className="sticky top-[130px] z-10 bg-background py-2 px-1">
+                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    {date}
+                                </div>
                             </div>
-                            <div className="bg-card rounded-lg border shadow-sm divide-y" role="list">
+                            <div className="space-y-2" role="list">
                                 {txs.map((tx) => {
                                     const isExpense = tx.debitAkun?.tipe === "EXPENSE" ||
                                         ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe || "")
 
                                     return (
-                                        <div key={tx.id} role="listitem" className="p-3 hover:bg-muted/50 transition-colors flex items-center justify-between gap-3 relative group">
-                                            {/* Left: Icon & Main Info */}
-                                            <div className="flex items-center gap-3 overflow-hidden flex-1">
-                                                 <div 
-                                                    aria-hidden="true"
-                                                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                                    {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                                                 </div>
-                                                 <div className="min-w-0 flex-1">
-                                                     <div className="text-sm font-medium truncate">{tx.deskripsi}</div>
-                                                     <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                                                         <span className="bg-secondary px-1.5 py-0.5 rounded text-[9px] font-medium">{tx.kategori}</span>
-                                                         <span>•</span>
-                                                         <span className="truncate max-w-[100px]">{tx.kreditAkun?.nama || tx.debitAkun?.nama}</span>
-                                                     </div>
-                                                 </div>
-                                            </div>
-
-                                            {/* Right: Amount & Action */}
-                                            <div className="text-right shrink-0">
-                                                <div className={`text-sm font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
-                                                    {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
+                                        <div 
+                                            key={tx.id} 
+                                            role="listitem" 
+                                            className="bg-card rounded-xl border border-border/50 p-4 hover:bg-accent/50 transition-colors"
+                                        >
+                                            <div className="flex items-start justify-between gap-4">
+                                                {/* Left: Icon & Main Info */}
+                                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                    <div 
+                                                        aria-hidden="true"
+                                                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                        {isExpense ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 pt-0.5">
+                                                        <div className="text-[15px] font-semibold text-foreground truncate leading-tight">
+                                                            {tx.deskripsi}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1.5">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
+                                                                {tx.kategori}
+                                                            </span>
+                                                            <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
+                                                                {tx.kreditAkun?.nama || tx.debitAkun?.nama}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div 
-                                                    aria-hidden="true" 
-                                                    tabIndex={-1} 
-                                                    className="hidden md:block absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 p-1 rounded-md shadow-sm"
-                                                >
+
+                                                {/* Right: Amount & Action */}
+                                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                                    <div className={`text-[15px] font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
+                                                        {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
+                                                    </div>
                                                     <TransaksiActions transaksi={tx} />
                                                 </div>
-                                                {/* Mobile visible action trigger area */}
-                                                 <div className="md:hidden mt-1 flex justify-end">
-                                                      <TransaksiActions transaksi={tx} />
-                                                 </div>
                                             </div>
                                         </div>
                                     )
