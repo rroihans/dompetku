@@ -11,7 +11,6 @@ import path from 'path';
  */
 
 const OUTPUT_DIR = 'AI_CONTEXT';
-const MAX_FILES = 7;
 const MAX_LINES_PER_FILE = 2000;
 
 // Configuration

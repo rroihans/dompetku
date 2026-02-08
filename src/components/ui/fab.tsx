@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Plus, ArrowRightLeft, FileText, X } from "lucide-react"
+import { Plus, ArrowRightLeft, FileText } from "lucide-react"
 import { AddTransactionForm } from "@/components/forms/add-transaction-form"
 import { TransferForm } from "@/components/forms/transfer-form"
 import { cn } from "@/lib/utils"

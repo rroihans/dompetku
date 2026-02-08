@@ -8,7 +8,6 @@ import { EmptyState } from "./empty-state";
 import { Button } from "@/components/ui/button";
 import { TemplateTransaksiRecord } from "@/lib/db/app-db";
 import { AddTransactionForm } from "@/components/forms/add-transaction-form";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface QuickTemplateRowProps {
   templates: TemplateTransaksiRecord[];

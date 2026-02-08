@@ -20,18 +20,19 @@ import {
     Shield,
     ChevronDown,
     ChevronRight,
-    TrendingUp
+    TrendingUp,
+    LucideIcon
 } from "lucide-react"
 
 interface NavItem {
     name: string
     href: string
-    icon: any
+    icon: LucideIcon
 }
 
 interface NavGroup {
     name: string
-    icon?: any
+    icon?: LucideIcon
     items: NavItem[]
 }
 

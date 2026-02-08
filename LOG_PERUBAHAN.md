@@ -4,7 +4,11 @@
 
 ### v0.12.1 (2026-02-08)
 
-- **Bug Fixes - Dashboard Transaction Display:**
+- **Technical Improvements:**
+  - **Type Safety:** Full conversion of `any` types to `MappedTransaksi` interface in `analytics-repo.ts` and `transactions-repo.ts`.
+  - **Code Cleanup:** Removed unused variables, imports, and dead code across multiple files (`dummy-data-toggle.tsx`, `onboarding/page.tsx`, `fab.tsx`, `analytics-repo.ts`).
+  - **Performance:** Optimized `useEffect` in `dummy-data-toggle.tsx` to avoid synchronous state updates.
+
   - **Fix:** Transaksi tidak muncul di dashboard hari ini meskipun muncul di riwayat.
   - **Root Cause:** Masalah timezone pada perbandingan tanggal di `fetchTransactionsWithAccounts()` dan fungsi `getTodayDateRange()`/`getYesterdayDateRange()`.
   - **Solution:** Normalisasi tanggal ke local midnight dan gunakan perbandingan tanggal yang konsisten tanpa memperhatikan waktu.

@@ -26,7 +26,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createAkun, getAkun } from "@/lib/db/accounts-repo";
-import { createTransactionTemplate, getTransactionTemplates, deleteTransactionTemplate } from "@/lib/db/transaction-templates-repo";
+import { createTransactionTemplate, deleteTransactionTemplate } from "@/lib/db/transaction-templates-repo";
 import { createTransaksiSimple } from "@/lib/db/transactions-repo";
 import { setOnboardingCompleted, getOnboardingStatus } from "@/lib/db/onboarding-repo";
 import { formatRupiah } from "@/lib/format";
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
       } else {
         toast.error(result.error || "Gagal membuat akun");
       }
-    } catch (error) {
+    } catch {
       toast.error("Terjadi kesalahan");
     } finally {
       setLoading(false);
@@ -199,7 +199,7 @@ export default function OnboardingPage() {
       } else {
         toast.error(result.error || "Gagal membuat template");
       }
-    } catch (error) {
+    } catch {
       toast.error("Terjadi kesalahan");
     } finally {
       setLoading(false);
@@ -251,7 +251,7 @@ export default function OnboardingPage() {
       } else {
         toast.error(result.error || "Gagal membuat transaksi");
       }
-    } catch (error) {
+    } catch {
       toast.error("Terjadi kesalahan");
     } finally {
       setLoading(false);
@@ -277,7 +277,7 @@ export default function OnboardingPage() {
       } else {
         toast.error(result.error || "Gagal menyimpan status onboarding");
       }
-    } catch (error) {
+    } catch {
       toast.error("Gagal menyimpan status onboarding");
     } finally {
       setLoading(false);

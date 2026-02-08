@@ -26,24 +26,10 @@ import { updateTransaksi, deleteTransaksi } from "@/lib/db"
 import { formatRupiah } from "@/lib/format"
 import { ConvertToInstallmentDialog } from "./convert-to-installment-dialog"
 
-interface Transaksi {
-    id: string
-    deskripsi: string
-    nominal: number
-    kategori: string
-    catatan: string | null
-    tanggal: Date
-    convertedToInstallment?: boolean
-    kreditAkun?: {
-        id: string
-        nama: string
-        tipe: string
-        isSyariah?: boolean
-    } | null
-}
+import { MappedTransaksi } from "@/types/transaksi"
 
 interface TransaksiActionsProps {
-    transaksi: Transaksi
+    transaksi: MappedTransaksi
 }
 
 export function TransaksiActions({ transaksi }: TransaksiActionsProps) {

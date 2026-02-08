@@ -1,4 +1,4 @@
-import { db } from "./app-db";
+import { db, TransaksiRecord } from "./app-db";
 import { createId } from "./transactions-repo";
 import { Money } from "../money";
 import { rebuildSummaries } from "./maintenance";
@@ -179,7 +179,7 @@ export async function generateAllDummyData() {
         // ============================================
         // 2. TRANSAKSI (24 months of history)
         // ============================================
-        const txs: any[] = [];
+        const txs: TransaksiRecord[] = [];
         // Map category name to Account ID
         const categories = [
             { kategori: "Makanan (Demo)", debit: akunIds.makanan, minNom: 25000, maxNom: 150000, freq: 25 },

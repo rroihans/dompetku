@@ -1,6 +1,7 @@
 import { db } from "./app-db";
 import { Money } from "@/lib/money";
 import { toDayKey } from "./summary";
+import { MappedTransaksi } from "@/types/transaksi";
 
 export type PeriodType = '7D' | '30D' | '12W' | '6M' | '1Y';
 
@@ -40,23 +41,9 @@ export interface IncomeExpenseBook {
     expenseItems: IncomeExpenseItem[]
 }
 
-interface SpendingInsight {
-    kategori: string
-    nominal: number
-    count: number
-    persentase: number
-    avgPerTransaction: number
-    trend: number
-    status: string
-}
 
-interface SpendingData {
-    topCategories: SpendingInsight[]
-    spendingByDay: { hari: string; nominal: number }[]
-    totalSpending: number
-    avgDaily: number
-    transactionCount: number
-}
+
+
 
 function getPeriodRange(period: PeriodType): { start: Date; end: Date; days: number; prevStart: Date; prevEnd: Date } {
     const now = new Date()
@@ -162,8 +149,9 @@ async function fetchTransactionsWithAccounts(start: Date, end: Date) {
 
     return txs.map(tx => ({
         ...tx,
-        debitAkun: accountMap.get(tx.debitAkunId),
-        kreditAkun: accountMap.get(tx.kreditAkunId)
+        debitAkun: accountMap.get(tx.debitAkunId) || null,
+        kreditAkun: accountMap.get(tx.kreditAkunId) || null,
+        nominal: Money.toFloat(tx.nominalInt)
     }));
 }
 
@@ -284,7 +272,7 @@ export async function getCashFlowTable(period: PeriodType = '30D') {
 // Income & Expense Book - breakdown per kategori
 export async function getIncomeExpenseBook(period: PeriodType = '30D') {
     try {
-        const { start, end, days, prevStart, prevEnd } = getPeriodRange(period)
+        const { start, end, prevStart, prevEnd } = getPeriodRange(period)
 
         // Current period
         const currentTx = await fetchTransactionsWithAccounts(start, end);
@@ -543,7 +531,7 @@ export interface DashboardAnalytics {
         expense: number;
         net: number;
         transactionCount: number;
-        transactions: any[];
+        transactions: MappedTransaksi[];
     };
     yesterday: {
         income: number;
@@ -610,7 +598,7 @@ export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
         const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
         const trendTx = await fetchTransactionsWithAccounts(sixMonthsAgo, endOfMonth);
 
-        const trendData: Record<string, any> = {};
+        const trendData: Record<string, { bulanNama: string; pemasukan: number; pengeluaran: number }> = {};
         for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -633,10 +621,9 @@ export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
         const todayRange = getTodayDateRange();
         const yesterdayRange = getYesterdayDateRange();
         
-        const todayKey = toDayKey(todayRange.start);
         const yesterdayKey = toDayKey(yesterdayRange.start);
         
-        const todaySummary = await getDailySummary(todayKey, todayRange);
+        // const todaySummary = await getDailySummary(todayKey, todayRange); // Used for comparison below
         const yesterdaySummary = await getDailySummary(yesterdayKey, yesterdayRange);
         
         const todayTransactions = await fetchTransactionsWithAccounts(todayRange.start, todayRange.end);
@@ -743,9 +730,6 @@ export async function getSaldoTrend(days: number = 30, akunId?: string) {
         for (const acc of liquidAccounts) {
             currentTotal += Money.toFloat(acc.saldoSekarangInt);
         }
-
-        const txByDay = new Map<string, number>();
-        const userTimezoneOffset = endDate.getTimezoneOffset() * 60000;
 
         // Initialize all days
         const fullHistory = [];
@@ -1248,7 +1232,7 @@ export async function getCategoryDetail(kategori: string, bulan?: number, tahun?
                 transaksi: txList
             }
         };
-    } catch (error: any) {
-        return { success: false, error: error.message };
+    } catch (error) {
+        return { success: false, error: (error as Error).message };
     }
 }

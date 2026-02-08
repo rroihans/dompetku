@@ -14,7 +14,6 @@ export function TemplateCard({ template, onClick }: TemplateCardProps) {
   // Determine color based on tipeTransaksi if template.warna is missing
   const isExpense = template.tipeTransaksi === "KELUAR";
   const defaultColor = isExpense ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600";
-  const iconBgColor = template.warna ? `bg-[${template.warna}]/10 text-[${template.warna}]` : defaultColor;
   
   // Note: Tailwind arbitrary values with dynamic strings might not work if not safe-listed.
   // Ideally we use style or valid classes. For now using style for custom hex colors if provided.

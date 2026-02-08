@@ -6,6 +6,7 @@ import { formatRupiah } from "@/lib/format";
 import { Money } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Tag } from "lucide-react";
+import { MappedTransaksi } from "@/types/transaksi";
 
 /**
  * TodayTransactionCard - A compact 3-row stacked layout component for displaying transactions.
@@ -25,7 +26,7 @@ import { Tag } from "lucide-react";
  */
 
 interface TodayTransactionCardProps {
-  transaction: any; // Using any for now as the type is complex and varies
+  transaction: MappedTransaksi;
   onClick?: () => void;
 }
 

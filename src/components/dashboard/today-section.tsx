@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Calendar, 
@@ -15,6 +15,7 @@ import Link from "next/link";
 import { EmptyState } from "./empty-state";
 import { cn } from "@/lib/utils";
 import { TodayTransactionCard } from "./today-transaction-card";
+import { MappedTransaksi } from "@/types/transaksi";
 
 interface TodaySectionProps {
   todayData: {
@@ -22,7 +23,7 @@ interface TodaySectionProps {
     expense: number;
     net: number;
     transactionCount: number;
-    transactions: any[]; // Using any for enriched transactions with account details
+    transactions: MappedTransaksi[];
   };
   yesterdayData: {
     income: number;
@@ -37,7 +38,7 @@ interface TodaySectionProps {
   };
 }
 
-export function TodaySection({ todayData, yesterdayData, comparison }: TodaySectionProps) {
+export function TodaySection({ todayData, comparison }: TodaySectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const todayDate = new Date().toLocaleDateString("id-ID", {
