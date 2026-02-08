@@ -33,14 +33,21 @@ export function TodayTransactionCard({ transaction, onClick }: TodayTransactionC
   const tx = transaction;
   
   // Determine if this is an expense transaction
-  // Expense: debit account is EXPENSE type, or credit account is user asset (BANK, E_WALLET, CASH, CREDIT_CARD)
-  const isExpense = tx.debitAkun?.tipe === "EXPENSE" || 
-                    ["BANK", "E_WALLET", "CASH", "CREDIT_CARD"].includes(tx.kreditAkun?.tipe || "");
+  // Expense: debit account is EXPENSE type (pengeluaran dari aset)
+  // Income: credit account is INCOME type (pemasukan ke aset)
+  // Transfer: tidak mengubah total aset (BANK->E_WALLET, dll) - tidak ditampilkan sebagai expense/income
+  const isExpense = tx.debitAkun?.tipe === "EXPENSE";
+  const isIncome = tx.kreditAkun?.tipe === "INCOME";
   
-  // Determine account name to display (source for expense, destination for income)
+  // Determine account name to display
+  // For expense: show the asset account that was debited (kreditAkun)
+  // For income: show the asset account that was credited (debitAkun)
+  // For transfer: show both accounts
   const accountName = isExpense 
     ? tx.kreditAkun?.nama || "Akun tidak diketahui"
-    : tx.debitAkun?.nama || "Akun tidak diketahui";
+    : isIncome 
+    ? tx.debitAkun?.nama || "Akun tidak diketahui"
+    : `${tx.kreditAkun?.nama || '?'} → ${tx.debitAkun?.nama || '?'}`;
   
   // Map common category names to icon names
   const getCategoryIcon = (kategori: string): string | undefined => {
@@ -76,23 +83,25 @@ export function TodayTransactionCard({ transaction, onClick }: TodayTransactionC
       {/* Row 1: Icon + Description */}
       <div className="flex items-start gap-2">
         <div className={cn(
-          "p-1.5 rounded-full shrink-0",
-          isExpense ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500"
+          "p-1 rounded-full shrink-0",
+          isExpense ? "bg-red-500/10 text-red-500" : 
+          isIncome ? "bg-emerald-500/10 text-emerald-500" : 
+          "bg-blue-500/10 text-blue-500"
         )}>
           <DynamicIcon 
             name={getCategoryIcon(tx.kategori)} 
             fallback={Tag} 
-            className="w-4 h-4" 
+            className="w-3.5 h-3.5" 
           />
         </div>
-        <span className="text-sm font-medium line-clamp-2 leading-snug">
+        <span className="text-xs font-medium line-clamp-2 leading-snug">
           {tx.deskripsi}
         </span>
       </div>
       
       {/* Row 2: Category Badge + Account Name */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-8">
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+      <div className="flex items-center gap-1 text-[10px] text-muted-foreground pl-7">
+        <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 font-normal">
           {tx.kategori}
         </Badge>
         <span>•</span>
@@ -103,12 +112,14 @@ export function TodayTransactionCard({ transaction, onClick }: TodayTransactionC
       <div className="flex justify-end">
         <span 
           className={cn(
-            "text-sm font-bold",
-            isExpense ? "text-red-500" : "text-emerald-500"
+            "text-xs font-bold",
+            isExpense ? "text-red-500" : 
+            isIncome ? "text-emerald-500" : 
+            "text-blue-500"
           )}
           data-private="true"
         >
-          {isExpense ? "-" : "+"}{formatRupiah(Money.toFloat(tx.nominalInt))}
+          {isExpense ? "-" : isIncome ? "+" : "⇄"}{formatRupiah(Money.toFloat(tx.nominalInt))}
         </span>
       </div>
     </div>

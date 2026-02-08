@@ -1,5 +1,45 @@
 # Log Perubahan - Dompetku
 
+## Riwayat Versi
+
+### v0.12.1 (2026-02-08)
+
+- **Bug Fixes - Dashboard Transaction Display:**
+  - **Fix:** Transaksi tidak muncul di dashboard hari ini meskipun muncul di riwayat.
+  - **Root Cause:** Masalah timezone pada perbandingan tanggal di `fetchTransactionsWithAccounts()` dan fungsi `getTodayDateRange()`/`getYesterdayDateRange()`.
+  - **Solution:** Normalisasi tanggal ke local midnight dan gunakan perbandingan tanggal yang konsisten tanpa memperhatikan waktu.
+  - **Files:** `src/lib/db/analytics-repo.ts`
+
+- **Transaction Type Detection Fix:**
+  - **Fix:** Logic deteksi tipe transaksi (expense/income/transfer) tidak konsisten antara dashboard dan transaction card.
+  - **Solution:** Standarisasi logic deteksi:
+    - Expense: `debitAkun?.tipe === "EXPENSE"`
+    - Income: `kreditAkun?.tipe === "INCOME"`
+    - Transfer: selain kedua di atas (tampilkan dengan icon "⇄" dan warna biru)
+  - **Files:** `src/components/dashboard/today-transaction-card.tsx`
+
+- **Global Font Size Reduction:**
+  - **UI/UX:** Memperkecil font size global untuk mobile agar lebih banyak konten terlihat di layar.
+  - **Changes:**
+    - Base font: `text-xs md:text-sm` (was `text-sm md:text-base`)
+    - Mobile font size: 12px (was default 16px)
+    - Heading sizes: h1 1.25rem, h2 1.125rem, h3 1rem, h4 0.875rem, h5 0.8125rem, h6 0.75rem
+    - Dashboard section fonts: reduced to 10px-12px range
+  - **Files:** `src/app/layout.tsx`, `src/app/globals.css`, `src/components/dashboard/today-section.tsx`, `src/components/dashboard/today-transaction-card.tsx`, `src/components/dashboard/empty-state.tsx`
+
+- **Account Layout Redesign (3 Per Row):**
+  - **UI/UX:** Redesign layout halaman Akun untuk menampilkan 3 akun per baris di mobile (previously 1 per row).
+  - **Changes:**
+    - Grid: `grid-cols-3` untuk mobile (was `grid-cols-1`)
+    - Compact card design: icon + nama akun + saldo dalam layout vertikal
+    - Reduced card padding and border size (3px dari 4px)
+    - Smaller font sizes: nama akun 10px, badge 8px, saldo 12px
+    - Removed AkunActions dropdown dari card (simplifikasi UI)
+    - Pagination buttons: smaller 7px x 7px
+  - **Files:** `src/app/akun/page.tsx`
+
+---
+
 ## Stack & Arsitektur
 
 - **Framework:** Next.js 16, React 19, Tailwind CSS v4

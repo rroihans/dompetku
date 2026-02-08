@@ -130,10 +130,25 @@ async function fetchTransactionsWithAccounts(start: Date, end: Date) {
         return [];
     }
 
-    // Use filter instead of between to avoid potential IDBKeyRange errors
-    const txs = await db.transaksi
-        .filter(tx => tx.tanggal >= start && tx.tanggal <= end)
-        .toArray();
+    // Normalize start and end to ensure proper comparison
+    const normalizedStart = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0);
+    const normalizedEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999);
+
+    // Fetch all transactions and filter manually to handle date format inconsistencies
+    const allTxs = await db.transaksi.toArray();
+    
+    const txs = allTxs.filter(tx => {
+        // Convert transaction date to Date object if it's a string
+        const txDate = tx.tanggal instanceof Date ? tx.tanggal : new Date(tx.tanggal);
+        if (isNaN(txDate.getTime())) return false;
+        
+        // Normalize transaction date to local midnight for comparison
+        const txNormalized = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
+        const startNormalized = new Date(normalizedStart.getFullYear(), normalizedStart.getMonth(), normalizedStart.getDate());
+        const endNormalized = new Date(normalizedEnd.getFullYear(), normalizedEnd.getMonth(), normalizedEnd.getDate());
+        
+        return txNormalized >= startNormalized && txNormalized <= endNormalized;
+    });
 
     // Fetch unique account IDs
     const accountIds = new Set<string>();
@@ -154,21 +169,18 @@ async function fetchTransactionsWithAccounts(start: Date, end: Date) {
 
 function getTodayDateRange() {
     const now = new Date();
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
+    // Gunakan midnight local time untuk konsistensi dengan tanggal yang ditampilkan
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     return { start, end };
 }
 
 function getYesterdayDateRange() {
     const now = new Date();
-    const start = new Date(now);
-    start.setDate(start.getDate() - 1);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(now);
-    end.setDate(end.getDate() - 1);
-    end.setHours(23, 59, 59, 999);
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+    const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
     return { start, end };
 }
 

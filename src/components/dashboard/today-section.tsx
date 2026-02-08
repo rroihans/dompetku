@@ -75,8 +75,8 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
             <Calendar className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Hari Ini</h3>
-            <p className="text-xs text-muted-foreground">{todayDate}</p>
+            <h3 className="font-semibold text-xs">Hari Ini</h3>
+            <p className="text-[10px] text-muted-foreground">{todayDate}</p>
           </div>
         </div>
         <Button 
@@ -102,8 +102,8 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
                 {comparison.incomeChange !== null ? renderBadge(comparison.incomeChange) : <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Masuk</p>
-            <p className="text-sm font-bold text-emerald-500 truncate" data-private="true">
+            <p className="text-[9px] text-muted-foreground">Masuk</p>
+            <p className="text-xs font-bold text-emerald-500 truncate" data-private="true">
               {formatRupiah(todayData.income)}
             </p>
           </div>
@@ -116,8 +116,8 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
                 {comparison.expenseChange !== null ? renderBadge(comparison.expenseChange, true) : <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Keluar</p>
-            <p className="text-sm font-bold text-red-500 truncate" data-private="true">
+            <p className="text-[9px] text-muted-foreground">Keluar</p>
+            <p className="text-xs font-bold text-red-500 truncate" data-private="true">
               {formatRupiah(todayData.expense)}
             </p>
           </div>
@@ -130,8 +130,8 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
                 {comparison.netChange !== null ? renderBadge(comparison.netChange) : <span className="text-[10px] bg-muted px-1 rounded text-muted-foreground">Baru</span>}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Selisih</p>
-            <p className={cn("text-sm font-bold truncate", todayData.net >= 0 ? "text-emerald-500" : "text-red-500")} data-private="true">
+            <p className="text-[9px] text-muted-foreground">Selisih</p>
+            <p className={cn("text-xs font-bold truncate", todayData.net >= 0 ? "text-emerald-500" : "text-red-500")} data-private="true">
               {formatRupiah(todayData.net)}
             </p>
           </div>
@@ -141,11 +141,11 @@ export function TodaySection({ todayData, yesterdayData, comparison }: TodaySect
         {isExpanded && (
           <div className="space-y-3 animate-in slide-in-from-top-2 duration-200" role="region" aria-live="polite">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 Transaksi ({todayData.transactionCount})
               </h4>
               {todayData.transactionCount > 3 && (
-                <Link href="/transaksi" className="text-xs text-primary hover:underline">
+                <Link href="/transaksi" className="text-[10px] text-primary hover:underline">
                   Lihat Semua
                 </Link>
               )}
