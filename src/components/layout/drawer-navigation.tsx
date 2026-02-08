@@ -138,6 +138,11 @@ export function DrawerNavigation() {
                             )
                         })}
                     </nav>
+                    <div className="px-6 py-4 border-t border-border mt-auto">
+                        <p className="text-[10px] text-muted-foreground text-center">
+                            Versi Aplikasi v0.12.1
+                        </p>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>

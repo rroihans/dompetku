@@ -16,6 +16,7 @@ import { EmptyState } from "./empty-state";
 import { cn } from "@/lib/utils";
 import { TodayTransactionCard } from "./today-transaction-card";
 import { MappedTransaksi } from "@/types/transaksi";
+import { isToday } from "date-fns";
 
 interface TodaySectionProps {
   todayData: {
@@ -64,6 +65,11 @@ export function TodaySection({ todayData, comparison }: TodaySectionProps) {
       </span>
     );
   };
+
+  // Check if transactions are actually from today
+  const hasTransactions = todayData.transactions.length > 0;
+  const firstTxDate = hasTransactions ? new Date(todayData.transactions[0].tanggal) : new Date();
+  const isTxToday = hasTransactions ? isToday(firstTxDate) : true;
 
   return (
     <Card 
@@ -143,9 +149,9 @@ export function TodaySection({ todayData, comparison }: TodaySectionProps) {
           <div className="space-y-3 animate-in slide-in-from-top-2 duration-200" role="region" aria-live="polite">
             <div className="flex items-center justify-between">
               <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                Transaksi ({todayData.transactionCount})
+                {isTxToday ? "Transaksi Hari Ini" : "Aktivitas Terkini"} ({todayData.transactions.length})
               </h4>
-              {todayData.transactionCount > 3 && (
+              {(todayData.transactions.length > 5 || todayData.transactionCount > 5) && (
                 <Link href="/transaksi" className="text-[10px] text-primary hover:underline">
                   Lihat Semua
                 </Link>

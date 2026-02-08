@@ -641,7 +641,39 @@ export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
         }
         
         todayTransactions.sort((a, b) => b.tanggal.getTime() - a.tanggal.getTime());
-        const recentTransactions = todayTransactions.slice(0, 3);
+        let recentTransactions: MappedTransaksi[] = todayTransactions.slice(0, 5) as unknown as MappedTransaksi[];
+
+        // Fallback: Jika tidak ada transaksi hari ini, ambil transaksi terakhir dari database
+        if (recentTransactions.length === 0) {
+            const latestTxs = await db.transaksi
+                .orderBy("tanggal")
+                .reverse()
+                .limit(5)
+                .toArray();
+            
+            if (latestTxs.length > 0) {
+                const accountIds = new Set<string>();
+                latestTxs.forEach(tx => {
+                    accountIds.add(tx.debitAkunId);
+                    accountIds.add(tx.kreditAkunId);
+                });
+                
+                const accounts = await db.akun.where("id").anyOf(Array.from(accountIds)).toArray();
+                const accountMap = new Map(accounts.map(a => [a.id, a]));
+                
+                recentTransactions = latestTxs.map(tx => ({
+                    ...tx,
+                    debitAkun: accountMap.get(tx.debitAkunId) || null,
+                    kreditAkun: accountMap.get(tx.kreditAkunId) || null,
+                    nominal: Money.toFloat(tx.nominalInt),
+                    // Ensure compatibility with MappedTransaksi
+                    categoryIcon: undefined,
+                    recurrenceId: undefined, // Not on TransaksiRecord
+                    isSubscription: undefined, // Not on TransaksiRecord
+                    catatan: tx.catatan || undefined
+                })) as unknown as MappedTransaksi[];
+            }
+        }
         
         const comparison = {
             incomeChange: calculatePercentageChange(todayIncome, yesterdaySummary.income),

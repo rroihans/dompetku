@@ -14,6 +14,15 @@
   - **Solution:** Normalisasi tanggal ke local midnight dan gunakan perbandingan tanggal yang konsisten tanpa memperhatikan waktu.
   - **Files:** `src/lib/db/analytics-repo.ts`
 
+- **UI/UX Enhancements:**
+  - **Global:** Reduced font sizes (body 11px) for better information density on mobile devices.
+  - **Sidebar:** Added application version (v0.12.1) to the bottom of the menu.
+  - **Dashboard:**
+    - Added "Aktivitas Terkini" fallback to show recent transactions when there are no transactions today.
+    - Updated "Hari Ini" section to dynamically change title based on transaction dates.
+    - Reduced text sizes in Budget Warning Banner.
+  - **Transactions Page:** Redesigned transaction items to be more compact and information-dense (removed large padding, smaller icons).
+
 - **Transaction Type Detection Fix:**
   - **Fix:** Logic deteksi tipe transaksi (expense/income/transfer) tidak konsisten antara dashboard dan transaction card.
   - **Solution:** Standarisasi logic deteksi:

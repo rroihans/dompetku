@@ -181,37 +181,41 @@ export default function TransaksiPage() {
                                         <div 
                                             key={tx.id} 
                                             role="listitem" 
-                                            className="bg-card rounded-xl border border-border/50 p-4 hover:bg-accent/50 transition-colors"
+                                            className="bg-card rounded-lg border border-border p-3 hover:bg-accent/50 transition-colors"
                                         >
-                                            <div className="flex items-start justify-between gap-4">
-                                                {/* Left: Icon & Main Info */}
-                                                <div className="flex items-start gap-3 flex-1 min-w-0">
-                                                    <div 
-                                                        aria-hidden="true"
-                                                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                                        {isExpense ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 pt-0.5">
-                                                        <div className="text-[15px] font-semibold text-foreground truncate leading-tight">
+                                            <div className="flex items-center gap-3">
+                                                {/* Icon */}
+                                                <div 
+                                                    aria-hidden="true"
+                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isExpense ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                    {isExpense ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="text-sm font-medium truncate leading-none pt-0.5">
                                                             {tx.deskripsi}
                                                         </div>
-                                                        <div className="flex items-center gap-2 mt-1.5">
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
+                                                        <div className={`text-sm font-bold whitespace-nowrap ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
+                                                            {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-between mt-1.5">
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground min-w-0">
+                                                            <span className="bg-muted px-1.5 py-0.5 rounded truncate max-w-[80px]">
                                                                 {tx.kategori}
                                                             </span>
-                                                            <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
+                                                            <span className="shrink-0">•</span>
+                                                            <span className="truncate max-w-[100px]">
                                                                 {tx.kreditAkun?.nama || tx.debitAkun?.nama}
                                                             </span>
                                                         </div>
+                                                        <div className="-my-1">
+                                                            <TransaksiActions transaksi={tx} />
+                                                        </div>
                                                     </div>
-                                                </div>
-
-                                                {/* Right: Amount & Action */}
-                                                <div className="flex flex-col items-end gap-2 shrink-0">
-                                                    <div className={`text-[15px] font-bold ${isExpense ? 'text-red-500' : 'text-emerald-500'}`} data-private="true">
-                                                        {isExpense ? '-' : '+'}{formatRupiah(tx.nominal)}
-                                                    </div>
-                                                    <TransaksiActions transaksi={tx} />
                                                 </div>
                                             </div>
                                         </div>

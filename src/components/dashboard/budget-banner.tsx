@@ -67,17 +67,17 @@ export function BudgetBanner() {
             <div className="flex items-start gap-4">
                 <div className="mt-1">{icon}</div>
                 <div className="flex-1">
-                    <h3 className="font-semibold text-lg flex items-center justify-between">
+                    <h3 className="font-semibold text-sm flex items-center justify-between">
                         <span>
                             {alerts.length} Budget {alerts.length > 1 ? "Melebihi" : "Mendekati"} Limit
                         </span>
-                        <Link href="/anggaran" className="text-sm font-normal underline flex items-center gap-1 hover:opacity-80">
+                        <Link href="/anggaran" className="text-xs font-normal underline flex items-center gap-1 hover:opacity-80">
                             Lihat Detail <ArrowRight className="h-3 w-3" />
                         </Link>
                     </h3>
                     <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
                         {alerts.slice(0, 3).map((alert) => (
-                            <div key={alert.kategori} className="text-sm flex items-center gap-2">
+                            <div key={alert.kategori} className="text-xs flex items-center gap-2">
                                 <span className="font-medium">• {alert.kategori}:</span>
                                 <span className={
                                     alert.status === "CRITICAL" ? "text-red-700 font-bold" :
@@ -90,7 +90,7 @@ export function BudgetBanner() {
                             </div>
                         ))}
                         {alerts.length > 3 && (
-                            <div className="text-sm italic opacity-80">
+                            <div className="text-xs italic opacity-80">
                                 +{alerts.length - 3} lainnya...
                             </div>
                         )}

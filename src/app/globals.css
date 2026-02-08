@@ -144,17 +144,18 @@
   }
 
   /* Reduce font sizes globally for mobile */
+  /* Reduce font sizes globally for mobile */
   @media (max-width: 768px) {
     body {
-      font-size: 12px;
+      font-size: 11px;
     }
     
-    h1 { font-size: 1.25rem !important; }
-    h2 { font-size: 1.125rem !important; }
-    h3 { font-size: 1rem !important; }
-    h4 { font-size: 0.875rem !important; }
-    h5 { font-size: 0.8125rem !important; }
-    h6 { font-size: 0.75rem !important; }
+    h1 { font-size: 1.125rem !important; }
+    h2 { font-size: 1rem !important; }
+    h3 { font-size: 0.875rem !important; }
+    h4 { font-size: 0.8125rem !important; }
+    h5 { font-size: 0.75rem !important; }
+    h6 { font-size: 0.625rem !important; }
     
     p, span, div, a, button, input, select, textarea {
       font-size: inherit;
